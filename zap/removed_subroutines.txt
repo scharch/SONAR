@@ -1,0 +1,80 @@
+#extra code that I've deleted from mytools/common, in case it needs to be re-inserted
+
+
+def donothing():
+        pass;
+
+
+
+#
+# -- BEGIN -- String methods
+#
+
+def get_454_fasta_id(s):
+        """retrieve sequence ID from fasta files (qual file)"""
+
+        # with descriptions
+        try:
+                return s[ 1 : s.index(" ")]
+
+        # without descriptions
+        except:
+                return s.strip()[ 1 : ]
+
+
+
+def trim_ref_gene_name(s):
+        """
+        return the first part of gene name by either "-" or "_"
+        """
+        ind = 0
+        if s.find("_") > 0:                     # native gene
+                ind = s.index("_")
+                return s[ : ind]
+
+        elif s.find("-") > 0:           # germline gene
+                ind = s.index("-")
+                return s[ind + 1 :]
+
+def generate_random_string(string_len):
+        all_letters, result = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", []
+        for i in range(string_len):
+                result.append(random.choice(all_letters))
+        return "".join(result)
+
+def get_number_char(ind):
+        all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        return all_chars[ind - 1]
+#
+# -- END -- String methods
+#
+
+
+def sort_files_by_size(fs):
+        """
+        sort files based on size: from smaller to larger
+        """
+        z_files = []
+        for f in fs:
+                size = os.path.getsize(f)
+                z_files.append((size, f))
+        z_files = sorted(z_files)
+
+        return [f for s, f in z_files]
+
+
+
+
+def retrieve_name_body(s):
+        """
+        Remove folder and suffix
+        """
+        lind = s.rindex("/")
+        rind = s.rindex(".")
+        return s[lind + 1 : rind]
+
+def folder_path2prj_name(s):
+        ind = s.index("pt")
+        s = s[ind :]
+        return s[ : s.index("/")]
+

@@ -115,13 +115,27 @@ class MyAlignmentVerbose:
 		self.aln_sbjct		= row[15]
 	
 		
-class ProjectFolders:
+xclass ProjectFolders:
 	"""folder structure of a project """
 	
 	def __init__(self, proj_home):
+
+		self.home  = proj_home
+		self.work  = "%s/work"    %  proj_home
+		self.out   = "%%s/output" %  proj_home
+
+		#working folders
+		self.blast   = "%s/1-blast"     %  self.work
+		self.clustal = "%s/2-clustal"   %  self.work
+		self.phylo   = "%s/3-phylogeny" %  self.work
+
+		#output
+		self.seq     = "%s/sequences"   %  self.out
+		self.tables  = "%s/tables"      %  self.out
+		self.plots   = "%s/plots"       %  self.out
 		
+
 		# 1st level subfolders
-		self.home		= proj_home
 		self.original 	= "%s/%s" 			%(proj_home, ORG_FOLDER)
 		self.filtered 	= "%s/%s"			%(proj_home, FILTERED_FOLDER)
 		self.mapping 	= "%s/%s"			%(proj_home, MAPPING_FOLDER)
@@ -152,53 +166,6 @@ class ProjectFolders:
 
 #
 # -- END -- class defination
-#
-
-def donothing():
-	pass;
-
-
-
-#
-# -- BEGIN -- String methods
-#
-
-def get_454_fasta_id(s):
-	"""retrieve sequence ID from fasta files (qual file)"""
-	
-	# with descriptions
-	try:								
-		return s[ 1 : s.index(" ")]
-		
-	# without descriptions
-	except:		
-		return s.strip()[ 1 : ]
-	
-
-def trim_ref_gene_name(s):
-	"""
-	return the first part of gene name by either "-" or "_"
-	"""
-	ind = 0
-	if s.find("_") > 0:			# native gene
-		ind = s.index("_")
-		return s[ : ind]
-	
-	elif s.find("-") > 0:		# germline gene
-		ind = s.index("-")
-		return s[ind + 1 :]
-	
-def generate_random_string(string_len):
-	all_letters, result = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", []
-	for i in range(string_len):
-		result.append(random.choice(all_letters))
-	return "".join(result)
-	
-def get_number_char(ind):
-	all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	return all_chars[ind - 1]
-#
-# -- END -- String methods
 #
 
 
@@ -259,56 +226,20 @@ def getParasWithDefaults(my_dict, default_dict, *args):
 # -- BEGIN --  folder and file methods
 #
 
-def sort_files_by_size(fs):
-	"""
-	sort files based on size: from smaller to larger
-	"""
-	z_files = []
-	for f in fs:
-		size = os.path.getsize(f)
-		z_files.append((size, f))	
-	z_files = sorted(z_files)
-
-	return [f for s, f in z_files]
-
-
-
-
-def retrieve_name_body(s):
-	"""
-	Remove folder and suffix
-	"""
-	lind = s.rindex("/")
-	rind = s.rindex(".")
-	return s[lind + 1 : rind]
-
-def folder_path2prj_name(s):
-	ind = s.index("pt")
-	s = s[ind :]
-	return s[ : s.index("/")]
-
 def fullpath2last_folder(s):
 	"""get immediate parent folder"""
 	
 	return s[s.rindex("/") + 1 :]
 
 
-def create_folders(folder):
+def create_folders(folder, force=False):
 	"""create subfolders """
 	
-	if not check_folder(folder, ORG_FOLDER):
-		
-		try:
-			create_subfolder(folder, ORG_FOLDER)
-			print "**** Please put original fasta/qual files in folder %s!! ****" %ORG_FOLDER
-		except:
-			print "ERROR: CANNOT CREATE SUBFOLDER: %s" %ORG_FOLDER
-		
-		
-		sys.exit(0)
-		
-	# Create 1st level subfolders
-	for subfolder in FIRST_LEVEL_SUBFOLDERS:
+	if (os.path.isdir("work") and not force):
+		sys.exit("Working directories already exits. Please use the -f(orce) option to re-intiate an analysis from scratch\n")
+	
+	# Create working folders
+	for subfolder in ALL_SUBFOLDERS:
 		try:
 			shutil.rmtree("%s/%s/" %(folder, subfolder))
 		except:
@@ -320,17 +251,6 @@ def create_folders(folder):
 		except:		# may need to delete old folders
 			print "FOLDER EXISTS: subfolder"
 			
-
-	# Create 2nd level subfolders
-	for subfolder in SECOND_LEVEL_SUBFOLDERS:
-		try:
-			#shutil.rmtree("%s/%s/" %(folder, subfolder))
-			create_subfolder(folder, subfolder)
-			
-		except:		# may need to delete old folders
-			print "FOLDER EXISTS: subfolder"
-	
-	
 	return ProjectFolders(folder)
 
 
@@ -420,6 +340,21 @@ def check_files(paired_files):
 			print [parse_name(x) for x in values]
 			print " ******  PLEASE CHECK YOUR FILES ******"
 			sys.exit(0)
+
+
+def create_array_job(target, name, resources, command, number, outfile=""):
+	handle = open(target, "w")
+	handle.write("#!/bin/bash\n")
+	handle.write("#$ -t 1-%d\n" % number)
+	handle.write("#$ -N %s\n" % name)
+	handle.write("#$ -l %s\n" % resources)
+	handle.write("#$ -cwd\n")
+	if (output is not ""):
+		handle.write("#$ -o %s\n" % output)
+	handle.write("%s\n" % command)
+
+	handle.close()
+	os.system("qsub %s" % target)
 
 
 def write_pbs_file(folder_tree, is_light):

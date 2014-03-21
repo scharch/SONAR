@@ -214,6 +214,7 @@ dict_nat_db = {
 GERM_HEAVY_AA	= "%s/db/germline/IgHV_protein.fasta" %HOME_FOLDER
 NAT_HEAVY_AA	= "%s/db/native/vrc_IgHV_protein.fasta" %HOME_FOLDER
 
+
 # project subfolders
 ORG_FOLDER 			= "0-original"								# original folder (fna/qual/sff?)
 FILTERED_FOLDER 	= "1-filtered"								# filtered folder (fna/qual/sff?)
@@ -225,6 +226,7 @@ PHYLO_FOLDER		= "4-crossdonor"
 DOC_FOLDER			= "document"
 TMP_FOLDER			= "tmp"
 
+ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "output/sequences", "output/tables", "output/plots"]
 FIRST_LEVEL_SUBFOLDERS = [FILTERED_FOLDER, MAPPING_FOLDER, ANALYSIS_FOLDER, LOG_FOLDER, CLUSTAL_FOLDER, TMP_FOLDER]		# ORG_FOLDER is removed coz it should be created before hand
 
 
