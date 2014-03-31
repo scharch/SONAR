@@ -69,7 +69,7 @@ def write_phylo_pbs(f):
 	handle = open(pbs_file, "w")
 	handle.write("#!/bin/bash\n")
 	handle.write("#$ -N %s\n" %head)
-	handle.write("#$ -l mem=2G,time=30:00:00\n")
+	handle.write("#$ -l mem=4G,time=10:00:00\n")
 	handle.write("#$ -cwd\n")
 	handle.write("/ifs/home/c2b2/bh_lab/cs3037/bin/clustalo-1.1.0-linux-64 -i %s/%s.fa -o %s/%s.aln --distmat-out=%s/%s.mat --full\n" %(prj_tree.clustal_fasta, head, prj_tree.clustal_fasta, head, prj_tree.clustal_fasta, head))
 	#handle.write("/ifs/home/c2b2/bh_lab/shares/clustalw/clustalw-2.0.10-linux-i386-libcppstatic/clustalw2 -infile=%s/%s -align -tree -outputtree=nj\n" %(prj_tree.clustal_fasta, f))
