@@ -1601,44 +1601,37 @@ def get_germ_in_dict(f):
 	return result
 
 			
-def generate_blast_top_hists(folder, header):
+def generate_blast_top_hists(infile):
 	"""retrieve top hits from all result files"""
 	
-	infiles = get_files_format(folder, "txt")
-	
-
 	old_id = ""
-	for infile in infiles:
-		if not header in infile: #from a different dataset, skip!
-			continue
-		print "%s..." %infile
 		
-		reader = csv.reader(open("%s/%s" %(folder, infile), "rU"), delimiter = sep)
-		for ind, row in enumerate(reader):
+	reader = csv.reader(open(infile, "rU"), delimiter = sep)
+	for ind, row in enumerate(reader):
 			#print ind, row
-			if len(row) != 12:
-				pass;
-			else:
-				my_alignment = MyAlignment(row)
+		if len(row) != 12:
+			pass;
+		else:
+			my_alignment = MyAlignment(row)
 
-				if my_alignment.qid != old_id:
-					if old_id != "":
-						yield best_alignment, best_row, others
+			if my_alignment.qid != old_id:
+				if old_id != "":
+					yield best_alignment, best_row, others
 						
-					strand, old_id = "+", my_alignment.qid
-					best_alignment = my_alignment
-					best_row = row
-					others = []
-					if my_alignment.sstart > my_alignment.send:
-						strand = "-"
-					best_alignment.set_strand(strand)
+				strand, old_id = "+", my_alignment.qid
+				best_alignment = my_alignment
+				best_row = row
+				others = []
+				if my_alignment.sstart > my_alignment.send:
+					strand = "-"
+				best_alignment.set_strand(strand)
 				
-				else:
+			else:
 					#added 20130707 by CAS
-					if my_alignment.score == best_alignment.score:
-						others.append(my_alignment.sid)
+				if my_alignment.score == best_alignment.score:
+					others.append(my_alignment.sid)
 
-		yield best_alignment, best_row, others
+	yield best_alignment, best_row, others
 		#break
 
 

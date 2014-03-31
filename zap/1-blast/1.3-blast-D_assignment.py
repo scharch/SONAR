@@ -31,17 +31,16 @@ def write_dict2file(d, total, header):
 
 
 
-def get_top_hit(folder):
+def get_top_hit(resultFile):
 
-	dict_strand_count 		= {"+" : 0.0, "-" : 0.0}
-	dict_germ_count			= dict()
-	
-	db_name = fullpath2last_folder(folder)
-	writer, total = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name), "w"), delimiter = sep), 0
-		
+	dict_germ_aln  =  dict()
+	dict_j_seconds =  dict()
+
+	#db_name = fullpath2last_folder(folder)
+	writer, total = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name), "a"), delimiter = sep), 0
 	writer.writerow(PARSED_BLAST_HEADER)
 	
-	for my_alignment, row, others in generate_blast_top_hists(folder, 'vc'):
+	for my_alignment, row, others in generate_blast_top_hists(resultFile):
 		qid, sid 	= 	my_alignment.qid, my_alignment.sid
 		aline 		= 	row + [my_alignment.strand]
 
@@ -62,9 +61,8 @@ def get_top_hit(folder):
 		
 		total		+= 	1
 
-        write_dict2file(dict_germ_count, total, ["subject", "count", "percent"])
-
-
+	return dict_germ_aln, dict_j_seconds
+ 
 
 def read_tophit_file():
     handle = open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "rU")
@@ -154,7 +152,6 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 def main():
 
 	v_assignments, v_seconds = read_tophit_file()
-	get_top_hit(prj_tree.germ)
 	
 	outfile = "%s/%s_VJtrim.fa" %(prj_tree.filtered, prj_name)
         handle = open(outfile, "w")
@@ -175,145 +172,150 @@ def main():
         bad_handle = open(plus_bad_outfile, "w")
 
 	print "curating 3' end..."
-	total, found, noV, noJ  = 0, 0, 0, 0
+	os.system("rm %s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name))
+	total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 1
 	counts = {'good':0,'indel':0,'noCDR3':0,'stop':0,'out-of-frame':0}
 
-	for entry in SeqIO.parse(open("%s/%s.fasta" %(prj_tree.filtered, prj_name), "rU"), "fasta"):
-		total += 1
-		if total % 50000 == 0:
-			print "%d done, found %d; %d good..." %(total, found, counts['good'])
+	while os.path.isfile("%s/vcut_%06d.fasta" % (prj_tree.split, f_ind)):
+		dict_germ_aln, dict_j_seconds =  get_top_hit("%s/vc%06d.txt" % (prj_tree.germ, f_ind))
 
-		seq_id = str(int(entry.id))
-		if not seq_id in v_assignments:
-			noV+=1
-		elif not seq_id in dict_germ_aln:
-			noJ+=1
-			myV = v_assignments[seq_id]
-			if (myV.strand == '+'):
-				entry.seq = entry.seq[ myV.qstart - 1 :  ]
+		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
+			total += 1
+
+			seq_id = str(int(entry.id))
+			if not seq_id in v_assignments:
+				noV+=1
+			elif not seq_id in dict_germ_aln:
+				noJ+=1
+				myV = v_assignments[seq_id]
+				if (myV.strand == '+'):
+					entry.seq = entry.seq[ myV.qstart - 1 :  ]
+				else:
+					entry.seq = entry.seq[  : myV.qend ].reverse_complement()
+				myVgenes = myV.sid
+				if seq_id in v_seconds:
+					myVgenes = myVgenes + "," + ",".join(v_seconds[seq_id])
+				entry.description = "V_gene=%s status=noJ" % (myVgenes)
+				vhandle.write(">%s %s\n" %(entry.id, entry.description))
+				vhandle.write("%s\n" %entry.seq)
 			else:
-				entry.seq = entry.seq[  : myV.qend ].reverse_complement()
-                        myVgenes = myV.sid
-			if seq_id in v_seconds:
-                                myVgenes = myVgenes + "," + ",".join(v_seconds[seq_id])
-			entry.description = "V_gene=%s status=noJ" % (myVgenes)
-                        vhandle.write(">%s %s\n" %(entry.id, entry.description))
-                        vhandle.write("%s\n" %entry.seq)
-		else:
-			found += 1
+				found += 1
 
-			myV = v_assignments[seq_id]
-			myJ = dict_germ_aln[seq_id]
-			status = "good"
+				myV = v_assignments[seq_id]
+				myJ = dict_germ_aln[seq_id]
+				status = "good"
+				
+				#if the 5' end is highly mutated, blast might leave it out. let's try to get it back
+				if (myV.strand == "+" and myV.sstart>1 and myV.qstart>1):
+					shift_back = min([myV.sstart, myV.qstart]) - 1
+					#but start at an even codon
+					shift_back -= (1 - ((myV.sstart - shift_back) % 3)) % 3
+					addition = entry.seq[myV.qstart-shift_back : myV.qstart]
+					if '*' not in addition.translate():
+						myV.sstart    -= shift_back
+						myV.qstart    -= shift_back
+						myV.alignment += shift_back
+				elif (myV.strand == "-" and myV.send>1 and myV.qend<len(entry.seq)):
+					shift_back = min([myV.send-1, len(entry.seq)-myV.qend])
+					#but start at an even codon
+					shift_back -= (1 - ((myV.send - shift_back) % 3)) % 3
+					addition = entry.seq[myV.qend : myV.qend + shift_back].reverse_complement()
+					if '*' not in addition.translate():
+						myV.send      -= shift_back
+						myV.qend      += shift_back
+						myV.alignment += shift_back
 
-			#if the 5' end is highly mutated, blast might leave it out. let's try to get it back
-			if (myV.strand == "+" and myV.sstart>1 and myV.qstart>1):
-				shift_back = min([myV.sstart, myV.qstart]) - 1
-				#but start at an even codon
-				shift_back -= (1 - ((myV.sstart - shift_back) % 3)) % 3
-				addition = entry.seq[myV.qstart-shift_back : myV.qstart]
-				if '*' not in addition.translate():
-					myV.sstart    -= shift_back
-					myV.qstart    -= shift_back
-					myV.alignment += shift_back
-			elif (myV.strand == "-" and myV.send>1 and myV.qend<len(entry.seq)):
-				shift_back = min([myV.send-1, len(entry.seq)-myV.qend])
-				#but start at an even codon
-				shift_back -= (1 - ((myV.send - shift_back) % 3)) % 3
-				addition = entry.seq[myV.qend : myV.qend + shift_back].reverse_complement()
-				if '*' not in addition.translate():
-					myV.send      -= shift_back
-					myV.qend      += shift_back
-					myV.alignment += shift_back
+				#check 3' end of J
+				v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
+				if (myJ.send < dict_j[myJ.sid].seq_len-1 and len(entry.seq) > v_len + myJ.qend):
+					toAdd = min([dict_j[myJ.sid].seq_len-1-myJ.send,len(entry.seq)-v_len + myJ.qend])
+					myJ.qend += toAdd
+				if (myJ.send == dict_j[myJ.sid].seq_len):
+					myJ.qend -= 1
 
-			#check 3' end of J
-			v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
-			if (myJ.send < dict_j[myJ.sid].seq_len-1 and len(entry.seq) > v_len + myJ.qend):
-				toAdd = min([dict_j[myJ.sid].seq_len-1-myJ.send,len(entry.seq)-v_len + myJ.qend])
-				myJ.qend += toAdd
-			if (myJ.send == dict_j[myJ.sid].seq_len):
-				myJ.qend -= 1
+				#get actual V(D)J sequence
+				vdj_len = v_len + myJ.qend
+				if (myV.strand == '+'):
+					entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+				else:
+					entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
 
-			#get actual V(D)J sequence
-			vdj_len = v_len + myJ.qend
-			if (myV.strand == '+'):
-				entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
-			else:
-				entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
+				#get CDR3 boundaries
+				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,dict_v[myV.sid].seq, v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), dict_j[myJ.sid].seq, myJ.sstart, myJ.qstart, myJ.gaps, entry.seq.tostring()) #min and max statments take care of switching possible minus strand hit
+				cdr3_seq = entry.seq[ cdr3_start : cdr3_end ]
+				#print cdr3_seq
+				#break
 
-			#get CDR3 boundaries
-			cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,dict_v[myV.sid].seq, v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), dict_j[myJ.sid].seq, myJ.sstart, myJ.qstart, myJ.gaps, entry.seq.tostring()) #min and max statments take care of switching possible minus strand hit
-			cdr3_seq = entry.seq[ cdr3_start : cdr3_end ]
-			#print cdr3_seq
-			#break
+				#check for continuous ORF
+				v_frame = myV.sstart % 3
+				j_frame = 3 - ( (dict_j[myJ.sid].seq_len - myJ.sstart - 1) % 3 )
+				#frame_shift = (myV.alignment + myJ.qstart - 1) % 3
+				frame_shift = (v_len + myJ.qstart - 1) % 3
+				if (v_frame + frame_shift) % 3 != j_frame % 3: #this can be wrong if there's a gap in the J alignment, but that doesn't seem to be frequent enough to be worth worrying about
+					#frame +=1
+					status = "out-of-frame"
+					#continue
 
-			#check for continuous ORF
-			v_frame = myV.sstart % 3
-			j_frame = 3 - ( (dict_j[myJ.sid].seq_len - myJ.sstart - 1) % 3 )
-			#frame_shift = (myV.alignment + myJ.qstart - 1) % 3
-			frame_shift = (v_len + myJ.qstart - 1) % 3
-			if (v_frame + frame_shift) % 3 != j_frame % 3: #this can be wrong if there's a gap in the J alignment, but that doesn't seem to be frequent enough to be worth worrying about
-				#frame +=1
-				status = "out-of-frame"
-				#continue
+				#push the sequence into frame for translation, if need be
+				five_prime_add = (v_frame-1) % 3
+				entry.seq = 'N' * five_prime_add + entry.seq 
 
-			#push the sequence into frame for translation, if need be
-			five_prime_add = (v_frame-1) % 3
-			entry.seq = 'N' * five_prime_add + entry.seq 
+				#check for stop codons
+				if '*' in entry.seq.translate():
+					#stop+=1
+					status="stop"
+					#continue
 
-			#check for stop codons
-			if '*' in entry.seq.translate():
-				#stop+=1
-				status="stop"
-				#continue
+				#even if V and J are in frame with no stop codons, the junction may still be out of frame due to gaps in the V alignment
+				#theoretically, those gaps could let us do IMGT-style error correction, if we ask blast to print out the locations
+				if len(cdr3_seq) % 3 != 0:
+					#shift+=1
+					status="indel"
+					#continue
 
-			#even if V and J are in frame with no stop codons, the junction may still be out of frame due to gaps in the V alignment
-			#theoretically, those gaps could let us do IMGT-style error correction, if we ask blast to print out the locations
-			if len(cdr3_seq) % 3 != 0:
-				#shift+=1
-				status="indel"
-				#continue
+				#make sure cdr3 boundaries make sense
+				if (cdr3_end<=cdr3_start or cdr3_end>vdj_len or cdr3_start<0):
+					#print "No CDR3 for %s: start=%d, end=%d, read ends at %d"%(seq_id, cdr3_start, cdr3_end, vdj_len)
+					#none+=1;
+					status="noCDR3"
+					#continue
 
-			#make sure cdr3 boundaries make sense
-			if (cdr3_end<=cdr3_start or cdr3_end>vdj_len or cdr3_start<0):
-				#print "No CDR3 for %s: start=%d, end=%d, read ends at %d"%(seq_id, cdr3_start, cdr3_end, vdj_len)
-				#none+=1;
-				status="noCDR3"
-				#continue
+				#add germline assignments to fasta description and write to disk
+				myVgenes = myV.sid
+				if seq_id in v_seconds:
+					myVgenes = myVgenes + "," + ",".join(v_seconds[seq_id])
+				myJgenes = myJ.sid
+				if seq_id in dict_j_seconds:
+					myJgenes = myJgenes + "," + ",".join(dict_j_seconds[seq_id])
+				entry.description = "V_gene=%s J_gene=%s status=%s cdr3_nt_len=%d" % (myVgenes, myJgenes, status, len(cdr3_seq)-6)
+				vhandle.write(">%s %s\n" %(entry.id, entry.description))
+				vhandle.write("%s\n" %entry.seq)
+				jhandle.write(">%s %s\n" %(entry.id, entry.description))
+				jhandle.write("%s\n" %entry.seq)
 
-			#add germline assignments to fasta description and write to disk
-			myVgenes = myV.sid
-			if seq_id in v_seconds:
-				myVgenes = myVgenes + "," + ",".join(v_seconds[seq_id])
-			myJgenes = myJ.sid
-			if seq_id in dict_j_seconds:
-				myJgenes = myJgenes + "," + ",".join(dict_j_seconds[seq_id])
-			entry.description = "V_gene=%s J_gene=%s status=%s cdr3_nt_len=%d" % (myVgenes, myJgenes, status, len(cdr3_seq)-6)
-			vhandle.write(">%s %s\n" %(entry.id, entry.description))
-			vhandle.write("%s\n" %entry.seq)
-			jhandle.write(">%s %s\n" %(entry.id, entry.description))
-			jhandle.write("%s\n" %entry.seq)
+				if status != "noCDR3":
+					bad_handle.write(">%s %s\n" %(entry.id, entry.description))
+					bad_handle.write("%s\n" % cdr3_seq)
 
-			if status != "noCDR3":
-				bad_handle.write(">%s %s\n" %(entry.id, entry.description))
-				bad_handle.write("%s\n" % cdr3_seq)
+				if status == "good":
+			        	#may eventually want to add a length filter here, too
+					#good += 1
 
-			if status == "good":
-			        #may eventually want to add a length filter here, too
-				#good += 1
+					entry.description = "V_gene=%s J_gene=%s status=%s cdr3_len=%d" % (myVgenes, myJgenes, status, (len(cdr3_seq)/3)-2)
+			        	#it's a high-quality sequence! Save to special file
+					handle.write(">%s %s\n" %(entry.id, entry.description))
+					handle.write("%s\n" %entry.seq)
+					cdr3_handle.write(">%s %s\n" %(entry.id, entry.description))
+					cdr3_handle.write("%s\n" % cdr3_seq)
+					aa_handle.write(">%s %s\n" %(entry.id, entry.description))
+					aa_handle.write("%s\n" % cdr3_seq.translate())
 
-				entry.description = "V_gene=%s J_gene=%s status=%s cdr3_len=%d" % (myVgenes, myJgenes, status, (len(cdr3_seq)/3)-2)
-			        #it's a high-quality sequence! Save to special file
-				handle.write(">%s %s\n" %(entry.id, entry.description))
-				handle.write("%s\n" %entry.seq)
-				cdr3_handle.write(">%s %s\n" %(entry.id, entry.description))
-				cdr3_handle.write("%s\n" % cdr3_seq)
-				aa_handle.write(">%s %s\n" %(entry.id, entry.description))
-				aa_handle.write("%s\n" % cdr3_seq.translate())
+				counts[status] += 1
 
-			counts[status] += 1
+		print "%d done, found %d; %d good..." %(total, found, counts['good'])
+		f_ind += 1
 
-	print "%d done, found %d; %d good." %(total, found, counts['good'])
+	#print "%d done, found %d; %d good." %(total, found, counts['good'])
 	print "\tNo V assignment: %d\n\tNo J assignment: %d\n\tNo CDR3 found: %d\n\tCDR3 Indels: %d\n\tStop codons (anywhere): %d\n\tOut-of-frame junction (despite a good CDR3 and no stop codons): %d\n"%(noV,noJ,counts['noCDR3'],counts['indel'],counts['stop'],counts['out-of-frame'])
 	handle.close()
 
@@ -324,6 +326,8 @@ def main():
 		for entry in SeqIO.parse(open(fasta_file, "rU"), "fasta"):
 			raw += 1
 
+
+	write_dict2file(dict_germ_count, total, ["subject", "count", "percent"])
 	stats_file = "%s/%s_read_stats.tab" %(prj_tree.data,prj_name)
 	stats_writer = csv.writer(open(stats_file, "w"), delimiter = sep)
 	stats_writer.writerow(["Raw","Correct_Length","V_assigned","J_assigned","CDR3_assigned","ORF"])
@@ -351,8 +355,9 @@ if __name__ == '__main__':
 	v_db,j_db      =  dict_germ_db[is_light], dict_jgerm_db[is_light]
 	dict_v         =  load_fastas(v_db)
 	dict_j         =  load_fastas(j_db)
-	dict_germ_aln  =  dict()
-	dict_j_seconds =  dict()
+	dict_strand_count 		= {"+" : 0.0, "-" : 0.0}
+	dict_germ_count			= dict()
+	
 
 
 	main()

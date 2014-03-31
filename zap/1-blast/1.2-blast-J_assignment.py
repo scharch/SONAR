@@ -5,9 +5,10 @@
 
 Created by Zhenhai Zhang on 2011-04-14.
 Modified by CA Schramm 2013-07-03 to include j assignment.
-Copyright (c) 2011, 2013 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Modified by Chaim Schramm 2014-03-25 to not swamp RAM when processing Illumina data.
+Copyright (c) 2011, 2013, 2014 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 
-Usage: 1.1-parse_blast_result.py -l [0: heavy; 1: kappa; 2: lambda; 3: k/l] -npf 50000
+Usage: 1.1-parse_blast_result.py -l [0: heavy; 1: kappa; 2: lambda; 3: k/l] 
 
 
 """
@@ -44,36 +45,33 @@ def write_dict2file(d, total, header):
 		
 	
 
-def get_top_hit(folder):
+def get_top_hit(resultFile):
 
 	#qstart_list 			= [0] * (MAX_GOOD_LEN + 1)
 	#qend_list				= [0] * (MAX_GOOD_LEN + 1)
 	#sstart_list				= [0] * (MAX_GOOD_LEN + 1)
 	#send_list				= [0] * (MAX_GOOD_LEN + 1)
 	
-	dict_strand_count 		= {"+" : 0.0, "-" : 0.0}
-	dict_germ_count			= dict()
-	
-	db_name = fullpath2last_folder(folder)
-	writer, total = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "w"), delimiter = sep), 0
-		
+	#db_name = fullpath2last_folder(folder)
+	dict_germ_aln=dict()
+	writer, total = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "a"), delimiter = sep), 0
 	writer.writerow(PARSED_BLAST_HEADER)
 	
 	
-	for my_alignment, row, others in generate_blast_top_hists(folder, prj_name):
+	for my_alignment, row, others in generate_blast_top_hists(resultFile):
 		qid, sid 	= 	my_alignment.qid, my_alignment.sid
 		aline 		= 	row + [my_alignment.strand]
 		
-		if db_name == "germ":
-			aline.append(dict_germ[sid].seq_len)
+		#if db_name == "germ":
+		aline.append(dict_germ[sid].seq_len)
 			# record germline alignment
-			dict_germ_aln[qid] = my_alignment
-		elif db_name == "native":
-			sid = sid.upper()
-			aline.append(dict_native[sid].seq_len)
-		else:
-			print "DATABASE NAME ERROR!"
-			sys.exit(0)		
+		dict_germ_aln[qid] = my_alignment
+		#elif db_name == "native":
+		#	sid = sid.upper()
+		#	aline.append(dict_native[sid].seq_len)
+		#else:
+		#	print "DATABASE NAME ERROR!"
+		#	sys.exit(0)		
 
 		if len(others)>0:
 			aline.append(",".join(others))
@@ -103,8 +101,7 @@ def get_top_hit(folder):
 	#write_list2file(qend_list, "%s_qend" %db_name, total)
 	#write_list2file(send_list, "%s_send" %db_name, total)
 	
-	write_dict2file(dict_strand_count, total, ["strand", "count", "percent"])
-	write_dict2file(dict_germ_count, total, ["subject", "count", "percent"])	
+	return dict_germ_aln
 
 
 def submit_pbs(fasta, index):
@@ -122,74 +119,56 @@ def submit_pbs(fasta, index):
 
 def main():
 		
-	# parse germline alignment
-	get_top_hit(prj_tree.germ)
-	
 	#outfile = "%s/%s_5trim.fa" %(prj_tree.filtered, prj_name)
 	#handle = open(outfile, "w")
 	
 	
 	print "curating 5'end and strand...."
+	os.system("rm %s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name))
 	# cut nucleotide sequences from 5'end alignment to germline
 	total, good, f_ind = 0, 0, 1
-	split_fasta = "%s/vcut_%06d.fasta" %(prj_tree.split, f_ind)
-	fasta_handle = open(split_fasta, "w")
 
-	for entry in SeqIO.parse(open("%s/%s.fasta" %(prj_tree.filtered, prj_name), "rU"), "fasta"):
-		seq_id = str(int(entry.id))
-		if seq_id in dict_germ_aln:
-			entry.description = dict_germ_aln[seq_id].sid
-			entry.seq = cut_five_end_blast(entry.seq, dict_germ_aln[seq_id]).tostring()
-			align_len = abs(dict_germ_aln[seq_id].qend - dict_germ_aln[seq_id].qstart) + 1
-			entry.seq = entry.seq[ align_len : ]
+	while os.path.isfile("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind)):
 
-			if len(entry.seq) > 30: #can probably be 50...
-				fasta_handle.write(">%s\n%s\n" % (entry.id,entry.seq))
-				good += 1
+		split_fasta = "%s/vcut_%06d.fasta" %(prj_tree.split, f_ind)
+		fasta_handle = open(split_fasta, "w")
 
-			if good % num_per_file == 0 and good>0:
-				fasta_handle.close()
-				submit_pbs(split_fasta, f_ind)
-				f_ind += 1
-				split_fasta 	= "%s/vcut_%06d.fasta" 	%(prj_tree.split, f_ind)
-				fasta_handle	= open(split_fasta, "w")	
-			
-			'''
-			if is_light == 0:  # human heavy chain
-				has_wgxg, wgxg_start, wgxg_end = has_pat(entry.seq, pat_nuc_wgxg)
-				has_ast, ast_start, ast_end = has_pat(entry.seq, pat_nuc_ast)
-				has_vss, vss_start, vss_end = has_pat(entry.seq, pat_nuc_vss)
-				if has_ast and has_wgxg and (ast_start > wgxg_end):
-					entry.seq = entry.seq[ : ast_start]
-				
-				elif not has_ast and has_vss and has_wgxg and (vss_start > wgxg_end):
-					entry.seq = entry.seq[ : vss_end]
-				
-			if len(entry.seq) > 50: #kludge for Xenomouse light chain; change back to: MIN_ANTIBODY_LEN:
-				handle.write(">%s %s\n" %(entry.id, entry.description))
-				handle.write("%s\n" %entry.seq)
-				good += 1
-			'''
+		# parse germline alignment
+		dict_germ_aln = get_top_hit("%s/%s_%06d.txt" % (prj_tree.germ, prj_name, f_ind))
+	
+		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
 
-		total += 1
+			seq_id = str(int(entry.id))
+			total += 1
+			if seq_id in dict_germ_aln:
+				entry.description = dict_germ_aln[seq_id].sid
+				entry.seq = cut_five_end_blast(entry.seq, dict_germ_aln[seq_id]).tostring()
+				align_len = abs(dict_germ_aln[seq_id].qend - dict_germ_aln[seq_id].qstart) + 1
+				entry.seq = entry.seq[ align_len : ]
+
+				if len(entry.seq) > 30: #can probably be 50...
+					fasta_handle.write(">%s\n%s\n" % (entry.id,entry.seq))
+					good += 1
+
+		fasta_handle.close()
+		submit_pbs(split_fasta, f_ind)
+		f_ind += 1
 		
-		if total % (10 ** 5) == 0:
-			print "%d done, %d good..." %(total, good)
+		print "%d done, %d good..." %(total, good)
 
-	fasta_handle.close()
-	submit_pbs(split_fasta, f_ind)	
-	print "%d done, %d good..." %(total, good)
+	write_dict2file(dict_strand_count, total, ["strand", "count", "percent"])
+	write_dict2file(dict_germ_count, total, ["subject", "count", "percent"])	
 
 
 if __name__ == '__main__':
 	
 	# get parameters from input
-	if len(sys.argv) < 5 :
+	if len(sys.argv) < 3 :
 		print __doc__
 		sys.exit(0)
 
-	dict_args = processParas(sys.argv, l="is_light", npf="num_per_file")
-	is_light, num_per_file = getParas(dict_args, "is_light", "num_per_file")	
+	dict_args = processParas(sys.argv, l="is_light")#, npf="num_per_file")
+	is_light = getParas(dict_args, "is_light")#, "num_per_file")	
 
 	prj_tree       =  ProjectFolders(os.getcwd())
 	prj_name       =  fullpath2last_folder(prj_tree.home)
@@ -197,7 +176,10 @@ if __name__ == '__main__':
 	germ_db, j_db  =  dict_germ_db[is_light], dict_jgerm_db[is_light]
 	dict_germ      =  load_fastas(germ_db)
 	dict_j         =  load_fastas(j_db)
-	dict_germ_aln  =  dict()
+	#dict_germ_aln  =  dict()
+	dict_strand_count 		= {"+" : 0.0, "-" : 0.0}
+	dict_germ_count			= dict()
+	
 	
 	main()
 
