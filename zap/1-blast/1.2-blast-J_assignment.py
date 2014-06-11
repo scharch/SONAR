@@ -45,7 +45,7 @@ def write_dict2file(d, total, header):
 		
 	
 
-def get_top_hit(resultFile):
+def get_top_hit(resultFile, writer):
 
 	#qstart_list 			= [0] * (MAX_GOOD_LEN + 1)
 	#qend_list				= [0] * (MAX_GOOD_LEN + 1)
@@ -54,9 +54,6 @@ def get_top_hit(resultFile):
 	
 	#db_name = fullpath2last_folder(folder)
 	dict_germ_aln=dict()
-	writer, total = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "a"), delimiter = sep), 0
-	writer.writerow(PARSED_BLAST_HEADER)
-	
 	
 	for my_alignment, row, others in generate_blast_top_hists(resultFile):
 		qid, sid 	= 	my_alignment.qid, my_alignment.sid
@@ -93,7 +90,7 @@ def get_top_hit(resultFile):
 		#send_list[send]		+= 1
 		dict_strand_count[my_alignment.strand] += 1
 		
-		total		+= 	1
+		#total		+= 	1
 		
 
 	#write_list2file(qstart_list, "%s_qstart" %db_name, total)
@@ -124,17 +121,21 @@ def main():
 	
 	
 	print "curating 5'end and strand...."
-	os.system("rm %s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name))
+	#os.system("rm %s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name))
+
 	# cut nucleotide sequences from 5'end alignment to germline
 	total, good, f_ind = 0, 0, 1
 
+	writer = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "w"), delimiter = sep)
+	writer.writerow(PARSED_BLAST_HEADER)
+	
 	while os.path.isfile("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind)):
 
 		split_fasta = "%s/vcut_%06d.fasta" %(prj_tree.split, f_ind)
 		fasta_handle = open(split_fasta, "w")
 
 		# parse germline alignment
-		dict_germ_aln = get_top_hit("%s/%s_%06d.txt" % (prj_tree.germ, prj_name, f_ind))
+		dict_germ_aln = get_top_hit("%s/%s_%06d.txt" % (prj_tree.germ, prj_name, f_ind), writer)
 	
 		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
 

@@ -31,27 +31,26 @@ def write_dict2file(d, total, header):
 
 
 
-def get_top_hit(resultFile):
+def get_top_hit(resultFile, germDict, writer=None):
 
 	dict_germ_aln  =  dict()
 	dict_j_seconds =  dict()
 
 	#db_name = fullpath2last_folder(folder)
-	writer, total = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name), "a"), delimiter = sep), 0
-	writer.writerow(PARSED_BLAST_HEADER)
-	
+
 	for my_alignment, row, others in generate_blast_top_hists(resultFile):
 		qid, sid 	= 	my_alignment.qid, my_alignment.sid
 		aline 		= 	row + [my_alignment.strand]
 
-		if my_alignment.strand == "-":
-			continue #everything was converted to positive strand when assigning v!
+		if my_alignment.strand == "-" and writer is not None:
+			continue #everything was converted to positive strand when assigning v! (but we might be reprocessing V)
 
-                aline.append(dict_j[sid].seq_len)
+                aline.append(germDict[sid].seq_len)
 		if len(others)>0:
 			aline.append(",".join(others))
 			dict_j_seconds[qid] = others
-		writer.writerow(aline)
+		if writer is not None:
+			writer.writerow(aline)
 
                 dict_germ_aln[qid] = my_alignment
 		
@@ -59,30 +58,10 @@ def get_top_hit(resultFile):
 			dict_germ_count[my_alignment.sid] 	= 0
 		dict_germ_count[my_alignment.sid] 		+= 1
 		
-		total		+= 	1
+		#total		+= 	1
 
 	return dict_germ_aln, dict_j_seconds
  
-
-def read_tophit_file():
-    handle = open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "rU")
-    reader = csv.reader(handle, delimiter = sep)
-
-    v_assignment  = dict()
-    close_seconds = dict()
-
-    for row in reader:
-	    if row[0].strip() == "qid":
-		    continue #throw out header
-	    v_assignment[ row[0].strip() ] = MyAlignment(row[0:12])
-	    v_assignment[ row[0].strip() ].set_strand( row[12] )
-	    if len(row)>14:
-		    close_seconds[ row[0].strip() ] = row[14].split(",")
-
-    handle.close()
-
-    return v_assignment, close_seconds
-
 
 def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_read,jgaps,read_sequence):
 	
@@ -151,8 +130,6 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 
 def main():
 
-	v_assignments, v_seconds = read_tophit_file()
-	
 	outfile = "%s/%s_VJtrim.fa" %(prj_tree.filtered, prj_name)
         handle = open(outfile, "w")
 
@@ -172,12 +149,18 @@ def main():
         bad_handle = open(plus_bad_outfile, "w")
 
 	print "curating 3' end..."
-	os.system("rm %s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name))
+	#os.system("rm %s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name))
+
 	total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 1
 	counts = {'good':0,'indel':0,'noCDR3':0,'stop':0,'out-of-frame':0}
 
+	writer = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.data, prj_name), "w"), delimiter = sep)
+	writer.writerow(PARSED_BLAST_HEADER)
+
 	while os.path.isfile("%s/vcut_%06d.fasta" % (prj_tree.split, f_ind)):
-		dict_germ_aln, dict_j_seconds =  get_top_hit("%s/vc%06d.txt" % (prj_tree.germ, f_ind))
+
+		dict_germ_aln, dict_j_seconds =  get_top_hit("%s/vc%06d.txt" % (prj_tree.germ, f_ind), dict_j, writer)
+		v_assignments, v_seconds = get_top_hit("%s/%s_%06d.txt" % (prj_tree.germ, prj_name, f_ind), dict_v)
 
 		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
 			total += 1
@@ -247,7 +230,7 @@ def main():
 				#break
 
 				#check for continuous ORF
-				v_frame = myV.sstart % 3
+				v_frame = min([myV.sstart, myV.send]) % 3
 				j_frame = 3 - ( (dict_j[myJ.sid].seq_len - myJ.sstart - 1) % 3 )
 				#frame_shift = (myV.alignment + myJ.qstart - 1) % 3
 				frame_shift = (v_len + myJ.qstart - 1) % 3

@@ -1631,6 +1631,9 @@ def generate_blast_top_hists(infile):
 				if my_alignment.score == best_alignment.score:
 					others.append(my_alignment.sid)
 
+	if old_id == "":
+		sys.exit("%s appears to be empty..."%infile)
+	
 	yield best_alignment, best_row, others
 		#break
 
