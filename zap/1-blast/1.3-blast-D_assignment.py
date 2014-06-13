@@ -210,11 +210,11 @@ def main():
 
 				#check 3' end of J
 				v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
-				if (myJ.send < dict_j[myJ.sid].seq_len-1 and len(entry.seq) > v_len + myJ.qend):
-					toAdd = min([dict_j[myJ.sid].seq_len-1-myJ.send,len(entry.seq)-v_len + myJ.qend])
-					myJ.qend += toAdd
-				if (myJ.send == dict_j[myJ.sid].seq_len):
-					myJ.qend -= 1
+				#if (myJ.send < dict_j[myJ.sid].seq_len-1 and len(entry.seq) > v_len + myJ.qend):
+				#	toAdd = min([dict_j[myJ.sid].seq_len-1-myJ.send,len(entry.seq)-v_len + myJ.qend])
+				#	myJ.qend += toAdd
+				#if (myJ.send == dict_j[myJ.sid].seq_len):
+				#	myJ.qend -= 1
 
 				#get actual V(D)J sequence
 				vdj_len = v_len + myJ.qend
