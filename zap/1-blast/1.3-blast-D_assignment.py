@@ -193,7 +193,7 @@ def main():
 					shift_back = min([myV.sstart, myV.qstart]) - 1
 					#but start at an even codon
 					shift_back -= (1 - ((myV.sstart - shift_back) % 3)) % 3
-					addition = entry.seq[myV.qstart-shift_back : myV.qstart]
+					addition = entry.seq[myV.qstart-shift_back : myV.qstart+2]
 					if '*' not in addition.translate():
 						myV.sstart    -= shift_back
 						myV.qstart    -= shift_back
@@ -202,7 +202,7 @@ def main():
 					shift_back = min([myV.send-1, len(entry.seq)-myV.qend])
 					#but start at an even codon
 					shift_back -= (1 - ((myV.send - shift_back) % 3)) % 3
-					addition = entry.seq[myV.qend : myV.qend + shift_back].reverse_complement()
+					addition = entry.seq[myV.qend-2 : myV.qend + shift_back].reverse_complement()
 					if '*' not in addition.translate():
 						myV.send      -= shift_back
 						myV.qend      += shift_back
@@ -213,8 +213,8 @@ def main():
 				#if (myJ.send < dict_j[myJ.sid].seq_len-1 and len(entry.seq) > v_len + myJ.qend):
 				#	toAdd = min([dict_j[myJ.sid].seq_len-1-myJ.send,len(entry.seq)-v_len + myJ.qend])
 				#	myJ.qend += toAdd
-				#if (myJ.send == dict_j[myJ.sid].seq_len):
-				#	myJ.qend -= 1
+				if (myJ.send == dict_j[myJ.sid].seq_len):
+					myJ.qend -= 1
 
 				#get actual V(D)J sequence
 				vdj_len = v_len + myJ.qend
