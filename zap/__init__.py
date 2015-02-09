@@ -115,7 +115,7 @@ class MyAlignmentVerbose:
 		self.aln_sbjct		= row[15]
 	
 		
-xclass ProjectFolders:
+class ProjectFolders:
 	"""folder structure of a project """
 	
 	def __init__(self, proj_home):
