@@ -3,21 +3,28 @@
 """
 1.2-blast-J_assignment.py
 
-This script parses the 
+This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
+      for which a V assignment was successfully made, the section of the read
+      3' to the V gene is extracted and sent to the cluster for BLAST assignment
+      of the J gene.
 
-Usage: 1.2-blast-J_assignment.py
+Usage: 1.2-blast-J_assignment.py -locus <0|1|2|3|4> -lib path/to/library.fa -h
 
-    All options are optional, see below for defaults. Invoke with -h or --help to print this documentation.
+    All options are optional, see below for defaults.
+    Invoke with -h or --help to print this documentation.
 
-    locus		0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR lambda / 4: custom library (supply -lib)
-                         Default = 0
+    locus	0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR
+                   lambda / 4: custom library (supply -lib)
+                   Default = 0
 
 Created by Zhenhai Zhang on 2011-04-14.
 Modified by Chaim A Schramm 2013-07-03 to include j assignment.
-Modified by Chaim A Schramm 2014-03-25 to not swamp RAM when processing Illumina data.
-Edited and commented for publication by Chaim A Schramm on 2014-12-22.
+Modified by Chaim A Schramm 2014-03-25 to not swamp RAM when processing Illumina
+    data.
+Edited and commented for publication by Chaim A Schramm on 2015-02-09.
 
-Copyright (c) 2011, 2013, 2014 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+                               Institutes of Health, USA. All rights reserved.
 
 """
 
