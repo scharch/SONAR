@@ -3,29 +3,38 @@
 """
 1.1-blast-V_assignment.py
 
-This script looks for raw NGS data files in the "0-original" folder and parses them into manageable chunks for searching with
-      BLAST on the cluster. Each raw read that meets the length restrictions is assigned a unique 8 digit serial number and 
-      submitted to the cluster for BLASTing against the desired V gene germline library.
-Distinctions between raw data files will not be maintained, although they can be reconstructed using the id table. The name of
-      the current folder is assigned as the project name, which will be used to identify all output files created. Resource 
-      requests for the cluster are calibrated to groups of 50K sequences, so that number is hard-coded below.
+This script looks for raw NGS data files in the "0-original" folder and parses
+      them into manageable chunks for searching with BLAST on the cluster. Each
+      raw read that meets the length restrictions is assigned a unique 8 digit 
+      serial number and submitted to the cluster for BLASTing against the 
+      desired V gene germline library.
+      Distinctions between raw data files will not be maintained, although they
+      can be reconstructed using the id table. The name of the current folder
+      is assigned as the project name, which will be used to identify all
+      output files created. Resource requests for the cluster are calibrated to
+      groups of 50K sequences, so that number is hard-coded below.
 
-Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4> -qual <0|1|2> -lib path/to/library.fa -h
+Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
+                                 -qual <0|1|2> -lib path/to/library.fa -h
 
-    All options are optional, see below for defaults. Invoke with -h or --help to print this documentation.
+    All options are optional, see below for defaults.
+    Invoke with -h or --help to print this documentation.
 
-    minl		Minimum length for read filtering (inclusive). Default = 300
-    maxl		Maximum length for read filtering (inclusive). Default = 600.
-    locus		0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR lambda / 4: custom library (supply -lib)
-                         Default = 0
-    qual  		0: noquals/fasta only / 1: has quals (454) / 2: fastq (Illumina).
-                         Default = 0 (will fail if reads are in FastQ format)
-    lib  		location of file containing custom library (e.g. for use with non-human genes)
+    minl	Minimum length for read filtering (inclusive). Default = 300
+    maxl	Maximum length for read filtering (inclusive). Default = 600.
+    locus	0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR
+                   lambda / 4: custom library (supply -lib)
+                   Default = 0
+    qual 	0: noquals/fasta only / 1: has quals (454) / 2: fastq (Illumina).
+                   Default = 0 (will fail if reads are in FastQ format)
+    lib  	location of file containing custom library (e.g. for use with
+                   non-human genes)
 
 Created by Zhenhai Zhang on 2011-04-12.
 Edited and commented for publication by Chaim A Schramm on 2014-12-22.
 
-Copyright (c) 2011, 2014 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011, 2014 Columbia University and Vaccine Research Center, National
+                         Institutes of Health, USA. All rights reserved.
 
 """
 
