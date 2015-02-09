@@ -1,23 +1,30 @@
-#!/usr/bin/env python
-# encoding: utf-8
+#!/usr/bin/python
+
 """
-1.1-parse_blast_result.py
+1.2-blast-J_assignment.py
+
+This script parses the 
+
+Usage: 1.2-blast-J_assignment.py
+
+    All options are optional, see below for defaults. Invoke with -h or --help to print this documentation.
+
+    locus		0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR lambda / 4: custom library (supply -lib)
+                         Default = 0
 
 Created by Zhenhai Zhang on 2011-04-14.
-Modified by CA Schramm 2013-07-03 to include j assignment.
-Modified by Chaim Schramm 2014-03-25 to not swamp RAM when processing Illumina data.
+Modified by Chaim A Schramm 2013-07-03 to include j assignment.
+Modified by Chaim A Schramm 2014-03-25 to not swamp RAM when processing Illumina data.
+Edited and commented for publication by Chaim A Schramm on 2014-12-22.
+
 Copyright (c) 2011, 2013, 2014 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 
-Usage: 1.1-parse_blast_result.py -l [0: heavy; 1: kappa; 2: lambda; 3: k/l] 
-
-
 """
-# --BEGIN-- general package
+
 import sys
 import os
-
 from mytools import *
-# -- END -- general package
+
 
 def write_list2file(l, sname, total):
 	writer = csv.writer(open("%s/%s_%s_stat.txt" %(prj_tree.data, prj_name, sname), "w"), delimiter = sep)
@@ -139,7 +146,11 @@ def main():
 	
 		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
 
-			seq_id = str(int(entry.id))
+			try:
+				seq_id = str(int(entry.id))
+			except:
+				seq_id = entry.id
+
 			total += 1
 			if seq_id in dict_germ_aln:
 				entry.description = dict_germ_aln[seq_id].sid
@@ -164,7 +175,7 @@ def main():
 if __name__ == '__main__':
 	
 	# get parameters from input
-	if len(sys.argv) < 3 :
+	if len(sys.argv) < 1 :
 		print __doc__
 		sys.exit(0)
 

@@ -165,7 +165,11 @@ def main():
 		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
 			total += 1
 
-			seq_id = str(int(entry.id))
+			try:
+				seq_id = str(int(entry.id)) #gets rid of leading zeros to match BLAST
+			except:
+				seq_id = entry.id
+
 			if not seq_id in v_assignments:
 				noV+=1
 			elif not seq_id in dict_germ_aln:
