@@ -226,7 +226,7 @@ PHYLO_FOLDER		= "4-crossdonor"
 DOC_FOLDER			= "document"
 TMP_FOLDER			= "tmp"
 
-ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "output/sequences", "output/tables", "output/plots"]
+ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/tables", "output/plots", "output/logs"]
 FIRST_LEVEL_SUBFOLDERS = [FILTERED_FOLDER, MAPPING_FOLDER, ANALYSIS_FOLDER, LOG_FOLDER, CLUSTAL_FOLDER, TMP_FOLDER]		# ORG_FOLDER is removed coz it should be created before hand
 
 

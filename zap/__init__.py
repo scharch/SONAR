@@ -1,10 +1,14 @@
-#!/usr/bin/env python
-# encoding: utf-8
-"""
-mytools.py
+#!/usr/bin/python
 
-Created by Zhenhai Zhang on 2011-04-05.
-Copyright (c) 2011 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+
+"""
+Core functions for the "ZAP" package,
+
+Created by Zhenhai Zhang on 2011-04-05 as mytools.py
+Edited and commented for publication by Chaim A Schramm on 2015-02-10.
+
+Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+                         Institutes of Health, USA. All rights reserved.
 """
 
 from Bio import SeqIO
@@ -20,8 +24,7 @@ import subprocess
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
-from common_info import *
-#from itertools import izip
+from commonVars import *
 
 # Titan cluster
 if HOSTNAME.find("titan") >= 0:
@@ -122,48 +125,23 @@ class ProjectFolders:
 
 		self.home  = proj_home
 		self.work  = "%s/work"    %  proj_home
-		self.out   = "%%s/output" %  proj_home
+		self.out   = "%s/output"  %  proj_home
 
 		#working folders
 		self.blast   = "%s/1-blast"     %  self.work
 		self.clustal = "%s/2-clustal"   %  self.work
 		self.phylo   = "%s/3-phylogeny" %  self.work
 
+		#second-level
+		self.vgene   = "%s/vgene"       %  self.blast
+		self.jgene   = "%s/jgene"       %  self.blast
+
 		#output
 		self.seq     = "%s/sequences"   %  self.out
 		self.tables  = "%s/tables"      %  self.out
 		self.plots   = "%s/plots"       %  self.out
+		self.logs    = "%s/logs"        %  self.out
 		
-
-		# 1st level subfolders
-		self.original 	= "%s/%s" 			%(proj_home, ORG_FOLDER)
-		self.filtered 	= "%s/%s"			%(proj_home, FILTERED_FOLDER)
-		self.mapping 	= "%s/%s"			%(proj_home, MAPPING_FOLDER)
-		self.analysis	= "%s/%s"			%(proj_home, ANALYSIS_FOLDER)
-		self.logs		= "%s/%s"			%(proj_home, LOG_FOLDER)
-		self.clustal	= "%s/%s"			%(proj_home, CLUSTAL_FOLDER)
-		self.phylo		= "%s/%s"			%(proj_home, PHYLO_FOLDER)
-		self.docs		= "%s/%s"			%(proj_home, DOC_FOLDER)
-		self.tmp		= "%s/%s"			%(proj_home, TMP_FOLDER)
-		
-		# 2nd level subfolders -- mapping
-		self.split 		= "%s/%s"			%(proj_home, SPLIT_FOLDER)
-		self.germ		= "%s/%s"			%(proj_home, GERM_FOLDER)
-		self.native		= "%s/%s"			%(proj_home, NAT_FOLDER)
-		self.reads		= "%s/%s"			%(proj_home, SELF_FOLDER)
-		self.pbs		= "%s/%s"			%(proj_home, PBS_FOLDER)
-		self.jobs		= "%s/%s"			%(proj_home, JOB_FOLDER)
-		
-		# 2nd level subfolders -- analysis
-		self.data		= "%s/%s"			%(proj_home, ANALYSIS_DATA_FOLDER)
-		self.figure		= "%s/%s"			%(proj_home	, ANALYSIS_FIGURE_FOLDER)
-		
-		# 2nd level clustal folders
-		self.clustal_fasta		= "%s/%s" %(proj_home, CLUSTAL_FASTA_FOLDER)
-		self.clustal_pbs		= "%s/%s" %(proj_home, CLUSTAL_PBS_FOLDER)
-		self.clustal_job		= "%s/%s" %(proj_home, CLUSTAL_JOB_FOLDER)
-		self.clustal_data		= "%s/%s" %(proj_home, CLUSTAL_DATA_FOLDER)
-
 #
 # -- END -- class defination
 #
@@ -233,24 +211,43 @@ def fullpath2last_folder(s):
 
 
 def create_folders(folder, force=False):
-	"""create subfolders """
-	
-	if (os.path.isdir("work") and not force):
-		sys.exit("Working directories already exits. Please use the -f(orce) option to re-intiate an analysis from scratch\n")
-	
-	# Create working folders
-	for subfolder in ALL_SUBFOLDERS:
-		try:
-			shutil.rmtree("%s/%s/" %(folder, subfolder))
-		except:
-			pass
+
+	old_wd = os.getcwd()
+	os.chdir(folder)
+
+	if (os.path.isdir("work")):
+		if not force:
+			sys.exit("Working directory already exists. Please use the -f(orce) option to re-intiate an analysis from scratch.\n")
+		else:
+			try:
+				shutil.rmtree("work")
+			except:
+				sys.exit("Cannot remove old working directory, please delete manually and restart.\n")
 			
+	if (os.path.isdir("output")):
+		if not force:
+			sys.exit("Output directory already exists. Please use the -f(orce) option to re-intiate an analysis from scratch.\n")
+		else:
+			try:
+				shutil.rmtree("output")
+			except:
+				sys.exit("Cannot remove old output directory, please delete manually and restart.\n")
+			
+
+	os.mkdir("work")
+	os.mkdir("output")
+
+		
+	# Create working folders
+	for subfolder in ALL_FOLDERS:
 		try:
-			create_subfolder(folder, subfolder)
+			os.mkdir(subfolder)
 			
 		except:		# may need to delete old folders
-			print "FOLDER EXISTS: subfolder"
+			print "FOLDER EXISTS: %s"%subfolder
 			
+	
+	os.chdir(old_wd)
 	return ProjectFolders(folder)
 
 
@@ -722,13 +719,26 @@ def generate_read_fasta(f):
 		yield myseqclu
 
 
-def generate_read_fasta_folder(folder):
-	fastas = glob.glob("%s/*.fa"  %folder) + glob.glob("%s/*.fasta" %folder) + glob.glob("%s/*.fna" %folder)
-	for fasta_file in fastas:
-		for entry in SeqIO.parse(open(fasta_file, "rU"), "fasta"):
-			yield MySeq(entry.id, entry.seq)
-			
+def generate_read_fasta_folder(folder, type=1):
 
+	if type < 2:
+		fastas = glob.glob("%s/*.fa"  %folder) + glob.glob("%s/*.fasta" %folder) + glob.glob("%s/*.fna" %folder)
+		filetype="fasta"
+	else:
+		fastas = glob.glob("%s/*.fq"  %folder) + glob.glob("%s/*.fastq" %folder)
+		filetype="fastq"
+
+	for fasta_file in fastas:
+		for entry in SeqIO.parse(open(fasta_file, "rU"), filetype):
+
+			yield MySeq(entry.id, entry.seq), None
+
+			#if we reimplement qual handling, comment out above line and uncomment next section
+			#if type<2:
+			#	yield MySeq(entry.id, entry.seq, desc), None
+			#else:
+			#	yield MySeq(entry.id, entry.seq, desc), MyQual(entry.id, entry.letter_annotations["phred_quality"])	
+			
 
 def generate_reads(f):
 	"""read fasta file and yield one reads per time """
