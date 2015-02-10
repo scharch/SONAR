@@ -27,6 +27,8 @@ Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
                    Default = 0
     qual 	0: noquals/fasta only / 1: has quals (454) / 2: fastq (Illumina).
                    Default = 0 (will fail if reads are in FastQ format)
+		   NOTE: quals are not currently processed, but this flag is
+		         still required for correctly reading FastQ files!
     lib  	location of file containing custom library (e.g. for use with
                    non-human genes)
     f 	 	forcing flag to overwrite existing working directories.
@@ -42,7 +44,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from zap import *
+from zap.blast import *
 
 
 # global variables
@@ -54,63 +56,69 @@ def main():
 	global total, total_good, f_ind
 		
 	# open initial output files
-	fasta 	=            open("%s/%s_%06d.fasta"  % (folder_tree.split,    prj_name, f_ind), 'w')
-	id_map	= csv.writer(open("%s/%s_454_rid.txt" % (folder_tree.data,     prj_name),        'w'), delimiter=sep)
+	fasta 	=            open("%s/%s_%06d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
+	id_map	= csv.writer(open("%s/%s_454_rid.txt" % (folder_tree.tables, prj_name),        'w'), delimiter=sep)
 
-	if has_qual > 0:
-		qual =       open("%s/%s_%06d.qual"   % (folder_tree.split,    prj_name, f_ind), 'w')
-	if has_qual == 1:
-		qual_generater 	= generate_quals_folder(folder_tree.original)
-	
 	id_map.writerow(["454_id", "read_id"])
 	
 
+	#if we decide to use quals for something, can add this block back in
+	'''
+	if has_qual > 0:
+		qual =       open("%s/%s_%06d.qual"   % (folder_tree.vgene,    prj_name, f_ind), 'w')
+	if has_qual == 1:
+		qual_generater 	= generate_quals_folder(folder_tree.home)
+	'''
+
+
 	#iterate through sequences in all raw data files
-	for myseq, myqual in generate_read_fasta_folder("%s/0-original"%prj_folder, has_qual):
+	for myseq, myqual in generate_read_fasta_folder(folder_tree.home, has_qual):
 		total += 1
 			
 		if min_len <= myseq.seq_len <= max_len:
 			total_good += 1
-
 			id_map.writerow([myseq.seq_id, total_good])
-			
 			fasta.write(">%08d\n%s\n" % (total_good, myseq.seq))
 
+			#uncomment to re-implement quals
+			'''
 			if has_qual == 1:
 				myqual = qual_generater.next()
 			if has_qual > 0:
 				qual.write(">%08d\n%s\n" % (total_good, " ".join(map(str, myqual.qual_list))))
-
+			'''
 
 			if total_good % 50000 == 0: 
 				#close old output files, open new ones, and print progress message
 				fasta.close()
 				f_ind += 1
-				fasta = open("%s/%s_%06d.fasta" % (folder_tree.split, prj_name, f_ind), 'w')
+				fasta = open("%s/%s_%06d.fasta" % (folder_tree.vgene, prj_name, f_ind), 'w')
 				print "%d processed, %d good; starting file %s_%06d" %(total, total_good, prj_name, f_ind)
+
+				'''
 				if has_qual>0:
 					qual.close()
-					qual = open("%s/%s_%06d.qual"%(folder_tree.split, prj_name, f_ind), 'w')
-
+					qual = open("%s/%s_%06d.qual"%(folder_tree.vgene, prj_name, f_ind), 'w')
+				'''
 				
 	print "TOTAL: %d processed, %d good" %(total, total_good)
 	
 	fasta.close()
+	'''
 	if has_qual>0:
 		qual.close()
+	'''
 
 	#print log message
 	handle = open("%s/1-split.log" % folder_tree.logs, "w")
 	handle.write("total: %d; good: %d; percentile: %f\n" %(total, total_good, float(total_good)/total * 100))
+	handle.close()
 	
 	# write pbs files and auto submit shell script
-	write_pbs_file(folder_tree, locus, library)
-	write_auto_submit_file(folder_tree)
+	write_pbs_file(folder_tree.vgene, locus, library)
+	write_auto_submit_file(folder_tree.vgene, submit=True)
 	
-	os.chdir(folder_tree.jobs)
-	os.system("./submit_all.sh")
-	
-	
+
 
 if __name__ == '__main__':
 
