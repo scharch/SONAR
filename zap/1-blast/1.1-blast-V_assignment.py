@@ -15,7 +15,7 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       groups of 50K sequences, so that number is hard-coded below.
 
 Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
-                                 -qual <0|1|2> -lib path/to/library.fa -h
+                                 -qual <0|1|2> -lib path/to/library.fa -h -f
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
@@ -29,6 +29,7 @@ Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
                    Default = 0 (will fail if reads are in FastQ format)
     lib  	location of file containing custom library (e.g. for use with
                    non-human genes)
+    f 	 	forcing flag to overwrite existing working directories.
 
 Created by Zhenhai Zhang on 2011-04-12.
 Edited and commented for publication by Chaim A Schramm on 2014-12-22.
@@ -119,13 +120,20 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#check forcing parameter
+	force = False
+	flag = [x for x in ["f", "-f", "--f", "force", "-force", "--force"] if q(x)]
+	if len(flag)>0:
+		sys.argv.remove(flag[0])
+		force = True
+
 	# get parameters from input
 	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="has_qual", lib="library")
 	min_len, max_len, locus, has_qual, library = getParasWithDefaults(dict_args, dict(min_len=300, max_len=600, has_qual=0, locus=0, library=""), "min_len", "max_len", "locus", "has_qual", "library")
-	
+
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()
-	folder_tree = create_folders( prj_folder )
+	folder_tree = create_folders( prj_folder, force=force )
 	prj_name    = prj_folder[prj_folder.rindex("/") + 1 :]
 
 	
