@@ -78,24 +78,14 @@ HOSTNAME = gethostname()
 # ===START=== folders, databases
 #
 
-# Titan cluster
-if HOSTNAME.find("titan") >= 0:
-	HOME_FOLDER = "/ifs/scratch/c2b2/bh_lab/cs3037"
-	clustalw	= "/ifs/home/c2b2/bh_lab/shares/clustalw/clustalw-2.0.10-linux-i386-libcppstatic/clustalw2"
-	clustal		= "/ifs/home/c2b2/bh_lab/cs3037/bin/clustalo-1.1.0-linux-64"
-	blastclust_cmd = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust"
+HOME_FOLDER    = "/ifs/scratch/c2b2/ls_nih/cs3037"
+clustalw       = "/ifs/home/c2b2/bh_lab/shares/clustalw/clustalw-2.0.10-linux-i386-libcppstatic/clustalw2"
+clustal	       = "/ifs/home/c2b2/bh_lab/cs3037/bin/clustalo-1.1.0-linux-64"
+blastclust_cmd = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust"
+blastall_cmd   = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastall"
 
-# Dopey
-else:
-	HOME_FOLDER = "/ifs/scratch/c2b2/bh_lab/cs3037/"
-	clustal         = "/home/cs3037/Downloads/clustalo-1.1.0-linux-64"
-	clustalw	= "/home/cs3037/bin/clustalw2"
-	#clustal 	= r"/Applications/clustalw-2.1-macosx/clustalw2"
-	blastclust_cmd = "blastclust"
 
-#print clustal
-	
-assert os.path.isfile(clustal), "Clustal W missing"
+#assert os.path.isfile(clustal), "Clustal W missing"
 
 # databases	
 GERM_DB 		= "%s/db/germline/IgHV.fa" %HOME_FOLDER			# germline database
@@ -265,19 +255,22 @@ SECOND_LEVEL_SUBFOLDERS = [	SPLIT_FOLDER, GERM_FOLDER, NAT_FOLDER, SELF_FOLDER, 
 # ===START=== PBS
 #
 
-
-BLAST_GERM_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 1 -e 1e-10 "
-BLAST_GERM_J_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 5 -b 5 -v 1 -e 1e-3 "
+CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s" % (blastall_cmd,"%s","%s","%s","%s")
+BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 1 -e 1e-10 "
+BLAST_J_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 5 -b 5 -v 1 -e 1e-3 "
 BLAST_OTHER_OPTIONS = "-e 1e-3"
 
 PBS_STRING = "\
 #!/bin/bash\n\
-#$ -N %s									# job name\n\
-#$ -l mem=500M,time=30:00:00				# 30 hours run; 500M memory\n\
-#$ -cwd										# use current directory as job status output\n\
-#$ -o %s									# output file\n\
-/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastall -p blastn -m 8 %s -d %s -i %s 		# blast options database input file\n\
-"
+#$ -t 1-%d			# array task\n\
+#$ -N %s		# job name\n\
+#$ -l mem=%s,time=%s	# resource requests\n\
+#$ -cwd				# use current directory as job status output\n\
+#$ -o /dev/null			# use sane outputs for array jobs\n\
+#$ -e /dev/null\n\
+\n\
+%s\n"
+
 
 CMD_BLASTCLUST	= "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust -p F -L .9 -S 95 -i %s -o %s"	#pF: nucleotide; L.9: 90%[coverage]  S: Identities 
 

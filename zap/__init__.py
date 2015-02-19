@@ -19,8 +19,10 @@ from Bio.Align.Applications import ClustalwCommandline
 from Bio.Blast import NCBIStandalone
 from math import log
 
+import glob
 import re
 import subprocess
+
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
@@ -354,64 +356,24 @@ def create_array_job(target, name, resources, command, number, outfile=""):
 	os.system("qsub %s" % target)
 
 
-def write_pbs_file(folder_tree, is_light):
-	"""write pbs files for alignment to differnt databases: germ, reads, and native"""
-
-	print "writing pbs files..."
-
-	target_folder, split_folder 	= folder_tree.pbs, folder_tree.split
-	infiles, germ_db, nat_db 		= get_files_format(split_folder, "fasta"), GERM_DB, NAT_DB
+def write_pbs_file(folder, library):
 	
-	"""
-	if is_light:
-		germ_db, nat_db = GERM_LIGHT, NAT_LIGHT
-	"""
-	germ_db = dict_germ_db[is_light]
-	#, nat_db = , dict_nat_db[is_light]
-	
-	for infile in infiles:
-		
+	#adjust blast options for V vs D/J
+	for infile in glob.iglob("%s/*.fasta"%folder):
 		
 		fhead, ftail = os.path.splitext(infile)
 		f_ind = fhead[ fhead.rindex("_") + 1 :]
 		
 		# GERMLINE pbs
-		germ_file 			= open("%s/g%s.sh" %(folder_tree.pbs, f_ind), "w")
-		job_name 			= "g%s" %f_ind
-		outfile 			= "%s/%s.txt" %(folder_tree.germ, fhead)
-		infile_fullpath 	= "%s/%s" %(folder_tree.split, infile)
-		pbs_string 			= PBS_STRING %(job_name, outfile, BLAST_GERM_OPTIONS, germ_db, infile_fullpath)
+		germ_file 		= open("%s/blast%s.sh" %(folder, f_ind), "w")
+		job_name 		= "g%s" %f_ind
+		outfile 		= "%s/%s.txt" %(folder, fhead)
+		infile_fullpath 	= "%s/%s/%s" %(os.getcwd(), folder, infile)
+		pbs_string 		= PBS_STRING %(job_name, outfile, options, library, infile_fullpath)
 		
 		germ_file.write(pbs_string)
 		germ_file.close()
 		
-		
-		# Self-alignment is TEMPORARILY disabled
-		# Self alignment pbs
-		"""
-		read_file 	= open("%s/s%s.sh" %(folder_tree.pbs, f_ind), "w")
-		job_name 	= "r%s" %f_ind
-		outfile 	= "%s/%s.txt" %(folder_tree.reads, fhead)
-		read_db 	= "%s/%s.fasta" %(READ_DB_FOLDER, folder_tree.home[ folder_tree.home.rindex("/") + 1 :])
-		pbs_string 	= PBS_STRING %(job_name, outfile, BLAST_OTHER_OPTIONS, read_db, infile_fullpath)
-		
-		
-		read_file.write(pbs_string)
-		read_file.close()
-		
-		
-		
-		# native alignment pbs
-		native_file 		= open("%s/n%s.sh" %(folder_tree.pbs, f_ind), "w")
-		job_name 			= "n%s" %f_ind
-		outfile 			= "%s/%s.txt" %(folder_tree.native, fhead)
-		infile_fullpath 	= "%s/%s" %(folder_tree.split, infile)
-		pbs_string 			= PBS_STRING %(job_name, outfile, BLAST_GERM_OPTIONS, nat_db, infile_fullpath)
-		
-		
-		native_file.write(pbs_string)
-		native_file.close()
-		"""
 		
 def write_auto_submit_file(folder_tree):
 	"""write shell script to automatically submit all jobs to cluster"""

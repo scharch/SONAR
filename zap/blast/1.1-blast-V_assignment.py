@@ -56,7 +56,7 @@ def main():
 	global total, total_good, f_ind
 		
 	# open initial output files
-	fasta 	=            open("%s/%s_%06d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
+	fasta 	=            open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
 	id_map	= csv.writer(open("%s/%s_454_rid.txt" % (folder_tree.tables, prj_name),        'w'), delimiter=sep)
 
 	id_map.writerow(["454_id", "read_id"])
@@ -65,7 +65,7 @@ def main():
 	#if we decide to use quals for something, can add this block back in
 	'''
 	if has_qual > 0:
-		qual =       open("%s/%s_%06d.qual"   % (folder_tree.vgene,    prj_name, f_ind), 'w')
+		qual =       open("%s/%s_%03d.qual"   % (folder_tree.vgene,    prj_name, f_ind), 'w')
 	if has_qual == 1:
 		qual_generater 	= generate_quals_folder(folder_tree.home)
 	'''
@@ -92,13 +92,13 @@ def main():
 				#close old output files, open new ones, and print progress message
 				fasta.close()
 				f_ind += 1
-				fasta = open("%s/%s_%06d.fasta" % (folder_tree.vgene, prj_name, f_ind), 'w')
-				print "%d processed, %d good; starting file %s_%06d" %(total, total_good, prj_name, f_ind)
+				fasta = open("%s/%s_%03d.fasta" % (folder_tree.vgene, prj_name, f_ind), 'w')
+				print "%d processed, %d good; starting file %s_%03d" %(total, total_good, prj_name, f_ind)
 
 				'''
 				if has_qual>0:
 					qual.close()
-					qual = open("%s/%s_%06d.qual"%(folder_tree.vgene, prj_name, f_ind), 'w')
+					qual = open("%s/%s_%03d.qual"%(folder_tree.vgene, prj_name, f_ind), 'w')
 				'''
 				
 	print "TOTAL: %d processed, %d good" %(total, total_good)
@@ -115,9 +115,13 @@ def main():
 	handle.close()
 	
 	# write pbs files and auto submit shell script
-	write_pbs_file(folder_tree.vgene, locus, library)
-	write_auto_submit_file(folder_tree.vgene, submit=True)
-	
+	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_V_OPTIONS, library, 
+									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
+									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name)) )
+	pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
+	pbs.write( PBS_STRING%(f_ind, "%s-vBlast"%prj_name, "500M", "30:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
+	pbs.close()
+	os.system("qsub %s/vblast.sh"%folder_tree.vgene)
 
 
 if __name__ == '__main__':
@@ -144,6 +148,15 @@ if __name__ == '__main__':
 	folder_tree = create_folders( prj_folder, force=force )
 	prj_name    = prj_folder[prj_folder.rindex("/") + 1 :]
 
-	
+	#load library
+	if locus < 4:
+		library = dict_germ_db[locus]
+	elif os.path.isfile(library):
+		pass
+	else:
+		print "Can't find custom library file!"
+		sys.exit(1)
+
+
 	main()
 
