@@ -9,46 +9,8 @@ Copyright (c) 2011 Columbia University and Vaccine Research Center, National Ins
 
 import sys, os, csv, shutil, re, glob, pickle, string, time, random, commands
 
-
-from socket import gethostname
-
-LC_DATASETS = ["L950615", "L010730", "L020416", "L060714", "L070109", "L070712", "L080117", "L080819", "L090602", "L091231"]
-HC_DATASETS = ["H950615G1", "H010730G1", "H020416G1", "H060714G1", "H070109G1", "H070712G1", "H080819G1", "H090602G1", "HR080117G1", "H091231G1"]
-
-# Just for reference
-cmd_tlb2asn = "tbl2asn -p . -t vrc_iavi_24_hl.sbt -s T -v T"
-clustalw = "/ifs/home/c2b2/bh_lab/shares/clustalw/clustalw-2.0.10-linux-i386-libcppstatic/clustalw2"
-blastclust_cmd = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust"
-#
-# --BEGIN-- general variables
-#
-
 sep = "\t"
 linesep = os.linesep
-
-# number of sequences per phylogenetic analysis
-PHYLO_NUM_PER_FILE = 3000
-
-# reads related
-MAX_READ_LEN = 2000
-MIN_GOOD_LEN = 300
-MAX_GOOD_LEN = 600
-
-# clustalw2
-MIN_NATIVE_CLUSTAL_ALN_LEN = 300
-MAX_NATIVE_CLUSTAL_DELETION = 60
-
-# antibody related
-MIN_HEAVY_LEN = 380
-MIN_LIGHT_LEN = 250		# nead to check this number
-
-# blast related
-GERM_EVALUE	= 1e-10
-GERM_MINCOV	= 200
-MIN_ANTIBODY_LEN = 330
-#
-# -- END -- general variables
-#
 
 
 # patterns
@@ -72,7 +34,6 @@ v_pattern = re.compile("V_gene=(IG.*?)[,| ]")
 #v_pattern = re.compile("(IG.*)")
 
 
-HOSTNAME = gethostname()
 
 #
 # ===START=== folders, databases
@@ -88,75 +49,25 @@ blastall_cmd   = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blas
 #assert os.path.isfile(clustal), "Clustal W missing"
 
 # databases	
-GERM_DB 		= "%s/db/germline/IgHV.fa" %HOME_FOLDER			# germline database
-PLASMID_DB              = "%s/db/native/frontiers_plasmids.fa" %HOME_FOLDER			# plasmid controls from the frontiers paper
-NAT_DB  		= "%s/db/native/vrc_IgHV.fa" %HOME_FOLDER		# native antibodies
-NAT_DB_FOLDER	= "%s/db/native" %HOME_FOLDER					# native antibodies
-D45_VALID               = "%s/db/native/donor45_validated.fa" %HOME_FOLDER
-NAT_H_CDR3		= "%s/db/native/vrc_IgHV_cdrh3.fa" %HOME_FOLDER					# native antibody CDRH3s
-GERM_KL			= "%s/db/germline/IgKLV.fa" %HOME_FOLDER			# germline database
-GERM_LAMBDA			= "%s/db/germline/IgLV.fa" %HOME_FOLDER			# germline database
+VH_DB 		= "%s/db/germline/IgHV.fa" %HOME_FOLDER
+VK_DB		= "%s/db/germline/IgKV.fa" %HOME_FOLDER
+VL_DB		= "%s/db/germline/IgLV.fa" %HOME_FOLDER
+VKL_DB		= "%s/db/germline/IgKLV.fa" %HOME_FOLDER
 
 JH_DB 			= "%s/db/germline/IgHJ.fa" %HOME_FOLDER
 JK_DB 			= "%s/db/germline/IgKJ.fa" %HOME_FOLDER
 JL_DB 			= "%s/db/germline/IgLJ.fa" %HOME_FOLDER
 JKL_DB 			= "%s/db/germline/IgKLJ.fa" %HOME_FOLDER
 
+DH_DB                   = "%s/db/germline/IgHD.fa" %HOME_FOLDER
 CH_DB                   = "%s/db/germline/IgHC.fa" %HOME_FOLDER
 
-CDR3_HEAVY		= "%s/db/native/CDRH3_aligners.fa" %HOME_FOLDER		# for aligning/extracting CDRH3
-CDR3_LIGHT		= "%s/db/native/CDRL3_aligners.fa" %HOME_FOLDER		# for aligning/extracting CDRL3
 
-GERM_HEAVY		= "%s/db/germline/IgHV.fa" %HOME_FOLDER			# germline database
-NAT_HEAVY		= "%s/db/native/vrc_IgHV.fa" %HOME_FOLDER		# native antibodies
-GERM_LIGHT 		= "%s/db/germline/IgKV.fa" %HOME_FOLDER			# germline light chain kappa database
-NAT_LIGHT 		= "%s/db/native/vrc_IgKV.fa" %HOME_FOLDER	# native light chain varaiable domains
-READ_DB_FOLDER 	= "%s/db/reads"	%HOME_FOLDER					# reads database folder
-
-NIH57_HEAVY             = "%s/nih57/selected_NIH57.fa"   %HOME_FOLDER			#selected XD+ from NIH57
-CHAVI_HEAVY		= "%s/db/native/CH505H.fa" %HOME_FOLDER			#chavi505 donor neutralizers
-CHAVI_LIGHT		= "%s/db/native/CH505L.fa" %HOME_FOLDER			#chavi505 donor neutralizers
-
-CAP256_HEAVY		= "%s/db/native/CAP256H.fa" %HOME_FOLDER		#CAP256 neutralizers
-CAP_TEST="%s/cap256/native_short.fa"%HOME_FOLDER
-CAP256_LIGHT		= "%s/db/native/CAP256L.fa" %HOME_FOLDER		#CAP256 neutralizers
-
-_10E8_LIGHT = "%s/db/native/10E8_light.fa" % HOME_FOLDER
-PGT141_HEAVY = "%s/db/native/PGT141-145_heavy.fa" % HOME_FOLDER
-
-NUSSEN_HEAVY	= "%s/db/native/Nussen_heavy.fasta" %HOME_FOLDER	
-NUSSEN_LIGHT	= "%s/db/native/Nussen_light.fasta" %HOME_FOLDER	
-GERM_KCL_HEAVY	= "%s/db/germline/Sundling_ZZ.fa" %HOME_FOLDER
-GERM_KCL_LIGHT	= "%s/db/germline/RMKV_curated.fasta" %HOME_FOLDER
-NAT_KCL_HEAVY	= "%s/db/native/RM_heavy.fasta" %HOME_FOLDER	
-#GERM_KCL_LIGHT	= "%s/db/germline/kcl_IGKV_ORF.fasta" %HOME_FOLDER
-#GERM_KCL_HEAVY	= "%s/db/germline/RM_IGHV_ORF.fasta" %HOME_FOLDER	
-#GERM_KCL_HEAVY	= "%s/db/germline/rm_genomic_ii.fa" %HOME_FOLDER
-
-dict_germ_db = {
-	0: GERM_HEAVY,
-	1: GERM_LIGHT, #kappa
-	2: GERM_LAMBDA,
-	3: GERM_KL,
-
-	6 : GERM_HEAVY, #for NIH57
-	
-	10: GERM_HEAVY, #CHAVI505
-	11: GERM_LAMBDA,
-
-	12: GERM_HEAVY, #CAP256
-	13: GERM_KL,
-	14: GERM_HEAVY,
-
-	15: GERM_LAMBDA, #for 10E8
-	16: GERM_HEAVY, #PGT141-145
-	18: GERM_HEAVY, #for donor45 validated sequences
-
-	101: GERM_HEAVY,
-	102: GERM_HEAVY,
-	103: GERM_HEAVY,
-
-	1000: GERM_HEAVY,
+dict_vgerm_db = {
+	0: VH_DB,
+	1: VK_DB,
+	2: VL_DB,
+	3: VKL_DB
 }
 
 dict_jgerm_db = {
@@ -164,86 +75,14 @@ dict_jgerm_db = {
 	1: JK_DB,
 	2: JL_DB,
 	3: JKL_DB,
-	5: CH_DB #kludged in for now
 }
-
-dict_nat_db = {
-	0: PLASMID_DB, #NAT_HEAVY,
-	1: NAT_LIGHT, 
-	2: NAT_LIGHT, #meaningless defaults for testing with
-	3: NAT_LIGHT, #  lambda (or k/l) libraries
-
-	4: CDR3_HEAVY,
-	5: CDR3_LIGHT,
-	
-	6 : NIH57_HEAVY,
-
-	10: CHAVI_HEAVY,
-	11: CHAVI_LIGHT,
-
-	12: CAP256_HEAVY,
-	13: CAP256_LIGHT,
-	14: CAP_TEST,
-
-	15: _10E8_LIGHT,
-	16: PGT141_HEAVY,
-	18: D45_VALID,
-
-	99: NUSSEN_HEAVY,
-	100 : NUSSEN_LIGHT,
-
-	101 : NAT_HEAVY, #for CDA valdiation with Cinque
-	102 : NAT_HEAVY,
-	103 : NAT_HEAVY,
-
-	1000: NAT_HEAVY
-}
-
 
 # amino acid databases
 GERM_HEAVY_AA	= "%s/db/germline/IgHV_protein.fasta" %HOME_FOLDER
 NAT_HEAVY_AA	= "%s/db/native/vrc_IgHV_protein.fasta" %HOME_FOLDER
 
 
-# project subfolders
-ORG_FOLDER 			= "0-original"								# original folder (fna/qual/sff?)
-FILTERED_FOLDER 	= "1-filtered"								# filtered folder (fna/qual/sff?)
-MAPPING_FOLDER 		= "2-mapping"								# mapping folder
-ANALYSIS_FOLDER 	= "analysis"								# analysis result folder
-LOG_FOLDER			= "logs"									# logs for each script
-CLUSTAL_FOLDER		= "3-clustal"
-PHYLO_FOLDER		= "4-crossdonor"
-DOC_FOLDER			= "document"
-TMP_FOLDER			= "tmp"
-
 ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/tables", "output/plots", "output/logs"]
-FIRST_LEVEL_SUBFOLDERS = [FILTERED_FOLDER, MAPPING_FOLDER, ANALYSIS_FOLDER, LOG_FOLDER, CLUSTAL_FOLDER, TMP_FOLDER]		# ORG_FOLDER is removed coz it should be created before hand
-
-
-
-# MAPPING secondary level subfolders
-SPLIT_FOLDER 	= "%s/split" 	%MAPPING_FOLDER					# splited fasta/qual
-GERM_FOLDER 	= "%s/germ" 	%MAPPING_FOLDER					# germline alignments
-NAT_FOLDER	 	= "%s/native" 	%MAPPING_FOLDER					# native alignment
-SELF_FOLDER 	= "%s/self" 	%MAPPING_FOLDER					# self alignment
-PBS_FOLDER 		= "%s/pbs" 		%MAPPING_FOLDER					# pbs files
-JOB_FOLDER		= "%s/jobs"		%MAPPING_FOLDER					# job status: outputs, errors
-
-CLUSTAL_FASTA_FOLDER	= "%s/fastas" 	%CLUSTAL_FOLDER
-CLUSTAL_PBS_FOLDER		= "%s/pbs"		%CLUSTAL_FOLDER
-CLUSTAL_JOB_FOLDER		= "%s/jobs"		%CLUSTAL_FOLDER
-CLUSTAL_DATA_FOLDER		= "%s/data"		%CLUSTAL_FOLDER
-
-
-
-# ANALYSIS second level subfolders
-ANALYSIS_DATA_FOLDER 	= "%s/data"		%ANALYSIS_FOLDER		#
-ANALYSIS_FIGURE_FOLDER 	= "%s/figures"	%ANALYSIS_FOLDER		#
-
-SECOND_LEVEL_SUBFOLDERS = [	SPLIT_FOLDER, GERM_FOLDER, NAT_FOLDER, SELF_FOLDER, PBS_FOLDER, 
-							ANALYSIS_DATA_FOLDER, ANALYSIS_FIGURE_FOLDER, JOB_FOLDER, 
-							CLUSTAL_FASTA_FOLDER, CLUSTAL_PBS_FOLDER, CLUSTAL_JOB_FOLDER,
-							CLUSTAL_DATA_FOLDER]
 
 
 #
