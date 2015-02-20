@@ -8,13 +8,14 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       3' to the V gene is extracted and sent to the cluster for BLAST assignment
       of the J gene.
 
-Usage: 1.2-blast-J_assignment.py -locus <0|1|2|3|4> -lib path/to/library.fa -h
+Usage: 1.2-blast-J_assignment.py -locus <0|1|2|3|4> -lib path/to/library.fa
+                                 -dlib path/to/dlibrary.fa -h
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
 
     locus	0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR
-                   lambda / 4: custom library (supply -lib)
+                   lambda / 4: custom library (supply -lib and optionally -dlib)
                    Default = 0
 
 Created by Zhenhai Zhang on 2011-04-14.
@@ -30,174 +31,140 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from mytools import *
+from zap.blast import *
 
-
-def write_list2file(l, sname, total):
-	writer = csv.writer(open("%s/%s_%s_stat.txt" %(prj_tree.data, prj_name, sname), "w"), delimiter = sep)
-	percentiles = [(x / total) * 100 for x in l]
-	#percentiles = l / float(total) * 100
-	
-	writer.writerow(["index", "count", "percentile"])
-	for ind, count in enumerate(l):
-		aline = [ind, count, percentiles[ind]]
-		writer.writerow(aline)
-		
-
-def write_dict2file(d, total, header):
-	filename = "%s/%s_vgerm_stat.txt" %(prj_tree.data, prj_name)
-	if "strand" in header:
-		filename = "%s/%s_germ_strand_stat.txt" %(prj_tree.data, prj_name)
-	writer 	= csv.writer(open(filename, "w"), delimiter = sep)
-	keys 	= sorted(d.keys())
-	
-	writer.writerow(header)
-	
-	for key in keys:
-		aline = [key, d[key], d[key] / float(total) * 100]
-		writer.writerow(aline)
-		
-	
 
 def get_top_hit(resultFile, writer):
 
-	#qstart_list 			= [0] * (MAX_GOOD_LEN + 1)
-	#qend_list				= [0] * (MAX_GOOD_LEN + 1)
-	#sstart_list				= [0] * (MAX_GOOD_LEN + 1)
-	#send_list				= [0] * (MAX_GOOD_LEN + 1)
-	
-	#db_name = fullpath2last_folder(folder)
 	dict_germ_aln=dict()
 	
 	for my_alignment, row, others in generate_blast_top_hists(resultFile):
 		qid, sid 	= 	my_alignment.qid, my_alignment.sid
 		aline 		= 	row + [my_alignment.strand]
 		
-		#if db_name == "germ":
-		aline.append(dict_germ[sid].seq_len)
-			# record germline alignment
 		dict_germ_aln[qid] = my_alignment
-		#elif db_name == "native":
-		#	sid = sid.upper()
-		#	aline.append(dict_native[sid].seq_len)
-		#else:
-		#	print "DATABASE NAME ERROR!"
-		#	sys.exit(0)		
 
 		if len(others)>0:
 			aline.append(",".join(others))
 		writer.writerow(aline)
 		
-		
 		if my_alignment.sid not in dict_germ_count:
-			dict_germ_count[my_alignment.sid] 	= 0
-		dict_germ_count[my_alignment.sid] 		+= 1
+			dict_germ_count[my_alignment.sid] = 0
+		dict_germ_count[my_alignment.sid] += 1
 		
-		
-		sstart, send = my_alignment.sstart, my_alignment.send
-		if my_alignment.strand == "-":
-			sstart, send = send, sstart
-
-		#qstart_list[my_alignment.qstart]	+= 1
-		#qend_list[my_alignment.qend]		+= 1		
-		#sstart_list[sstart] += 1
-		#send_list[send]		+= 1
-		dict_strand_count[my_alignment.strand] += 1
-		
-		#total		+= 	1
-		
-
-	#write_list2file(qstart_list, "%s_qstart" %db_name, total)
-	#write_list2file(sstart_list, "%s_sstart"  %db_name, total)
-	#write_list2file(qend_list, "%s_qend" %db_name, total)
-	#write_list2file(send_list, "%s_send" %db_name, total)
-	
 	return dict_germ_aln
 
 
-def submit_pbs(fasta, index):
-	pbsfile    = "%s/vc%06d.sh" %(prj_tree.pbs, index)
-	jobname    = "vc%06d" % index
-	outfile    = "%s/vc%06d.txt" %(prj_tree.germ, index)
-	pbs_string = PBS_STRING %(jobname, outfile, BLAST_GERM_J_OPTIONS, j_db, fasta)
-	
-	pbshandle  = open( pbsfile, "w")
-	pbshandle.write(pbs_string)
-	pbshandle.close()
-	
-	os.system("qsub %s" %pbsfile)
-
 
 def main():
-		
-	#outfile = "%s/%s_5trim.fa" %(prj_tree.filtered, prj_name)
-	#handle = open(outfile, "w")
-	
 	
 	print "curating 5'end and strand...."
-	#os.system("rm %s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name))
 
 	# cut nucleotide sequences from 5'end alignment to germline
 	total, good, f_ind = 0, 0, 1
 
-	writer = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.data, prj_name), "w"), delimiter = sep)
+	writer = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
 	
-	while os.path.isfile("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind)):
+	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
 
-		split_fasta = "%s/vcut_%06d.fasta" %(prj_tree.split, f_ind)
+		split_fasta = "%s/%s_%03d.fasta" %(prj_tree.jgene, prj_name, f_ind)
 		fasta_handle = open(split_fasta, "w")
 
-		# parse germline alignment
-		dict_germ_aln = get_top_hit("%s/%s_%06d.txt" % (prj_tree.germ, prj_name, f_ind), writer)
+		# parse blast output
+		dict_germ_aln = get_top_hit("%s/%s_%03d.txt" % (prj_tree.vgene, prj_name, f_ind), writer)
 	
-		for entry in SeqIO.parse(open("%s/%s_%06d.fasta" % (prj_tree.split, prj_name, f_ind), "rU"), "fasta"):
+		# process each sequence
+		for entry in SeqIO.parse("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind), "fasta"):
 
 			try:
+				#to match BLAST, which also kills zero-padding
 				seq_id = str(int(entry.id))
 			except:
 				seq_id = entry.id
 
 			total += 1
 			if seq_id in dict_germ_aln:
-				entry.description = dict_germ_aln[seq_id].sid
-				entry.seq = cut_five_end_blast(entry.seq, dict_germ_aln[seq_id]).tostring()
-				align_len = abs(dict_germ_aln[seq_id].qend - dict_germ_aln[seq_id].qstart) + 1
-				entry.seq = entry.seq[ align_len : ]
+				if dict_germ_aln[seq_id].strand == "+":
+					entry.seq = entry.seq[ dict_germ_aln[seq_id].qend : ]
+				else:
+					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart]
+					entry = entry.reverse_complement()
 
 				if len(entry.seq) > 30: #can probably be 50...
 					fasta_handle.write(">%s\n%s\n" % (entry.id,entry.seq))
 					good += 1
 
 		fasta_handle.close()
-		submit_pbs(split_fasta, f_ind)
 		f_ind += 1
 		
 		print "%d done, %d good..." %(total, good)
 
-	write_dict2file(dict_strand_count, total, ["strand", "count", "percent"])
-	write_dict2file(dict_germ_count, total, ["subject", "count", "percent"])	
+	f_ind -= 1 #had to go 1 extra to break while loop, now reset to actual number of files
+
+	#print statistics
+	handle = open("%s/%s_vgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
+	writer 	= csv.writer(handle, delimiter = sep)
+	keys 	= sorted(dict_germ_count.keys())
+	
+	writer.writerow(["gene", "count", "percent"])
+	for key in keys:
+		aline = [ key, dict_germ_count[key], "%4.2f" % (dict_germ_count[key] / float(good) * 100) ]
+		writer.writerow(aline)
+		
+	
+	#print log message
+	handle = open("%s/1.2.log" % prj_tree.logs, "w")
+	handle.write("total: %d; good: %d\n" %(total, good))
+	handle.close()
+	
+	# write pbs files and auto submit shell script
+	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, library, 
+									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
+									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
+	pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
+	pbs.write( PBS_STRING%(f_ind, "%s-jBlast"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+	pbs.close()
+	os.system("qsub %s/jblast.sh"%prj_tree.jgene)
+
+
+	if os.path.isfile(dlib):
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, dlib, 
+									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
+									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
+		pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
+		pbs.write( PBS_STRING%(f_ind, "%s-dBlast"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.close()
+		os.system("qsub %s/dblast.sh"%prj_tree.jgene)
 
 
 if __name__ == '__main__':
 	
-	# get parameters from input
-	if len(sys.argv) < 1 :
+	#check if I should print documentation
+	q = lambda x: x in sys.argv
+	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
 		print __doc__
 		sys.exit(0)
 
-	dict_args = processParas(sys.argv, l="is_light")#, npf="num_per_file")
-	is_light = getParas(dict_args, "is_light")#, "num_per_file")	
+	#get parameters from input
+	dict_args = processParas(sys.argv, locus="locus", library="library", dlib="dlib")
+	locus, library, dlib = getParasWithDefaults(dict_args, dict(locus=0, library="", dlib=""), "locus", "library", "dlib")
 
-	prj_tree       =  ProjectFolders(os.getcwd())
-	prj_name       =  fullpath2last_folder(prj_tree.home)
+	#load library
+	if locus < 4:
+		library = dict_jgerm_db[locus]
+		if locus == 0:
+			dlib = DH_DB
+	elif os.path.isfile(library):
+		pass
+	else:
+		print "Can't find custom library file!"
+		sys.exit(1)
 
-	germ_db, j_db  =  dict_germ_db[is_light], dict_jgerm_db[is_light]
-	dict_germ      =  load_fastas(germ_db)
-	dict_j         =  load_fastas(j_db)
-	#dict_germ_aln  =  dict()
-	dict_strand_count 		= {"+" : 0.0, "-" : 0.0}
-	dict_germ_count			= dict()
+	prj_tree        = ProjectFolders(os.getcwd())
+	prj_name        = fullpath2last_folder(prj_tree.home)
+
+	dict_germ_count	= dict()
 	
 	
 	main()

@@ -16,7 +16,6 @@ from Bio import Seq
 from Bio import AlignIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Align.Applications import ClustalwCommandline
-from Bio.Blast import NCBIStandalone
 from math import log
 
 import glob
@@ -27,18 +26,12 @@ import subprocess
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
 from commonVars import *
-
-# Titan cluster
-if HOSTNAME.find("titan") >= 0:
-	pass
-# Zhenhai's mac pro
-else:
-	from numpy_related import *
+from numpy_related import *
 
 
 
 #
-# -- BEGIN -- class defination
+# -- BEGIN -- class definition
 #
 
 class MyNode:
@@ -1208,14 +1201,9 @@ def do_clustalw(ref, tst, fa_file):
 	#print "write to file...."
 	write_seq2file(ref, tst, fa_file)
 	
-	#print "do clustal..."
-	# Titan cluster
-	if HOSTNAME.find("titan") >= 0:
-		#print "titan", fa_file
-		#print "clustalw2 %s" %fa_file
+	try:
 		commands.getstatusoutput("%s %s" %(clustalw, fa_file))
-		
-	else:
+	except:
 		cline = ClustalwCommandline(clustalw, infile = fa_file)
 		cline()
 	#print "clustal is done!"
@@ -1515,46 +1503,6 @@ def load_divid_native_sorted(f, nat, mg, ng, mn, nn):
 
 	return sorted_reads, dict_read_divid
 	
-
-def retrieve_blast_tophit_plain(infile):
-	"""
-	parse the blast result in plain text format.  For each query, return only the top hit.
-	"""
-	
-	reader 			= open(infile, "rU")
-	blast_parser 	= NCBIStandalone.BlastParser()
-	blast_iterator 	= NCBIStandalone.Iterator(reader, blast_parser)
-	
-	#writer.writerow(PARSED_BLAST_HEADER_VERBOSE)
-	
-	for record in blast_iterator:
-		
-		query_id 	= record.query
-		query_len 	= record.query_letters
-
-		for alignment in record.alignments:
-			for hsp in alignment.hsps:		# we may need to deal with multiple alignment with a single subject				
-				
-				sbjct_id 			= alignment.title[ 1 :]		# remove ">"
-				sbjct_len 			= alignment.length
-				e_value 			= hsp.expect
-				score				= hsp.score
-				aln_gaps		 	= hsp.gaps[0]
-				aln_query 			= hsp.query
-				aln_sbjct 			= hsp.sbjct
-				aln_strand 			= parse_blast_strand(hsp.strand)
-				query_start 		= hsp.query_start
-				sbjct_start 		= hsp.sbjct_start
-				query_end			= hsp.query_end
-				sbjct_end			= hsp.sbjct_end
-				identities, aln_len = hsp.identities
-				
-				
-				if not aln_gaps :		# None = 0
-					aln_gaps = 0
-				
-				yield query_id, sbjct_id, query_start, query_end, sbjct_start, sbjct_end, aln_query, aln_sbjct 
-				break			# only top hit should be retrieved
 
 
 def get_germ_in_dict(f):

@@ -123,11 +123,9 @@ CMD_BLASTCLUST	= "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blas
 # ===START=== file headers
 #
 
-PARSED_BLAST_HEADER = ["qid", "sid", "identity", "align_len", "mismatches", "gaps", "qstart", "qend", "sstart", "send", "evalue", "score", "strand", "slen","other_sids"]
+PARSED_BLAST_HEADER = ["qid", "sid", "identity", "align_len", "mismatches", "gaps", "qstart", "qend", "sstart", "send", "evalue", "score", "strand","other_sids"]
 PARSED_BLAST_HEADER_VERBOSE = ["query_id", "sbjct_id", "strand", "evalue", "score", "identities", "gaps", "aln_len", 
-								"query_start", "query_end", "query_len", 
-								"sbjct_start", "sbjct_end", "sbjct_len", 
-								"aln_query", "aln_sbjct"]
+								"query_start", "query_end", "query_len", "sbjct_start", "sbjct_end", "aln_query", "aln_sbjct"]
 
 
 
@@ -198,11 +196,11 @@ DICT_NATIVES = {
 	1000: LIST_NATIVES
 }
 
-DICT_PHYLO_INFO = {
-	30 	: (GERM_KCL_HEAVY, NAT_KCL_HEAVY, ["VH3.8", "VH3.18", "VH3.24"]), # (GERM FILE, NATIVE FILE, [GERM V GENE LIST])
-	40 	: (GERM_KCL_HEAVY, NAT_KCL_HEAVY, ["VH4.11", "VH4.40", "VH4.57"]),
-	0	: (GERM_HEAVY, NAT_HEAVY, ["IGHV1-2*02"])
-}
+#DICT_PHYLO_INFO = {
+#	30 	: (GERM_KCL_HEAVY, NAT_KCL_HEAVY, ["VH3.8", "VH3.18", "VH3.24"]), # (GERM FILE, NATIVE FILE, [GERM V GENE LIST])
+#	40 	: (GERM_KCL_HEAVY, NAT_KCL_HEAVY, ["VH4.11", "VH4.40", "VH4.57"]),
+#	0	: (GERM_HEAVY, NAT_HEAVY, ["IGHV1-2*02"])
+#}
 
 DICT_PHYLO_GERM_NAT = {
 	"VH3.8"		: ["GE121_HC", "GE125_HC"],

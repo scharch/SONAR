@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
 	#load library
 	if locus < 4:
-		library = dict_germ_db[locus]
+		library = dict_vgerm_db[locus]
 	elif os.path.isfile(library):
 		pass
 	else:
