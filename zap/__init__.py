@@ -1542,19 +1542,35 @@ def generate_blast_top_hists(infile):
 				best_alignment = my_alignment
 				best_row = row
 				others = []
+				second_match = []
 				if my_alignment.sstart > my_alignment.send:
 					strand = "-"
 				best_alignment.set_strand(strand)
 				
 			else:
+				#added 20150107 by CAS
+				strand="+"
+				if my_alignment.sstart > my_alignment.send:
+					strand = "-"
+				my_alignment.set_strand(strand)
+				
+				'''
+				need three conditions:
+				1. hit is on same gene
+				2. hit is on same strand
+				3. hits are non-overlapping
+				'''
+				if my_alignment.sid == best_alignment.sid and my_alignment.strand == best_alignment.strand and (max(my_alignment.sstart, my_alignment.send)<min(best_alignment.sstart,best_alignment.send) or min(my_alignment.sstart, my_alignment.send)>max(best_alignment.sstart,best_alignment.send)):
+					second_match = row
+
 					#added 20130707 by CAS
-				if my_alignment.score == best_alignment.score:
+				elif my_alignment.score == best_alignment.score:
 					others.append(my_alignment.sid)
 
 	if old_id == "":
 		sys.exit("%s appears to be empty..."%infile)
 	
-	yield best_alignment, best_row, others
+	yield best_alignment, best_row, others, second_match
 		#break
 
 

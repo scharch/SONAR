@@ -38,7 +38,7 @@ def get_top_hit(resultFile, writer):
 
 	dict_germ_aln=dict()
 	
-	for my_alignment, row, others in generate_blast_top_hists(resultFile):
+	for my_alignment, row, others, second_match in generate_blast_top_hists(resultFile):
 		qid, sid 	= 	my_alignment.qid, my_alignment.sid
 		aline 		= 	row + [my_alignment.strand]
 		
@@ -47,6 +47,14 @@ def get_top_hit(resultFile, writer):
 		if len(others)>0:
 			aline.append(",".join(others))
 		writer.writerow(aline)
+
+		if len(second_match)>0:
+			writer.writerow(second_match + [my_alignment.strand])
+			#if shorter match is toward 3', change alignment end to get J properly
+			if my_alignment.strand=="+" and second_match[7] > my_alignment.qend:
+				my_alignment.qend = second_match[7]
+			if my_alignment.strand=="-" and second_match[6] < my_alignment.qstart:
+				my_alignment.qstart = second_match[6]
 		
 		if my_alignment.sid not in dict_germ_count:
 			dict_germ_count[my_alignment.sid] = 0
