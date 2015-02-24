@@ -1536,7 +1536,7 @@ def generate_blast_top_hists(infile):
 
 			if my_alignment.qid != old_id:
 				if old_id != "":
-					yield best_alignment, best_row, others
+					yield best_alignment, best_row, others, second_match
 						
 				strand, old_id = "+", my_alignment.qid
 				best_alignment = my_alignment
