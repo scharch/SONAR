@@ -15,7 +15,7 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       groups of 50K sequences, so that number is hard-coded below.
 
 Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
-                                 -qual <0|1|2> -lib path/to/library.fa -h -f
+                                 [-qual <0|1>] -lib path/to/library.fa -h -f
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
@@ -25,10 +25,8 @@ Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
     locus	0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR
                    lambda / 4: custom library (supply -lib)
                    Default = 0
-    qual 	0: noquals/fasta only / 1: has quals (454) / 2: fastq (Illumina).
-                   Default = 0 (will fail if reads are in FastQ format)
-		   NOTE: quals are not currently processed, but this flag is
-		         still required for correctly reading FastQ files!
+    qual 	0: noquals/use fasta only / 1: use qual information 
+                   Default = 0; currently deprecated
     lib  	location of file containing custom library (e.g. for use with
                    non-human genes)
     f 	 	forcing flag to overwrite existing working directories.
@@ -57,35 +55,33 @@ def main():
 		
 	# open initial output files
 	fasta 	=            open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
-	id_map	= csv.writer(open("%s/%s_454_rid.txt" % (folder_tree.tables, prj_name),        'w'), delimiter=sep)
+	id_map	= csv.writer(open("%s/%s_temp_lookup.txt" % (folder_tree.vgene, prj_name),        'w'), delimiter=sep)
 
-	id_map.writerow(["454_id", "read_id"])
-	
 
 	#if we decide to use quals for something, can add this block back in
 	'''
-	if has_qual > 0:
+	if use_qual > 0:
 		qual =       open("%s/%s_%03d.qual"   % (folder_tree.vgene,    prj_name, f_ind), 'w')
-	if has_qual == 1:
-		qual_generater 	= generate_quals_folder(folder_tree.home)
+		qual_generator 	= generate_quals_folder(folder_tree.home)
 	'''
 
 
 	#iterate through sequences in all raw data files
-	for myseq, myqual in generate_read_fasta_folder(folder_tree.home, has_qual):
+	for myseq, myqual, file_name in generate_read_fasta_folder(use_qual):
+
 		total += 1
-			
+		id_map.writerow([ "%08d"%total, file_name, myseq.seq_id, myseq.seq_len])
+
 		if min_len <= myseq.seq_len <= max_len:
 			total_good += 1
-			id_map.writerow([myseq.seq_id, total_good])
-			fasta.write(">%08d\n%s\n" % (total_good, myseq.seq))
+			fasta.write(">%08d\n%s\n" % (total, myseq.seq))
 
 			#uncomment to re-implement quals
 			'''
-			if has_qual == 1:
-				myqual = qual_generater.next()
-			if has_qual > 0:
-				qual.write(">%08d\n%s\n" % (total_good, " ".join(map(str, myqual.qual_list))))
+			if use_qual == 1:
+			        if re.search("\.(fq|fastq)$", file_name) is None:
+				        myqual = qual_generator.next()
+				qual.write(">%08d\n%s\n" % (total, " ".join(map(str, myqual.qual_list))))
 			'''
 
 			if total_good % 50000 == 0: 
@@ -96,7 +92,7 @@ def main():
 				print "%d processed, %d good; starting file %s_%03d" %(total, total_good, prj_name, f_ind)
 
 				'''
-				if has_qual>0:
+				if use_qual == 1:
 					qual.close()
 					qual = open("%s/%s_%03d.qual"%(folder_tree.vgene, prj_name, f_ind), 'w')
 				'''
@@ -105,7 +101,7 @@ def main():
 	
 	fasta.close()
 	'''
-	if has_qual>0:
+	if use_qual>0:
 		qual.close()
 	'''
 
@@ -119,7 +115,7 @@ def main():
 									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name)) )
 	pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
-	pbs.write( PBS_STRING%(f_ind, "%s-vBlast"%prj_name, "500M", "30:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
+	pbs.write( PBS_STRING%(f_ind, "vBlast-%s"%prj_name, "500M", "30:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
 	pbs.close()
 	os.system("qsub %s/vblast.sh"%folder_tree.vgene)
 
@@ -140,8 +136,8 @@ if __name__ == '__main__':
 		force = True
 
 	# get parameters from input
-	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="has_qual", lib="library")
-	min_len, max_len, locus, has_qual, library = getParasWithDefaults(dict_args, dict(min_len=300, max_len=600, has_qual=0, locus=0, library=""), "min_len", "max_len", "locus", "has_qual", "library")
+	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library")
+	min_len, max_len, locus, use_qual, library = getParasWithDefaults(dict_args, dict(min_len=300, max_len=600, use_qual=0, locus=0, library=""), "min_len", "max_len", "locus", "use_qual", "library")
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()
@@ -151,10 +147,8 @@ if __name__ == '__main__':
 	#load library
 	if locus < 4:
 		library = dict_vgerm_db[locus]
-	elif os.path.isfile(library):
-		pass
-	else:
-		print "Can't find custom library file!"
+	elif not os.path.isfile(library):
+		print "Can't find custom V gene library file!"
 		sys.exit(1)
 
 

@@ -49,19 +49,19 @@ blastall_cmd   = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blas
 #assert os.path.isfile(clustal), "Clustal W missing"
 
 # databases	
-VH_DB 		= "%s/db/germline/IgHV.fa" %HOME_FOLDER
-VK_DB		= "%s/db/germline/IgKV.fa" %HOME_FOLDER
-VL_DB		= "%s/db/germline/IgLV.fa" %HOME_FOLDER
-VKL_DB		= "%s/db/germline/IgKLV.fa" %HOME_FOLDER
+VH_DB	= "%s/db/germline/IgHV.fa"  %HOME_FOLDER
+VK_DB	= "%s/db/germline/IgKV.fa"  %HOME_FOLDER
+VL_DB	= "%s/db/germline/IgLV.fa"  %HOME_FOLDER
+VKL_DB	= "%s/db/germline/IgKLV.fa" %HOME_FOLDER
 
-JH_DB 			= "%s/db/germline/IgHJ.fa" %HOME_FOLDER
-JK_DB 			= "%s/db/germline/IgKJ.fa" %HOME_FOLDER
-JL_DB 			= "%s/db/germline/IgLJ.fa" %HOME_FOLDER
-JKL_DB 			= "%s/db/germline/IgKLJ.fa" %HOME_FOLDER
+JH_DB	= "%s/db/germline/IgHJ.fa"  %HOME_FOLDER
+JK_DB	= "%s/db/germline/IgKJ.fa"  %HOME_FOLDER
+JL_DB	= "%s/db/germline/IgLJ.fa"  %HOME_FOLDER
+JKL_DB	= "%s/db/germline/IgKLJ.fa" %HOME_FOLDER
 
-DH_DB                   = "%s/db/germline/IgHD.fa" %HOME_FOLDER
-CH_DB                   = "%s/db/germline/IgHC.fa" %HOME_FOLDER
+DH_DB   = "%s/db/germline/IgHD.fa"  %HOME_FOLDER
 
+CH_DB	= "%s/db/germline/IgHC_CH1.fa" %HOME_FOLDER
 
 dict_vgerm_db = {
 	0: VH_DB,
@@ -77,12 +77,13 @@ dict_jgerm_db = {
 	3: JKL_DB,
 }
 
+
 # amino acid databases
 GERM_HEAVY_AA	= "%s/db/germline/IgHV_protein.fasta" %HOME_FOLDER
 NAT_HEAVY_AA	= "%s/db/native/vrc_IgHV_protein.fasta" %HOME_FOLDER
 
 
-ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/tables", "output/plots", "output/logs"]
+ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs"]
 
 
 #

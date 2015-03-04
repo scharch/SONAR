@@ -6,17 +6,23 @@
 This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       for which a V assignment was successfully made, the section of the read
       3' to the V gene is extracted and sent to the cluster for BLAST assignment
-      of the J gene.
+      of the J gene. Will also try to assign the D gene if relevant and the 
+      constant region class. 
 
-Usage: 1.2-blast-J_assignment.py -locus <0|1|2|3|4> -lib path/to/library.fa
-                                 -dlib path/to/dlibrary.fa -h
+Usage: 1.2-blast-J_assignment.py -locus <0|1|2|3|4>
+                                 -lib  path/to/j-library.fa
+                                 -dlib path/to/d-library.fa
+				 -clib path/to/c-library.fa
+				 -h
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
 
-    locus	0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR
-                   lambda / 4: custom library (supply -lib and optionally -dlib)
-                   Default = 0
+    locus	0: (DEFAULT) heavy chain (will look for D, as well)
+                1: kappa chain
+		2: lambda chain
+                3: kappa OR lambda
+		4: custom library (supply -lib and optionally -dlib/-clib)
 
 Created by Zhenhai Zhang on 2011-04-14.
 Modified by Chaim A Schramm 2013-07-03 to include j assignment.
@@ -34,43 +40,14 @@ import os
 from zap.blast import *
 
 
-def get_top_hit(resultFile, writer):
-
-	dict_germ_aln=dict()
-	
-	for my_alignment, row, others, second_match in generate_blast_top_hists(resultFile):
-		qid, sid 	= 	my_alignment.qid, my_alignment.sid
-		aline 		= 	row + [my_alignment.strand]
-		
-		dict_germ_aln[qid] = my_alignment
-
-		if len(others)>0:
-			aline.append(",".join(others))
-		writer.writerow(aline)
-
-		if len(second_match)>0:
-			writer.writerow(second_match + [my_alignment.strand])
-			#if shorter match is toward 3', change alignment end to get J properly
-			if my_alignment.strand=="+" and int(second_match[7]) > my_alignment.qend:
-				my_alignment.qend = int(second_match[7])
-			if my_alignment.strand=="-" and int(second_match[6]) < my_alignment.qstart:
-				my_alignment.qstart = int(second_match[6])
-		
-		if my_alignment.sid not in dict_germ_count:
-			dict_germ_count[my_alignment.sid] = 0
-		dict_germ_count[my_alignment.sid] += 1
-		
-	return dict_germ_aln
-
-
-
 def main():
 	
 	print "curating 5'end and strand...."
 
 	# cut nucleotide sequences from 5'end alignment to germline
 	total, good, f_ind = 0, 0, 1
-
+	dict_germ_count	= dict()
+	
 	writer = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
 	
@@ -80,7 +57,7 @@ def main():
 		fasta_handle = open(split_fasta, "w")
 
 		# parse blast output
-		dict_germ_aln = get_top_hit("%s/%s_%03d.txt" % (prj_tree.vgene, prj_name, f_ind), writer)
+		dict_germ_aln, dict_other_germs, dict_germ_count = get_top_hits( "%s/%s_%03d.txt" % (prj_tree.vgene, prj_name, f_ind), topHitWriter=writer, dict_germ_count=dict_germ_count )
 	
 		# process each sequence
 		for entry in SeqIO.parse("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind), "fasta"):
@@ -108,32 +85,45 @@ def main():
 		
 		print "%d done, %d good..." %(total, good)
 
+
 	f_ind -= 1 #had to go 1 extra to break while loop, now reset to actual number of files
 
-	#print statistics
-	handle = open("%s/%s_vgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-	writer 	= csv.writer(handle, delimiter = sep)
-	keys 	= sorted(dict_germ_count.keys())
-	
-	writer.writerow(["gene", "count", "percent"])
-	for key in keys:
-		aline = [ key, dict_germ_count[key], "%4.2f" % (dict_germ_count[key] / float(good) * 100) ]
-		writer.writerow(aline)
-		
-	
+
 	#print log message
 	handle = open("%s/1.2.log" % prj_tree.logs, "w")
 	handle.write("total: %d; good: %d\n" %(total, good))
 	handle.close()
 	
+
+        #print statistics
+	handle = open("%s/%s_vgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
+	writer 	= csv.writer(handle, delimiter = sep)
+	keys 	= sorted(dict_germ_count.keys())
+	writer.writerow(["gene", "count", "percent"])
+	for key in keys:
+		aline = [ key, dict_germ_count[key], "%4.2f" % (dict_germ_count[key] / float(good) * 100) ]
+		writer.writerow(aline)
+	handle.close()
+
+
 	# write pbs files and auto submit shell script
 	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, library, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 	pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
-	pbs.write( PBS_STRING%(f_ind, "%s-jBlast"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+	pbs.write( PBS_STRING%(f_ind, "jBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 	pbs.close()
 	os.system("qsub %s/jblast.sh"%prj_tree.jgene)
+
+
+	if os.path.isfile(const_lib):
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, const_lib, 
+									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
+									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
+		pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
+		pbs.write( PBS_STRING%(f_ind, "cBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.close()
+		os.system("qsub %s/cblast.sh"%prj_tree.jgene)
 
 
 	if os.path.isfile(dlib):
@@ -141,7 +131,7 @@ def main():
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%(f_ind, "%s-dBlast"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.write( PBS_STRING%(f_ind, "dBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
 		os.system("qsub %s/dblast.sh"%prj_tree.jgene)
 
@@ -155,25 +145,22 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	#get parameters from input
-	dict_args = processParas(sys.argv, locus="locus", library="library", dlib="dlib")
-	locus, library, dlib = getParasWithDefaults(dict_args, dict(locus=0, library="", dlib=""), "locus", "library", "dlib")
+	dict_args = processParas(sys.argv, locus="locus", library="library", dlib="dlib", clib="const_lib")
+	locus, library, dlib, const_lib = getParasWithDefaults(dict_args, dict(locus=0, library="", dlib="", const_lib=""), "locus", "library", "dlib", "const_lib")
 
 	#load library
 	if locus < 4:
 		library = dict_jgerm_db[locus]
 		if locus == 0:
 			dlib = DH_DB
-	elif os.path.isfile(library):
-		pass
-	else:
-		print "Can't find custom library file!"
+			const_lib = CH_DB
+	elif not os.path.isfile(library):
+		print "Can't find custom J gene library file!"
 		sys.exit(1)
 
 	prj_tree        = ProjectFolders(os.getcwd())
 	prj_name        = fullpath2last_folder(prj_tree.home)
 
-	dict_germ_count	= dict()
-	
-	
+
 	main()
 

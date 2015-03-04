@@ -64,28 +64,28 @@ class MyQual:
 		
 class MyAlignment:
 	def __init__(self, row):
-		self.qid 		= row[0].strip()			# query id
-		self.sid 		= row[1].upper().strip()	# subject id
-		self.identity 	= float(row[2])				# % identidy
-		self.alignment 	= int(row[3])				# alignment length
-		self.mismatches = int(row[4]) 				# mismatches
-		self.gaps 		= int(row[5])				# gap openings
-		self.qstart 	= int(row[6])				# query start
-		self.qend 		= int(row[7])				# query end
-		self.sstart 	= int(row[8])				# subject start
-		self.send 		= int(row[9]) 				# subject end
-		self.evalue 	= float(row[10])			# e-value
-		self.score 		= float(row[11])			# bit score
-		self.strand		= ""						# strand
+		self.qid	= row[0].strip()		# query id
+		self.sid	= row[1].upper().strip()	# subject id
+		self.identity 	= float(row[2])			# % identity
+		self.alignment 	= int(row[3])			# alignment length
+		self.mismatches = int(row[4]) 			# mismatches
+		self.gaps	= int(row[5])			# gap openings
+		self.qstart 	= int(row[6])			# query start
+		self.qend	= int(row[7])			# query end
+		self.sstart 	= int(row[8])			# subject start
+		self.send	= int(row[9]) 			# subject end
+		self.evalue 	= float(row[10])		# e-value
+		self.score	= float(row[11])		# bit score
+		self.strand	= ""				# strand
 		
-		self.qlen		= 0
-		self.slen		= 0
+		self.qlen	= 0
+		self.slen	= 0
 		
-		self.real_id	= 0.0						# recaluclated identity
-		self.divergence	= 0.0						# recalculated diversity
+		self.real_id	= 0.0				# recaluclated identity
+		self.divergence	= 0.0				# recalculated diversity
 		
 	def set_strand(self, s):
-		self.strand = s								# setting strand
+		self.strand = s					# setting strand
 		
 	def set_real_identity(self, identity):
 		self.real_id = identity
@@ -95,14 +95,14 @@ class MyAlignment:
 		
 class MyAlignmentVerbose:
 	def __init__(self, row):
-		self.query_id	= row[0]
-		self.sbjct_id	= row[1].upper()
+		self.query_id		= row[0]
+		self.sbjct_id		= row[1].upper()
 		self.strand		= row[2]
 		self.evalue		= float(row[3])
 		self.score		= float(row[4])
-		self.identities	= int(row[5])
+		self.identities		= int(row[5])
 		self.gaps		= int(row[6])
-		self.aln_len	= int(row[7])
+		self.aln_len		= int(row[7])
 		self.query_start	= int(row[8])
 		self.query_end		= int(row[9])
 		self.query_len		= int(row[10])
@@ -137,6 +137,11 @@ class ProjectFolders:
 		self.plots   = "%s/plots"       %  self.out
 		self.logs    = "%s/logs"        %  self.out
 		
+		#second-level
+		self.aa      = "%s/amino_acid"  %  self.seq
+		self.nt      = "%s/nucleotide"  %  self.seq
+
+
 #
 # -- END -- class defination
 #
@@ -674,25 +679,23 @@ def generate_read_fasta(f):
 		yield myseqclu
 
 
-def generate_read_fasta_folder(folder, type=1):
+def generate_read_fasta_folder(type=1):
 
-	if type < 2:
-		fastas = glob.glob("%s/*.fa"  %folder) + glob.glob("%s/*.fasta" %folder) + glob.glob("%s/*.fna" %folder)
-		filetype="fasta"
-	else:
-		fastas = glob.glob("%s/*.fq"  %folder) + glob.glob("%s/*.fastq" %folder)
-		filetype="fastq"
+	fastas = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
 
 	for fasta_file in fastas:
+
+		filetype = "fasta"
+		if re.search("\.(fq|fastq)$", fasta_file) is not None:
+			filetype = "fastq"
+
 		for entry in SeqIO.parse(open(fasta_file, "rU"), filetype):
 
-			yield MySeq(entry.id, entry.seq), None
+			yield MySeq(entry.id, entry.seq), None, fasta_file
 
-			#if we reimplement qual handling, comment out above line and uncomment next section
-			#if type<2:
-			#	yield MySeq(entry.id, entry.seq, desc), None
-			#else:
-			#	yield MySeq(entry.id, entry.seq, desc), MyQual(entry.id, entry.letter_annotations["phred_quality"])	
+			#if we reimplement qual handling uncomment next section
+			#if filetype == "fastq":
+			#	yield MySeq(entry.id, entry.seq, desc), MyQual(entry.id, entry.letter_annotations["phred_quality"]), fasta_file	
 			
 
 def generate_reads(f):
@@ -1521,59 +1524,6 @@ def get_germ_in_dict(f):
 	return result
 
 			
-def generate_blast_top_hists(infile):
-	"""retrieve top hits from all result files"""
-	
-	old_id = ""
-		
-	reader = csv.reader(open(infile, "rU"), delimiter = sep)
-	for ind, row in enumerate(reader):
-			#print ind, row
-		if len(row) != 12:
-			pass;
-		else:
-			my_alignment = MyAlignment(row)
-
-			if my_alignment.qid != old_id:
-				if old_id != "":
-					yield best_alignment, best_row, others, second_match
-						
-				strand, old_id = "+", my_alignment.qid
-				best_alignment = my_alignment
-				best_row = row
-				others = []
-				second_match = []
-				if my_alignment.sstart > my_alignment.send:
-					strand = "-"
-				best_alignment.set_strand(strand)
-				
-			else:
-				#added 20150107 by CAS
-				strand="+"
-				if my_alignment.sstart > my_alignment.send:
-					strand = "-"
-				my_alignment.set_strand(strand)
-				
-				'''
-				need three conditions:
-				1. hit is on same gene
-				2. hit is on same strand
-				3. hits are non-overlapping
-				'''
-				if my_alignment.sid == best_alignment.sid and my_alignment.strand == best_alignment.strand and (max(my_alignment.sstart, my_alignment.send)<min(best_alignment.sstart,best_alignment.send) or min(my_alignment.sstart, my_alignment.send)>max(best_alignment.sstart,best_alignment.send)):
-					second_match = row
-
-					#added 20130707 by CAS
-				elif my_alignment.score == best_alignment.score:
-					others.append(my_alignment.sid)
-
-	if old_id == "":
-		sys.exit("%s appears to be empty..."%infile)
-	
-	yield best_alignment, best_row, others, second_match
-		#break
-
-
 def gernerate_germ_assign_folder_v2(folder, germ, min_cov=.98, max_start = 3):
 	"""
 	return reads that was assigned to germline according to minimum coverage and maximum start
