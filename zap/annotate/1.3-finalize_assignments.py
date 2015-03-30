@@ -32,7 +32,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from zap.blast import *
+from zap.annotate import *
 
 
 def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_read,jgaps,read_sequence):

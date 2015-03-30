@@ -42,7 +42,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from zap.blast import *
+from zap.annotate import *
 
 
 # global variables
