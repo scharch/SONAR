@@ -131,18 +131,18 @@ def main():
 	writer = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
 	dict_jcounts = dict()
-
+	dict_ccounts = dict()
+	dict_dcounts = dict()
+		
 	c = False
 	if os.path.isfile("%s/%s_C_001.txt" % (prj_tree.jgene, prj_name)):
 		c = True
-		dict_ccounts = dict()
 		cWriter = csv.writer(open("%s/%s_cgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 		cWriter.writerow(PARSED_BLAST_HEADER)
 
 	d = False
 	if os.path.isfile("%s/%s_D_001.txt" % (prj_tree.jgene, prj_name)):
 		d = True
-		dict_dcounts = dict()
 		dWriter = csv.writer(open("%s/%s_dgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 		dWriter.writerow(PARSED_BLAST_HEADER)
 
