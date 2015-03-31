@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# encoding: utf-8
-"""
-1.71-CDR3_tracebacks.py
 
+"""
+
+                                       
 Created by Chaim A Schramm on 2014-01-06. Modified from 1.2-split4clustal.py
 Copyright (c) 2011,2014 Columbia University Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 
