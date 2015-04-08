@@ -96,7 +96,7 @@ ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/1-bla
 #
 
 CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s" % (blastall_cmd,"%s","%s","%s","%s")
-BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 1 -e 1e-10 "
+BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 1 -e 1e-5 "
 BLAST_J_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 5 -b 5 -v 1 -e 1e-3 "
 BLAST_OTHER_OPTIONS = "-e 1e-3"
 
