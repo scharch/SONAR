@@ -2,14 +2,13 @@
 # performing usearch for sequences
 use strict;
 
-if(@ARGV<1){die "Usage: usearch.pl please install usearch v7 or higher verion. options\n\t-pp path of the usearch program\n\t-p [1,default cluster_fast,use longest seq as seed or center of cluster;2,use sequences with high coverage as seed or center of clusters;3, remove identical sequences in the dataset]\n\t-f sequence file\n\t-i sequence identity cutoff, default:0.975\n\t-low remove sequences with coverage lower than cutoff\n\t-threads number of cpu cores to use. Default:1\n";}
+if(@ARGV<1){die "Usage: usearch.pl\n This script performs two steps of clustering to remove sequences potentially containing sequencing errors. please install usearch v7 or higher verion. options\n\t-pp path of the usearch program\n\t-min1 minimun coverage of a read to be kept in the first step of clustering, default:2\n\t-min2 minimun coverage of a read to be kept in the seconde step of clustering, default:3\n\t-f sequence file\n\t-threads number of cpu cores to use. Default:1\n";}
 
 my %para=@ARGV;
-if(!$para{'-p'}){$para{'-p'}=1;}
+if(!$para{'-min1'}){$para{'-min1'}=2;}
+if(!$para{'-min2'}){$para{'-min2'}=3;}
 if(!$para{'-pp'}){die "please give the correct path to usearch program\n";}
 if(!$para{'-f'}){die "no input seq file\n";}
-
-if(!$para{'-i'}){$para{'-i'}=0.975;}
 if(!$para{'-threads'}){$para{'-threads'}=1;}
 
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-i'},$para{'-c'});
@@ -21,22 +20,13 @@ sub usearch{
     $file_out=~s/\.fa//;	  	
     my %derep=();
 	  	my %final_good=();
-	  if($program==1){
-	  	system("$para{'-pp'} -cluster_fast $file -threads $para{'-threads'}  -id $id  -uc $file_out.cluster -sizeout -centroids $file_out.unique.fa > usearchlog.txt");#-clusters tep-query_cov $co -target_cov $co
-	  }
-	  elsif($program==2){#good sequences potentially don't have errors
 	  	system("$para{'-pp'} -derep_fulllength $file -threads $para{'-threads'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#> usearchlog.txt
-	  	system("$para{'-pp'} -sortbysize $file_out.nonredundant.fa -minsize 1 -fastaout $file_out.nonredundant.fa");
+	  	system("$para{'-pp'} -sortbysize $file_out.nonredundant.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
 	  	system("$para{'-pp'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $id -sizein -sizeout -uc $file_out.cluster -centroids $file_out.unique.fa ");#-query_cov $co -target_cov $co> usearchlog.txt
+	  	%final_good=&derep("$file_out.cluster",$para{'-min2'},\%derep);
 	  	system("rm $file_out.nonredundant.fa");
-	  }
-	  elsif($program==3){
-	  	system("$para{'-pp'} -derep_fulllength $file -threads $para{'-threads'} -fastaout $file_out.unique.fa -uc $file_out.cluster -sizeout > usearchlog.txt");
-	  	
-	  }
+
 	  unlink "usearchlog.txt";
-	  if($para{'-low'}){print "Removing low quality reads\n";
-	  &remove_lowquality("$file_out.unique.fa","$file_out.cluster",$para{'-low'});}
 	  return "$file_out.unique.fa";
 }
 
@@ -144,40 +134,3 @@ sub changename{
 	system("mv tempusearch.fa $seive");
 }
 
-#####################
-sub remove_lowquality{
-     my($seq,$cluster,$cutoff)=@_;
-     open HH,"$seq" or die "sequence file not right\n";
-     open YY,"$cluster"or die "cluster file not right\n";
-     open ZZ,">temp_cutoff.fa";
-     my %mark=();	
-     my $count=0;
-	   while(<YY>){
-	     if($_=~/^C/){
-	       my @line=split/[ \t]+/,$_;	
-	     	 if($line[2]>=$cutoff){
-	     	 $line[8]=~s/\;.+//;
-	     	 $count++;
-	     	   $mark{$line[8]}=1;	
-	     	}
-	    }	
-	  }
-	  print "$count sequences passed coverage cutoff\n";
-	  my $mark=0;
-	  while(<HH>){
-	  	if($_=~/>(.+)/){
-	  		my @line=split/[ \t\;]/,$1;
-	  		if($mark{$line[0]}){
-	  			print ZZ "$_";
-	  			$mark=1;
-	  		}
-	  		else{
-	  			$mark=0;
-	  		}
-	  	}
-	  	elsif($mark==1){
-	  		print ZZ $_;
-	  	}
-	  }
-	  system("mv temp_cutoff.fa $seq");
-}
