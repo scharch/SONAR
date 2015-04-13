@@ -23,6 +23,8 @@ if($para{'-s'}&& ! -e $para{'-s'}){die "file $para{'-s'} doesn't exist. ):\n";}
 if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
 my %germ_db=();
 ############Reading seqs####################
+&rm_r($para{'-g'});
+&rm_r($para{'-a'});
 my ($germV,$germg)=&readfasta($para{'-g'});
 my ($anti,$antigerm)=&readfasta($para{'-a'});
 
@@ -105,7 +107,17 @@ if($para{'-usearch'}){
   unlink "$changefile.unique.fa","$changefile.cluster";
 }
 ##################################
-
+sub rm_r{
+      $file=shift;
+   open HH,"$file" or die "rm_r didn't find the file $file\n";
+   open YY,">rmtem.txt";
+   while(<HH>){
+      ~s/\r/\n/g;
+      print YY "$_";
+   }
+    close HH;
+  system("mv rmtem.txt $file");	
+}
 ###################
 sub calculation{
     my ($seq,$germ,$germV,$anti)=@_;
@@ -362,7 +374,9 @@ sub coverage{
     my $str2=substr($seq2,$start,$end-$start);
     $str1=~s/[\-\.]//g;
     $str2=~s/[\-\.]//g;
-return sprintf ("%3.2f",100*length($str2)/length($str1));    
+    my $c=length($str2)/length($str1);
+    if($c>1){$c=1/$c;}
+return sprintf ("%3.2f",100*$c);    
     
 }
 ################################
