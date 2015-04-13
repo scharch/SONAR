@@ -108,7 +108,7 @@ if($para{'-usearch'}){
 }
 ##################################
 sub rm_r{
-      $file=shift;
+      my $file=shift;
    open HH,"$file" or die "rm_r didn't find the file $file\n";
    open YY,">rmtem.txt";
    while(<HH>){
