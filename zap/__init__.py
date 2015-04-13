@@ -1200,16 +1200,20 @@ def parse_pair_clustal(align_file, my_ref_len, get_coverage=0):
 		return identity, divergence
 
 
-def do_clustalw(ref, tst, fa_file):
-	#print "write to file...."
+def do_clustalw(ref, tst, fa_file=""):
+
+	fhead=fa_file
+	if fa_file == "":
+		fhead = generate_random_string(8)
+		fa_file = "%s.fa" % fhead
+
 	write_seq2file(ref, tst, fa_file)
 	
-	try:
-		commands.getstatusoutput("%s %s" %(clustalw, fa_file))
-	except:
-		cline = ClustalwCommandline(clustalw, infile = fa_file)
-		cline()
-	#print "clustal is done!"
+	#update to choose method
+	cline = ClustalwCommandline(clustalw, infile = fa_file)
+	cline()
+
+	return fhead
 
 
 def get_clustalw2_score(status):
