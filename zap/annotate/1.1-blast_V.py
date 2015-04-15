@@ -14,7 +14,7 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       output files created. Resource requests for the cluster are calibrated to
       groups of 50K sequences, so that number is hard-coded below.
 
-Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
+Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <H|K|L|KL|C>
                                  [-qual <0|1>] -lib path/to/library.fa -h -f
 
     All options are optional, see below for defaults.
@@ -22,8 +22,8 @@ Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <0|1|2|3|4>
 
     minl	Minimum length for read filtering (inclusive). Default = 300
     maxl	Maximum length for read filtering (inclusive). Default = 600.
-    locus	0: heavy chain / 1: kappa chain / 2: lambda chain / 3: kappa OR
-                   lambda / 4: custom library (supply -lib)
+    locus	H: heavy chain / K: kappa chain / L: lambda chain / KL: kappa OR
+                   lambda / C: custom library (supply -lib)
                    Default = 0
     qual 	0: noquals/use fasta only / 1: use qual information 
                    Default = 0; currently deprecated
@@ -55,7 +55,7 @@ def main():
 		
 	# open initial output files
 	fasta 	=            open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
-	id_map	= csv.writer(open("%s/%s_temp_lookup.txt" % (folder_tree.vgene, prj_name),        'w'), delimiter=sep)
+	id_map	= csv.writer(open("%s/id_lookup.txt"  %  folder_tree.internal,                 'w'), delimiter=sep)
 
 
 	#if we decide to use quals for something, can add this block back in
@@ -145,12 +145,15 @@ if __name__ == '__main__':
 	prj_name    = prj_folder[prj_folder.rindex("/") + 1 :]
 
 	#load library
-	if locus < 4:
+	if locus in dict_vgerm_db.keys():
 		library = dict_vgerm_db[locus]
 	elif not os.path.isfile(library):
 		print "Can't find custom V gene library file!"
 		sys.exit(1)
 
+	handle = open( "%s/gene_locus.txt" % folder_tree.internal, "w")
+	handle.write( "%s\n%s\n" % (locus, library) )
+	handle.close()
 
 	main()
 

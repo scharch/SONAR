@@ -8,19 +8,10 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-blast-finalize-assignments.py -locus <0|1|2|3|4>
-                                          -vlib path/to/v-library.fa
-					  -jlib path/to/j-library.fa
-					  -h
+Usage:  1.3-blast-finalize-assignments.py [ -h ]
 
-    All options are optional, see below for defaults.
+    This script takes no input options.
     Invoke with -h or --help to print this documentation.
-
-    locus	0: (DEFAULT) heavy chain (will look for D, as well)
-                1: kappa chain
-		2: lambda chain
-                3: kappa OR lambda
-		4: custom library (supply -vlib and -jlib)
 
 Created by Chaim A Schramm on 2013-07-05
 Edited and commented for publication by Chaim A Schramm on 2015-02-25.
@@ -367,25 +358,17 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
-	#get parameters from input
-	dict_args = processParas(sys.argv, locus="locus", vlib ="vlib", jlib="jlib")
-	locus, vlib, jlib = getParasWithDefaults(dict_args, dict(locus=0, vlib="", jlib=""), "locus", "vlib", "jlib")
-
-	#load libraries
-	if locus < 4:
-		vlib = dict_vgerm_db[locus]
-		jlib = dict_jgerm_db[locus]
-	elif not os.path.isfile(vlib):
-		print "Can't find custom V gene library file!"
-		sys.exit(1)
-	elif not os.path.isfile(jlib):
-		print "Can't find custom J gene library file!"
-		sys.exit(1)
-
-	dict_v    =  load_fastas(vlib)
-	dict_j    =  load_fastas(jlib)
 
 	prj_tree  = ProjectFolders(os.getcwd())
 	prj_name  = fullpath2last_folder(prj_tree.home)
+
+	#load saved locus and library information
+	handle = open( "%s/gene_locus.txt" % folder_tree.internal, "rU")
+	locus = handle.readline().strip()
+	vlib  = handle.readline().strip()
+	jlib  = handle.readline().strip()
+
+	dict_v    =  load_fastas(vlib)
+	dict_j    =  load_fastas(jlib)
 
 	main()

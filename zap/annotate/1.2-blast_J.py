@@ -9,20 +9,20 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       of the J gene. Will also try to assign the D gene if relevant and the 
       constant region class. 
 
-Usage: 1.2-blast-J_assignment.py -locus <0|1|2|3|4>
-                                 -lib  path/to/j-library.fa
+Usage: 1.2-blast-J_assignment.py -lib  path/to/j-library.fa
                                  -dlib path/to/d-library.fa
 				 -clib path/to/c-library.fa
 				 -h
 
-    All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
 
-    locus	0: (DEFAULT) heavy chain (will look for D, as well)
-                1: kappa chain
-		2: lambda chain
-                3: kappa OR lambda
-		4: custom library (supply -lib and optionally -dlib/-clib)
+    lib 	fasta file containing germline J gene sequences. Required only
+                     if "-locus C" was specificied to 1.1-blast-V_assignment.py;
+		     otherwise the program will use the default libraries.
+    dlib 	Optional fasta file containing germline D gene sequences, for 
+                     custom libraries.
+    clib 	Optional fasta file containing CH1 gene sequences, for custom
+                     libraries.
 
 Created by Zhenhai Zhang on 2011-04-14.
 Modified by Chaim A Schramm 2013-07-03 to include j assignment.
@@ -145,22 +145,34 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	#get parameters from input
-	dict_args = processParas(sys.argv, locus="locus", library="library", dlib="dlib", clib="const_lib")
-	locus, library, dlib, const_lib = getParasWithDefaults(dict_args, dict(locus=0, library="", dlib="", const_lib=""), "locus", "library", "dlib", "const_lib")
+	dict_args = processParas(sys.argv, lib="library", dlib="dlib", clib="const_lib")
+	library, dlib, const_lib = getParasWithDefaults(dict_args, dict(library="", dlib="", const_lib=""), "library", "dlib", "const_lib")
 
-	#load library
-	if locus < 4:
-		library = dict_jgerm_db[locus]
-		if locus == 0:
-			dlib = DH_DB
-			const_lib = CH_DB
-	elif not os.path.isfile(library):
-		print "Can't find custom J gene library file!"
-		sys.exit(1)
-
+	
 	prj_tree        = ProjectFolders(os.getcwd())
 	prj_name        = fullpath2last_folder(prj_tree.home)
 
+
+	#load saved locus information
+	handle = open( "%s/gene_locus.txt" % folder_tree.internal, "a+U")
+	locus = handle.readline().strip()
+
+	# we'll keep custom libraries even for a default locus (maybe someone wants to use an updated set of D alleles?)
+	if not os.path.isfile(library):
+		if locus in dict_jgerm_db.keys():
+			library = dict_jgerm_db[locus]
+		else:
+			print "Can't find custom J gene library file!"
+			sys.exit(1)
+	if locus == "H":
+		if not os.path.isfile(dlib)     : dlib = DH_DB
+		if not os.path.isfile(const_lib): const_lib = CH_DB
+
+	# save J/D/C library locations for next step
+	handle.write("%s\n" % library)
+	handle.write("%s\n" % dlib)
+	handle.write("%s\n" % const_lib)
+	handle.close()
 
 	main()
 

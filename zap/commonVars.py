@@ -64,17 +64,17 @@ DH_DB   = "%s/db/germline/IgHD.fa"  %HOME_FOLDER
 CH_DB	= "%s/db/germline/IgHC_CH1.fa" %HOME_FOLDER
 
 dict_vgerm_db = {
-	0: VH_DB,
-	1: VK_DB,
-	2: VL_DB,
-	3: VKL_DB
+	H  : VH_DB,
+	K  : VK_DB,
+	L  : VL_DB,
+	KL : VKL_DB
 }
 
 dict_jgerm_db = {
-	0: JH_DB,
-	1: JK_DB,
-	2: JL_DB,
-	3: JKL_DB,
+	H  : JH_DB,
+	K  : JK_DB,
+	L  : JL_DB,
+	KL : JKL_DB,
 }
 
 
@@ -83,7 +83,7 @@ GERM_HEAVY_AA	= "%s/db/germline/IgHV_protein.fasta" %HOME_FOLDER
 NAT_HEAVY_AA	= "%s/db/native/vrc_IgHV_protein.fasta" %HOME_FOLDER
 
 
-ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs"]
+ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs"]
 
 
 #

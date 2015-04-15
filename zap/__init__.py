@@ -123,9 +123,10 @@ class ProjectFolders:
 		self.out   = "%s/output"  %  proj_home
 
 		#working folders
-		self.blast   = "%s/1-blast"     %  self.work
-		self.clustal = "%s/2-clustal"   %  self.work
-		self.phylo   = "%s/3-phylogeny" %  self.work
+		self.blast    = "%s/1-blast"     %  self.work
+		self.clustal  = "%s/2-clustal"   %  self.work
+		self.phylo    = "%s/3-phylogeny" %  self.work
+		self.internal = "%s/internal"    %  self.work
 
 		#second-level
 		self.vgene   = "%s/vgene"       %  self.blast
@@ -637,9 +638,9 @@ def load_fastas(f):
 	reader, result = SeqIO.parse(open(f, "rU"), "fasta"), dict()
 
 	for entry in reader:
-		myseq = MySeq(entry.id, entry.seq)
-		myseq.desc = entry.description
-		result[entry.id] = myseq
+		#myseq = MySeq(entry.id, entry.seq)
+		#myseq.desc = entry.description
+		result[entry.id] = entry
 	
 	return result
 
