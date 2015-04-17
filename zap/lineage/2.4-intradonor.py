@@ -1,225 +1,370 @@
-#!/usr/bin/env python
-# encoding: utf-8
+#!/usr/bin/python
+
 """
-1.55-cross_donor_single_script_versionCAS.py -l is_light -npf num_per_file -g germline_gene -a use_all
+2.4-lineage-intradonor.py
+
+This script uses an iterative phylogenetic analysis to find sequences related
+      to a set of known antibodies. Preprocessed sequences (including optional
+      filtering by assigned germline) are split into groups of 250 and used to
+      together with known sequences to build neighbor-joining trees rooted on
+      the germline V gene of the known antibodies. Sequences in the minimum
+      sub-tree spanning all of the known sequences are passed forward into the
+      next iteration. The algorithm is considered to have converged when 95%
+      of the input sequences in a round are in the minimum sub-tree.
+
+This script has an option to run the analysis as a cluster job, in which case
+      2,500 sequences will be processed in each group.
+
+This algorithm is generally intended to find somatically related antibodies
+      from a single lineage within a single donor. However, in the special
+      case of VRC01 class antibodies, we have shown that exogenous VRC01 class
+      heavy chains can be used for "cross-donor" analysis to identify a 
+      lineage of VRC01 class antibodies within a new donor. See, eg:
+      * Wu, Zhou, Zhu et al. Science (2011) doi: 10.1126/science.1207532
+      * Zhu et al PNAS (2013) doi: 10.1073/pnas.130626211
+      * Wu, Zhang, Schramm, Joyce, Do Kwon, Zhou, Sheng, et al. Cell (2015)
+                                               doi: 10.1016/j.cell.2015.03.004
+      It is unknown at this time whether this method would work for other
+      classes of antibodies.
+
+Usage: 2.4-lineage-intradonor.py -n native.fa -v germline_V
+                                 [-locus <H|K|L|C> -lib path/to/library.fa
+				  -i custom/input.fa -maxIters 10
+				  -nofilter -a -cluster -h -f]
+
+    Invoke with -h or --help to print this documentation.
+
+    Required parameters:
+    n		Fasta file containing the known sequences.
+    v		Assigned germline V gene of known antibodes, for use in 
+                   rooting the trees.
+
+    Optional parameters:	   
+    locus	H (default): use V heavy / K: use V kappa / L: use V lambda /
+                   C: use a custom germline V library (specify -lib).
+		   PLEASE NOTE: This algorithm is not generally recommended
+		   for analyzing light chain sequences.
+    lib		Optional custom germline library (eg Rhesus or Mouse).
+                   Ignored unless "-locus C" is used.
+    i		Optional custom set of sequences to be analayzed. "-nofilter"
+                   and "-a" flags will be ignored if this option is used.
+    maxIters	Optional maximum number of rounds to conduct before giving up.
+                   Default = 10.
+
+    Optional flags:
+    nofilter	Do NOT filter NGS sequences for correct germline V gene
+                   assignment. Default = OFF (DO filter).
+    a		Use all NGS sequences with an assigned V, even those with
+                   out-of frame junctions and/or stop codons or without a 
+		   successfuly assigned J gene. Default = OFF (use in-frame
+		   ORF sequences only).
+    cluster	Submit tree-building jobs to the cluster.
+    f		Force a restart of the analysis, even if there are files from
+                   a previous run in the working directory.
 
 Created by Zhenhai Zhang on 2011-07-12.
-Modified to compress into a single script and many updates by Chaim A Schramm 2014-01-09.
-Copyright (c) 2011,2014 Columbia University Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Modified to compress into a single script and many updates by 
+        Chaim A Schramm 2014-01-09.
+Edited and commented for publication by Chaim A Schramm on 2015-04-14.
 
-Usage: 1.55-cross_donor_single_script_versionCAS.py -l is_light -npf num_per_file -g germline_gene -a use_all
-
-'use_all' specifies to start with the 5trim file rather than the VDJtrim
+Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
+                         Institutes of Health, USA. All rights reserved.
 
 """
-import sys, os
-from mytools import *
-import dendropy
 
-# zhenhai 
+import time, sys
 
-# mock variables, need to be masked after debugging
-#HOME_FOLDER = os.getcwd()
-#HOME_FOLDER = "%s/tmp" %HOME_FOLDER
+#assume that we haven't necessarily set the path variables on the cluster
+find_ZAP_on_cluster = sys.argv[0].split("zap")
+sys.path.append("%szap" % find_ZAP_on_cluster[0])
 
-
-# *** Zhenhai added the following block for dendropy:  2011-12-07
-def contains_all_native(leafs):
-	return len(leafs.intersection(native_set)) == native_len 
-
-def retrieve_all_segregated(mytree):
-	vrc01 = mytree.find_node_with_taxon_label(DICT_PHYLO_NITIVES[is_light][0])
-	
-	leaf_taxons = set()
-	parent_node = vrc01.parent_node
-	while parent_node != None:
-		leafs = parent_node.leaf_nodes()
-		leaf_taxons = set([str(leaf.taxon) for leaf in leafs])
-		if contains_all_native(leaf_taxons):
-			break
-		else:
-			parent_node = parent_node.parent_node
-	
-	#leaf_taxons = leaf_taxons.difference(native_set)
-	leaf_taxons -= (native_set | set([germline_gene])) #need to remove germline for rare cases where the root node is multifurcated
-	
-	return leaf_taxons
-
-
-def write_phylo_pbs(f):
-	head = "PHY%05d" %f
-
-	#make sure neighbor prompts us for output files
-	os.system("touch outfile")
-	os.system("touch outdir")
-
-        #write a script for neighbor
-	neighbor = open("%s/%s.in"%(prj_tree.clustal_fasta, head), "w")
-        neighbor.write("%s/PHY%05d.mat\n"%(prj_tree.clustal_fasta,f))
-        neighbor.write("F\n")
-        neighbor.write("%s.out\n"%head)
-        neighbor.write("2\n")
-        neighbor.write("Y\n")
-        neighbor.write("F\n")
-        neighbor.write("%s.dnd\n"%head)
-        neighbor.close()
-
-
-	pbs_file = "%s/%s.sh" %(prj_tree.clustal_pbs, head)
-	handle = open(pbs_file, "w")
-	handle.write("#!/bin/bash\n")
-	handle.write("#$ -N %s\n" %head)
-	handle.write("#$ -l mem=4G,time=10:00:00\n")
-	handle.write("#$ -cwd\n")
-	handle.write("/ifs/home/c2b2/bh_lab/cs3037/bin/clustalo-1.1.0-linux-64 -i %s/%s.fa -o %s/%s.aln --distmat-out=%s/%s.mat --full\n" %(prj_tree.clustal_fasta, head, prj_tree.clustal_fasta, head, prj_tree.clustal_fasta, head))
-	#handle.write("/ifs/home/c2b2/bh_lab/shares/clustalw/clustalw-2.0.10-linux-i386-libcppstatic/clustalw2 -infile=%s/%s -align -tree -outputtree=nj\n" %(prj_tree.clustal_fasta, f))
-	handle.write("/ifs/home/c2b2/bh_lab/cs3037/bin/neighbor < %s/%s.in"%(prj_tree.clustal_fasta,head))
-	handle.close()
-	return pbs_file
-
-
-def get_smallest_subtree_non_natives(trees):
-	for tree in trees:
-		if len(tree) < native_len:
-			pass;
-		else:
-			set_tree = set(tree)
-			if len(set_tree & native_set) == native_len:
-				return set_tree - native_set
-	return None
-
-def split_ids(l, num):
-	llen = len(l)
-	starts = range(0, llen, num)
-
-	for start in starts:
-		end = start + num
-		yield set(l[start: end])
-
+from cStringIO import StringIO
+from zap.lineage import *
+from Bio import Phylo
+from Bio.Align.Applications import MuscleCommandline
 
 
 
 def main():
-	global num_per_file, done
-	# parse dnd file and get all reads clustered with native antibodies
-	dnd_files, total, set_reads = sorted(glob.glob("%s/PHY*.dnd" %prj_tree.clustal_fasta)), 0, set()
-	if len(dnd_files) > 0:
 
-		#added 20120928 by CAS to handle allele wildcard characters
-		os.system("perl -i -pe \"s/%s/'%s'/\" %s/PHY*.dnd" %(germline_gene.replace("*","\*"), germline_gene, prj_tree.clustal_fasta))
-	
-		# Zhenhai added the following block for dendropy:  2011-12-07
-		for dnd_file in dnd_files:
-			print "processing %s..." %dnd_file,
-			tree = dendropy.Tree.get_from_path(dnd_file, "newick")
-	
-			outgroup_node = tree.find_node_with_taxon_label(germline_gene)
-			tree.reroot_at_node(outgroup_node.parent_node)
-			
-			leaf_set = retrieve_all_segregated(tree)
+	global npf, converged, maxIters, cluster, force, num_nats, correct_V_only, germlineV, germ_seq, inFile, natFile, locus, library
+	currentIter = 0
+
+	# master loop
+	while not converged:
 		
-			set_reads = set_reads | leaf_set
-			total += len(leaf_set)
+		# parse tree files and get all reads clustered with native antibodies
+		# start total at 1 so good/total < .95 when we start a new analysis
+		tree_files, good, total, retained_reads = sorted(glob.glob("%s/NJ*.tree" %prj_tree.clustal)), 0.0, 1.0, []
+								 
+		if force:
+			tree_files = [] #no need to process the files since we will be starting over
+			force = False #turn it off so we don't get stuck in an infinite loop of restarts
+
+	        #this gets skipped in the first round
+		for tf in tree_files:
 			
-			if done: #kind of slow and no need to check if we've already proven it wrong
-				all_taxons = set([str(leaf.taxon) for leaf in tree.leaf_nodes()])
-				if len(leaf_set) < len(all_taxons) - len(native_set) - 1:
-					done = False #some sequences were outside the subtree, so we haven't converged
+		        #read in the tree as a string
+			tree_string = open(tf, "rU").read().strip()
+			
+			#get rid of possible negative branch lengths and then parse
+			tree_string, num = re.subn(":-\d+\.\d+",":0", tree_string)
+			tree_string, num = re.subn("\n","", tree_string)
+			tree = Phylo.read(StringIO(tree_string), "newick")
 
-			print "current: %d; total %d" %(len(leaf_set), total)
-	
-		all_reads = list(set_reads)
-		if len(all_reads) == 0:
-			print "NO positive sequences found --stopped!"
-			sys.exit(0)
+			
+			#outgroup root the tree on the germline
+			try:
+				germ_node = tree.find_clades(germlineV).next()
+			except StopIteration:
+				sys.exit( "Can't find germline gene %s in file %s" % (germlineV, tf) )
+			tree.root_with_outgroup(germ_node)
 
-	if (len(dnd_files) == 0) or (not done):
 
-		infasta = "%s/%s_VJtrim.fa" %(prj_tree.filtered, prj_name)
-		if use_all > 0:
-			infasta = "%s/%s_5trim.fa" %(prj_tree.filtered, prj_name)
+			# start by finding one of the natives
+			try:
+				nat1 = tree.find_clades(natives_list[0]).next()
+			except StopIteration:
+				sys.exit( "Can't find native antibody %s in file %s" % (natives_list[0], tf) )
 
-		if len(dnd_files) == 0:
-			print "No DND files found, starting a new XD analysis from scratch..."
-			dict_reads = load_fasta_dict(infasta)
-			all_reads = dict_reads.keys()
+				
+			#walk up the tree from this starting point until we find the minimum sub-tree with all natives
+			path_to_nat1 = tree.get_path(nat1)
+			level = -2
+			subtree = path_to_nat1[level]
+			all_leaves = [node.name for node in subtree.get_terminals()]
+			try:
+				while not all( [ nat in all_leaves for nat in natives_list ] ):
+					level -= 1
+					subtree = path_to_nat1[level]
+					all_leaves = [node.name for node in subtree.get_terminals()]
+			except IndexError:
+				sys.exit( "Can't find a subtree with all native sequences in file %s" % tf )
+		
+				
+			# save sequences in subtree and print progress message
+			retained_reads += all_leaves
+			good += len(all_leaves) - num_nats
+			total += len(tree.get_terminals()) - num_nats - 1 #also don't count germline
+			#print "Found %d reads in subtree. Total saved: %d / %d" % ( len(all_leaves)-num_nats, good, total-1)
+
+
+		# processed all trees from last round, now do a sanity check
+		if good == 0 and len(tree_files) > 0:
+			sys.exit( "NO positive sequences found --stopped!" )
+
+		
+		# Are we starting a new run? If not, limit memory usage by only reading in the retained reads
+		read_dict = dict()
+		if len(tree_files) == 0:
+			print "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S")
+			if correct_V_only:
+				read_dict = load_fastas_with_Vgene( inFile, germlineV )
+			else:
+				read_dict = load_fastas( inFile )
 		else:
-			dict_reads = load_fastas_in_set(infasta, all_reads)
-	
-		print "Read per file: %d!" %num_per_file
-	
-		# delete all previous pbs jobs in the prj/3-clustal/pbs
-		os.chdir(prj_tree.clustal_pbs)
-		infiles = glob.glob("*.sh")
-		for infile in infiles:
-			os.remove(infile)
-		
-		# delete all previous fasta files in the prj/3-clustal/fasta
-		os.chdir(prj_tree.clustal_fasta)
-		os.system("mkdir -p archives")
-		oldFiles = glob.glob("archives/*")
-		for old in oldFiles:
-			os.remove(old)
-		lastRound = glob.glob("PHY*")
-		for infile in lastRound:
-			os.rename(infile,"archives/%s"%infile)
-	
-	
-		# randomize and output
-		random.shuffle(all_reads)
-		for f_ind, ids_set in enumerate(split_ids(all_reads, num_per_file)):
-			outfile = "PHY%05d.fa" %f_ind
-			handle = open(outfile, "w")
-		
-			# write native antibodies
-			for myseq in natives:
-				handle.write(">%s\n" %myseq.seq_id)
-				handle.write("%s\n" %myseq.seq)
-		
-			for read in ids_set:
-				handle.write(">%s\n" %dict_reads[read].description)
-				handle.write("%s\n" %dict_reads[read].seq.tostring())
-		
-			handle.close()
+			read_dict = load_seqs_in_dict( inFile, retained_reads )
+		#randomize the order
+		shuffled_reads = read_dict.values()
+		random.shuffle(shuffled_reads)
+			
+		# Check for convergence before starting a new round
+		if good/total < 0.95:
+			
+			if currentIter >= maxIters:
+				sys.exit( "Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (good, good/total) )
+			else:
+				if len(tree_files) > 0: 
+					#it's a silly message to print the first time through
+					print "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total)
+				currentIter +=1
 
-			# write qsub script and que the job, then sleep for couple second
-			pbs_file = write_phylo_pbs(f_ind)
-			os.system("qsub %s" %pbs_file)
+
+			#do some cleanup
+			oldFiles = glob.glob("%s/*" % prj_tree.last)
+			for old in oldFiles:
+				os.remove(old)
+			lastRound = glob.glob("%s/NJ*" % prj_tree.clustal)
+			for infile in lastRound:
+				os.rename( infile, "%s/%s" % (prj_tree.last, os.path.basename(infile)) )
+					
+			#open initial output
+			f_ind = 1
+			outFasta = open("%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), "w")
+			currentSize = 0
+			
+			#process reads
+			for r in shuffled_reads:
+
+				outFasta.write(">%s\n%s\n" % (r.id, r.seq))
+				currentSize += 1
+					
+				#reached max size for this split?
+				if currentSize == npf:
+
+					#add native and germline sequences before closing file
+					outFasta.write( ">%s\n%s\n" % (germ_seq.id, germ_seq.seq) )
+					for n in natives.values():
+						outFasta.write( ">%s\n%s\n" % (n.id, n.seq) )
+					outFasta.close()
+					if not cluster:
+						run_muscle            = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), out="%s/NJ%05d.aln" % (prj_tree.clustal, f_ind) )
+						run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.clustal, f_ind)
+						run_muscle.cluster1   = "neighborjoining"
+						run_muscle.maxiters   = 1
+						thisVarHidesTheOutput = run_muscle()
+						if f_ind % 25 == 0: print "%s - Finished %dth file of %d in this round..." % (time.strftime("%H:%M:%S"), f_ind, len(shuffled_reads)/npf + 1)
+					f_ind += 1
+					outFasta = open("%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), "w")
+					currentSize = 0
+
+			#Any leftovers?
+			if currentSize > 0:
+				outFasta.write( ">%s\n%s\n" % (germ_seq.id, germ_seq.seq) )
+				for n in natives.values():
+					outFasta.write( ">%s\n%s\n" % (n.id, n.seq) )
+				outFasta.close()
+			
+				if not cluster:
+					run_muscle = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), out="%s/NJ%05d.aln" % (prj_tree.clustal, f_ind) )
+					run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.clustal, f_ind)
+					run_muscle.cluster1   = "neighborjoining"
+					run_muscle.maxiters   = 1
+					thisVarHidesTheOutput = run_muscle()
+			else:
+				outFasta.close()
+				f_ind -= 1 #don't submit an empty file to the cluster
+
+				
+			# At this point, if we are running on the cluster, submit this round and quit loop
+			if cluster:
+				# write pbs files and auto submit shell script
+				command = "NUM=`printf \"%%05d\" $SGE_TASK_ID`\n%s -in %s/NJ$NUM.fa -out %s/NJ$NUM.aln -cluster1 neighborjoining -maxiters 1 -tree1 %s/NJ$NUM.tree" % \
+				    (cluster_muscle, prj_tree.clustal, prj_tree.clustal, prj_tree.clustal)
+				pbs = open("%s/intradonor.sh" % prj_tree.clustal, 'w')
+				pbs.write( PBS_STRING%(f_ind, "%s-intradonor"%prj_name, "500M", "10:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.clustal, prj_tree.clustal)) )
+				pbs.close()
+
+				# write a second PBS job to restart this script once muscle has finished
+				next_round = open("%s/nextround.sh" % prj_tree.clustal, 'w')
+				next_round.write( "\
+#!/bin/bash\n\
+#$ -hold_jid %s-intradonor\t\t# run once previous round has completed\n\
+#$ -N restart-intradonor\t\t# job name\n\
+#$ -l mem=1G,time=1:00:00\t\t# resource requests\n\
+#$ -cwd\t\t\t\t\t# use current directory\n\
+#$ -o %s/restart-intradonor.out\t#output\n\
+#$ -e %s/restart-intradonor.err\t#error\n\
+%s/lineage/2.4-intradonor.py -n %s -v %s -locus %s -lib %s -i %s -maxIters %d -cluster\n" % 
+						  (prj_name, prj_tree.clustal, prj_tree.clustal, ZAP_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
+				next_round.close()
+
+				os.system("qsub %s/intradonor.sh" % prj_tree.clustal)
+				os.system("qsub %s/nextround.sh"  % prj_tree.clustal)
+				break #exits "while not converged" loop
 
 		
-	elif done:
-		output = open("%s/cross-donor-positives.txt"%prj_tree.data, "w")
-		for read in all_reads:
-			output.write("%s\n"%read)
-		output.close()
-		print "Tree has converged with %d reads! Output in analysis/data...\n" % len(all_reads)
+		# If we have converged, write final output
+		else:
+			out_list = open("%s/%s_intradonor_positives.txt" % (prj_tree.tables, prj_name), "w")
+			out_nt   = open("%s/%s_intradonor_positives.fa"  % (prj_tree.nt, prj_name),     "w")
+			out_aa   = open("%s/%s_intradonor_positives.fa"  % (prj_tree.aa, prj_name),     "w")
+			
+			for r in read_dict.values():
+				out_list.write( ">%s\n%s\n" % (r.id, r.seq) )
+				out_nt.write( ">%s\n%s\n" % (r.id, r.seq) )
+				out_aa.write( ">%s\n%s\n" % (r.id, r.seq.translate()) )
+				
+			out_list.close()
+			out_nt.close()
+			out_aa.close()
+			
+			print "Tree has converged with %d reads!" % good
+			converged = True
 
 	
 
 if __name__ == '__main__':
 
-	# get parameters from input
-	if len(sys.argv) < 9 :
+	#check if I should print documentation
+	q = lambda x: x in sys.argv
+	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
 		print __doc__
 		sys.exit(0)
 
-	dict_args = processParas(sys.argv, l="is_light", npf="num_per_file", g="germline_gene", a="use_all")
-	is_light, num_per_file, germline_gene, use_all = getParas(dict_args, "is_light", "num_per_file", "germline_gene", "use_all")
+
+	#check forcing parameter
+	force = False
+	flag = [x for x in ["f", "-f", "--f", "force", "-force", "--force"] if q(x)]
+	if len(flag)>0:
+		sys.argv.remove(flag[0])
+		force = True
 
 
 	prj_tree 	= ProjectFolders(os.getcwd())
 	prj_name 	= fullpath2last_folder(prj_tree.home)
-	nat_db		= dict_nat_db[is_light]
-	
-	natives		= load_list_fastas(nat_db, DICT_PHYLO_NITIVES[is_light])
-	
-	#added by CAS 2012/09/28
-	natives.append(get_germline(germline_gene, is_light))
 
-	native_set	= set(DICT_PHYLO_NITIVES[is_light])
-	native_len  = len(DICT_PHYLO_NITIVES[is_light])
 
-	done = True #keep track of convergence; if this is still true after processing all files, we have converged
-	
+	#check filtering parameter
+	correct_V_only = True
+	flag = [x for x in ["nof", "-nof", "--nof", "nofilter", "-nofilter", "--nofilter"] if q(x)]
+	if len(flag)>0:
+		sys.argv.remove(flag[0])
+		correct_V_only = False
+
+	#check sequence quality parameter
+	selectedFile = "%s/%s_goodVJ.fa" % (prj_tree.nt, prj_name)
+	flag = [x for x in ["a", "-a", "--a", "all", "-all", "--all"] if q(x)]
+	if len(flag)>0:
+		sys.argv.remove(flag[0])
+		selectedFile = "%s/%s_allV.fa" % (prj_tree.nt, prj_name)
+
+	#check cluster parameter
+	cluster = False
+	npf = 250
+	flag = [x for x in ["c", "-c", "--c", "cluster", "-cluster", "--cluster"] if q(x)]
+	if len(flag)>0:
+		sys.argv.remove(flag[0])
+		cluster = True
+		npf = 2500
+
+	#get the parameters from the command line
+	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", maxIters="maxIters")
+	defaults = dict(locus="H", library="", inFile=selectedFile, maxIters=10)
+	natFile, germlineV, locus, library, inFile, maxIters = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile", "maxIters")
+
+	if natFile is None or germlineV is None:
+		print __doc__
+		sys.exit(0)
+
+	#load native sequences
+	natives       =  load_fastas(natFile)
+	natives_list  =  natives.keys()
+	num_nats       =  len(natives_list) + 1
+
+
+	converged = False #keep track of convergence when running locally
+
+
+	#load germline sequence
+	if not os.path.isfile(library):
+		if locus in dict_vgerm_db.keys():
+			library = dict_vgerm_db[locus]
+		else:
+			print "Can't find custom V gene library file!"
+			sys.exit(1)
+
+	if inFile != selectedFile:
+		correct_V_only = False # Designation of custom starting sequences overrides the -a flag to prevent errors.
+		                       # Please do your own filtering if you are using this option.
+
+	germ_dict = load_fastas(library)
+	try:
+		germ_seq = germ_dict[germlineV]
+	except:
+		print "Specified germline gene (%s) is not present in the %s library!\n" % (germlineV, library)
+		sys.exit(1)
+		
+
 	main()
 

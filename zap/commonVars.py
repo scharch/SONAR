@@ -40,11 +40,12 @@ v_pattern = re.compile("V_gene=(IG.*?)[,| ]")
 #
 
 HOME_FOLDER    = "/ifs/scratch/c2b2/ls_nih/cs3037"
+ZAP_FOLDER     = "/ifs/home/c2b2/ls_nih/cs3037/scripts/zap/zap"
 clustalw       = "/ifs/home/c2b2/bh_lab/shares/clustalw/clustalw-2.0.10-linux-i386-libcppstatic/clustalw2"
 clustal	       = "/ifs/home/c2b2/bh_lab/cs3037/bin/clustalo-1.1.0-linux-64"
 blastclust_cmd = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust"
 blastall_cmd   = "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastall"
-
+cluster_muscle = "/ifs/home/c2b2/bh_lab/shares/muscle/muscle"
 
 #assert os.path.isfile(clustal), "Clustal W missing"
 
@@ -64,17 +65,17 @@ DH_DB   = "%s/db/germline/IgHD.fa"  %HOME_FOLDER
 CH_DB	= "%s/db/germline/IgHC_CH1.fa" %HOME_FOLDER
 
 dict_vgerm_db = {
-	H  : VH_DB,
-	K  : VK_DB,
-	L  : VL_DB,
-	KL : VKL_DB
+	'H'  : VH_DB,
+	'K'  : VK_DB,
+	'L'  : VL_DB,
+	'KL' : VKL_DB
 }
 
 dict_jgerm_db = {
-	H  : JH_DB,
-	K  : JK_DB,
-	L  : JL_DB,
-	KL : JKL_DB,
+	'H'  : JH_DB,
+	'K'  : JK_DB,
+	'L'  : JL_DB,
+	'KL' : JKL_DB,
 }
 
 
@@ -83,7 +84,7 @@ GERM_HEAVY_AA	= "%s/db/germline/IgHV_protein.fasta" %HOME_FOLDER
 NAT_HEAVY_AA	= "%s/db/native/vrc_IgHV_protein.fasta" %HOME_FOLDER
 
 
-ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs"]
+ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "work/2-clustal/last_round", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs"]
 
 
 #

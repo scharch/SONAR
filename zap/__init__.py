@@ -118,29 +118,30 @@ class ProjectFolders:
 	
 	def __init__(self, proj_home):
 
-		self.home  = proj_home
-		self.work  = "%s/work"    %  proj_home
-		self.out   = "%s/output"  %  proj_home
+		self.home       = proj_home
+		self.work       = "%s/work"        %  proj_home
+		self.out        = "%s/output"      %  proj_home
 
 		#working folders
-		self.blast    = "%s/1-blast"     %  self.work
-		self.clustal  = "%s/2-clustal"   %  self.work
-		self.phylo    = "%s/3-phylogeny" %  self.work
-		self.internal = "%s/internal"    %  self.work
+		self.blast      = "%s/1-blast"     %  self.work
+		self.clustal    = "%s/2-clustal"   %  self.work
+		self.phylo      = "%s/3-phylogeny" %  self.work
+		self.internal   = "%s/internal"    %  self.work
 
 		#second-level
-		self.vgene   = "%s/vgene"       %  self.blast
-		self.jgene   = "%s/jgene"       %  self.blast
+		self.vgene      = "%s/vgene"       %  self.blast
+		self.jgene      = "%s/jgene"       %  self.blast
+		self.last       = "%s/last_round"  %  self.clustal
 
 		#output
-		self.seq     = "%s/sequences"   %  self.out
-		self.tables  = "%s/tables"      %  self.out
-		self.plots   = "%s/plots"       %  self.out
-		self.logs    = "%s/logs"        %  self.out
+		self.seq        = "%s/sequences"   %  self.out
+		self.tables     = "%s/tables"      %  self.out
+		self.plots      = "%s/plots"       %  self.out
+		self.logs       = "%s/logs"        %  self.out
 		
 		#second-level
-		self.aa      = "%s/amino_acid"  %  self.seq
-		self.nt      = "%s/nucleotide"  %  self.seq
+		self.aa         = "%s/amino_acid"  %  self.seq
+		self.nt         = "%s/nucleotide"  %  self.seq
 
 
 #
@@ -508,7 +509,7 @@ def load_seqs_in_dict(f, ids):
 	result = dict()
 	for entry in SeqIO.parse(open(f, "rU"), "fasta"):
 		if entry.id in ids:
-			result[entry.id] = MySeq(entry.id, entry.seq)
+			result[entry.id] = entry
 			
 	return result
 	
@@ -608,7 +609,7 @@ def load_fastas_with_Vgene(f, v):
 	print "loading reads from %s assigned to %s..." %(f,v)
 	reader, dict_reads = SeqIO.parse(open(f, "rU"), "fasta"), dict()
 	for entry in reader:
-		if entry.description.split()[1].startswith(v):
+		if re.search(v, entry.description):
 			dict_reads[entry.id] = entry
 
 	print "%d loaded..." %len(dict_reads)
@@ -674,10 +675,7 @@ def generate_read_fasta(f):
 	
 	reader = SeqIO.parse(open(f, "rU"), "fasta")
 	for entry in reader:
-		entry.seq = fix_N(entry.seq.tostring().upper())
-		myseq = MySeq(entry.id, entry.seq)
-		myseq.desc = entry.description
-		yield myseqclu
+		yield entry
 
 
 def generate_read_fasta_folder(type=1):

@@ -137,7 +137,7 @@ if __name__ == '__main__':
 
 	# get parameters from input
 	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library")
-	min_len, max_len, locus, use_qual, library = getParasWithDefaults(dict_args, dict(min_len=300, max_len=600, use_qual=0, locus=0, library=""), "min_len", "max_len", "locus", "use_qual", "library")
+	min_len, max_len, locus, use_qual, library = getParasWithDefaults(dict_args, dict(min_len=300, max_len=600, use_qual=0, locus='H', library=""), "min_len", "max_len", "locus", "use_qual", "library")
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()
