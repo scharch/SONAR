@@ -154,7 +154,7 @@ if __name__ == '__main__':
 
 
 	#load saved locus information
-	handle = open( "%s/gene_locus.txt" % folder_tree.internal, "a+U")
+	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "a+")
 	locus = handle.readline().strip()
 
 	# we'll keep custom libraries even for a default locus (maybe someone wants to use an updated set of D alleles?)
