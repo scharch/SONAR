@@ -113,7 +113,7 @@ def main():
 
 
 	#get raw seq stats from temp table
-	raw = csv.reader(open("%s/%s_temp_lookup.txt" % (prj_tree.vgene, prj_name),'rU'), delimiter=sep)
+	raw = csv.reader(open("%s/id_lookup.txt" % prj_tree.internal,'rU'), delimiter=sep)
 
 
 	raw_count, total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 0, 1
@@ -211,7 +211,7 @@ def main():
 					entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
-				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,dict_v[myV.sid].seq, v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), dict_j[myJ.sid].seq, myJ.sstart, myJ.qstart, myJ.gaps, entry.seq.tostring()) #min and max statments take care of switching possible minus strand hit
+				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,dict_v[myV.sid].seq.tostring(), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), dict_j[myJ.sid].seq.tostring(), myJ.sstart, myJ.qstart, myJ.gaps, entry.seq.tostring()) #min and max statments take care of switching possible minus strand hit
 				cdr3_seq = entry.seq[ cdr3_start : cdr3_end ]
 
 				#push the sequence into frame for translation, if need be
@@ -231,7 +231,7 @@ def main():
 				if len(cdr3_seq) % 3 != 0:
 					indel = "yes"
 				else: #even if cdr3 looks ok, might be indels in V and/or J
-					j_frame = 3 - ( (dict_j[myJ.sid].seq_len - myJ.sstart - 1) % 3 ) #j genes start in different frames, so caluclate based on end
+					j_frame = 3 - ( ( len(dict_j[myJ.sid].seq) - myJ.sstart - 1) % 3 ) #j genes start in different frames, so caluclate based on end
 					frame_shift = (v_len + myJ.qstart - 1) % 3
 					if (v_frame + frame_shift) % 3 != j_frame % 3:
 						indel = "yes"   #for gDNA we would probably want to distinguish between an out-of-frame recombination and sequencing in-dels in V or J
@@ -363,7 +363,7 @@ if __name__ == '__main__':
 	prj_name  = fullpath2last_folder(prj_tree.home)
 
 	#load saved locus and library information
-	handle = open( "%s/gene_locus.txt" % folder_tree.internal, "rU")
+	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "rU")
 	locus = handle.readline().strip()
 	vlib  = handle.readline().strip()
 	jlib  = handle.readline().strip()
