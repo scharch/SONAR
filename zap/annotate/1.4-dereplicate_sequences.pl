@@ -2,32 +2,52 @@
 # performing usearch for sequences
 use strict;
 
-if(@ARGV<1){die "Usage: usearch.pl\n This script performs two steps of clustering to remove sequences potentially containing sequencing errors. please install usearch v7 or higher verion. options\n\t-pp path of the usearch program\n\t-min1 minimun coverage of a read to be kept in the first step of clustering, default:2\n\t-min2 minimun coverage of a read to be kept in the seconde step of clustering, default:3\n\t-f sequence file\n\t-threads number of cpu cores to use. Default:1\n";}
+#########checking parameters#######
+my $usage="
+Usage:
+This script performs two steps of clustering to remove sequences potentially containing sequencing errors. please install usearch v7 or higher verion. 
+ options:
+ \t-pu\tpath of the usearch program
+ \t-min1\tminimun coverage of a read to be kept in the first step of clustering, default:2
+ \t-min2\tminimun coverage of a read to be kept in the seconde step of clustering, default:3
+ \t-f\tsequence file in fasta format
+ \t-t\tnumber of threads to run the script. Default:1
+Example:
+1.4-dereplicate_sequences.pl -pu usearch -min1 2 -min2 3 -f ./test.fa -t 5
 
+Created by Zizhang Sheng.
+
+Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+ ";
+foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
+if(@ARGV<1||@ARGV%2>0){die "Number of parameters are not right\n";
+ }
 my %para=@ARGV;
 if(!$para{'-min1'}){$para{'-min1'}=2;}
 if(!$para{'-min2'}){$para{'-min2'}=3;}
-if(!$para{'-pp'}){die "please give the correct path to usearch program\n";}
+if(!$para{'-pu'}){die "please give the correct path to usearch program\n";}
 if(!$para{'-f'}){die "no input seq file\n";}
-if(!$para{'-threads'}){$para{'-threads'}=1;}
-
+if(!$para{'-t'}){$para{'-t'}=1;}
+#########do calculation##########
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-i'},$para{'-c'});
 &changename($para{'-f'},$output);
-#####################
+
+
+########subrutines#############
 sub usearch{
     my ($file,$program,$id,$co)=@_;	
     my $file_out=$file;
-    $file_out=~s/\.fa//;	  	
+    $file_out=~s/\.fa.*//;	  	
     my %derep=();
 	  	my %final_good=();
-	  	system("$para{'-pp'} -derep_fulllength $file -threads $para{'-threads'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#> usearchlog.txt
-	  	system("$para{'-pp'} -sortbysize $file_out.nonredundant.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
-	  	system("$para{'-pp'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $id -sizein -sizeout -uc $file_out.cluster -centroids $file_out.unique.fa ");#-query_cov $co -target_cov $co> usearchlog.txt
+	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#> usearchlog.txt
+	  	system("$para{'-pu'} -sortbysize $file_out.nonredundant.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
+	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $id -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#-query_cov $co -target_cov $co> usearchlog.txt
 	  	%final_good=&derep("$file_out.cluster",$para{'-min2'},\%derep);
 	  	system("rm $file_out.nonredundant.fa");
 
 	  unlink "usearchlog.txt";
-	  return "$file_out.unique.fa";
+	  return "$file_out\_unique.fa";
 }
 
 
@@ -131,6 +151,11 @@ sub changename{
 		  print ZZ "$_";	
 		}
 	}
-	system("mv tempusearch.fa $seive");
+	if(-d "./output/sequences/nucleotide"){
+		system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
+	}
+	else{
+	  system("mv tempusearch.fa $seive");
+  }
 }
 

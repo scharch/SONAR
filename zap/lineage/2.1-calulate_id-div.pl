@@ -2,16 +2,32 @@
 use strict;
 use threads;
 # This script is used to calculate sequence identity between germline V, antibody gene and reads
-if(@ARGV%2>0||@ARGV==0){die "Usage: 2Didentity.pl 
-	-s readfile, if reads come from different germline V genes, the name of each read should contain a field saying it's germline V gene for somatic hypermutation calculation. Otherwise, no somatic hypermutation is calculated. fasta file output from pipeline is ok. For example, '>00000089 V_gene=IGHV1-2*02'. Please seperate '00000089 and 'V_gene' with space or tab.
-	-g germline V gene file 
-	-a fasta file has the sequence of interested antibody
-	-t threads, default:5
-	-npt number of sequences per thread. default:1000
-	-p protein or DNA sequence. default: DNA
-	-ap absolute path to the alignment program. muscle or clustalo or mafft. required. Based on our experience, muscle is ~2 fold faster than clustalo.
-	-usearch path to usearch program to remove duplicates in the read file. Optional.
-	\n";}
+my $usage="Usage: 
+This script is used to calculate sequence identity between germline V, antibody gene and reads or between antibody CDR3 and read CDR3.
+Options:
+	-f\tsequence file, if reads come from different germline V genes, the name of each read should 
+	  \tcontain a field saying it's germline V gene for somatic hypermutation calculation. Otherwise, no 
+	  \tsomatic hypermutation is calculated. fasta file output from pipeline is ok. For example, 
+	  \t'>00000089 V_gene=IGHV1-2*02'. Please seperate '00000089 and 'V_gene' with space or tab.
+	-g\tgermline V gene file, optional.
+	-a\tfasta file has the sequence of interested antibody. optional.
+	-t\tthreads, default:5
+	-npt\tnumber of sequences per thread. default:1000
+	-p\tprotein or DNA sequence. default: DNA
+	-ap\tabsolute path to the alignment program. muscle or clustalo or mafft. required. Based on our 
+	   \texperience, muscle is ~2 fold faster than clustalo.
+	-pu\tpath to usearch program to remove duplicates in the read file. Optional.
+  -CDR3\tWhether calculating sequence identity between CDR3s
+  
+Example:
+2.1-calculate_id-div.pl -f test.fa -g germline.fa -a antibody.fa -t 5 -npt 1000 -p DNA -ap muscle -pu usearch
+
+Created by Zizhang Sheng.
+
+Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.	
+ ";
+foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
+if(@ARGV%2>0||@ARGV==0){die "$usage"; }
 my %para=@ARGV;
 if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
@@ -19,7 +35,7 @@ if(!$para{'-ap'}){die "please select a program for sequence alignment\n";}
 if(!$para{'-g'}){warn "No calculation for hypermutation\n";}
 if(!$para{'-p'}){$para{'-p'}='DNA';}
 if($para{'-a'}&& ! -e $para{'-a'}){die "file $para{'-a'} doesn't exist. ):\n";}
-if($para{'-s'}&& ! -e $para{'-s'}){die "file $para{'-s'} doesn't exist. ):\n";}
+if($para{'-f'}&& ! -e $para{'-f'}){die "file $para{'-f'} doesn't exist. ):\n";}
 if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
 my %germ_db=();
 ############Reading seqs####################
@@ -29,21 +45,35 @@ my ($germV,$germg)=&readfasta($para{'-g'});
 my ($anti,$antigerm)=&readfasta($para{'-a'});
 
 ###############Processing###################
-print "processing $para{'-s'}...\n";
-my $changefile=$para{'-s'};
-$changefile=~s/\.fa//;
-open YY,">$changefile\_identity.txt";
-open ZZ,">$changefile\_coverage.txt";
+print "processing $para{'-f'}...\n";
+my $changefile=$para{'-f'};
+$changefile=~s/\.fa.*//;
+my $output_id=$changefile;
+if($para{'-CDR3'}){
+  	$output_id.="_CDR3-id.tab";
+}
+else{
+    $output_id.="_id-div.tab";
+}
+if(-d "./output/tables/"){
+  open YY,">./output/tables/$output_id";
+  open ZZ,">./output/tables/$changefile\_coverage.tab";
+}
+else{
+	open YY,">$output_id";
+  open ZZ,">$changefile\_coverage.tab";
+}
+
 if($para{'-g'}){print YY "ID\tgerm_div";}
 else{print YY "ID";}
 foreach(sort keys %{$anti}){
     print YY "\t$_";
 }
 print YY "\n";
-my $file_calculation=$para{'-s'};
-if($para{'-usearch'}){
-system("$para{'-usearch'} -derep_fulllength $para{'-s'} -threads $para{'-t'} -fastaout $changefile.unique.fa -uc $changefile.cluster -sizeout > usearchlog.txt");
-$file_calculation="$changefile.unique.";
+my $file_calculation=$para{'-f'};
+if($para{'-pu'}){
+  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout $changefile\_unique.fa -uc $changefile.cluster -sizeout > usearchlog.txt");
+  $file_calculation="$changefile\_unique.fa";
 }
 open READs,"$file_calculation";
     my $i=1;
@@ -102,9 +132,9 @@ while(threads->list()){
     sleep(1);
 }
 
-if($para{'-usearch'}){
+if($para{'-pu'}){
   &recover($changefile);
-  unlink "$changefile.unique.fa","$changefile.cluster";
+  unlink "$changefile\_unique.fa","$changefile.cluster";
 }
 ##################################
 sub rm_r{
