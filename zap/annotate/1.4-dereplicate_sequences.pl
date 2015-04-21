@@ -32,27 +32,25 @@ if(!$para{'-t'}){$para{'-t'}=1;}
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-i'},$para{'-c'});
 &changename($para{'-f'},$output);
 
-
 ########subrutines#############
-sub usearch{
+sub usearch{#do the two steps of clustering
     my ($file,$program,$id,$co)=@_;	
     my $file_out=$file;
     $file_out=~s/\.fa.*//;	  	
     my %derep=();
 	  	my %final_good=();
-	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#> usearchlog.txt
+	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
 	  	system("$para{'-pu'} -sortbysize $file_out.nonredundant.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
-	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $id -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#-query_cov $co -target_cov $co> usearchlog.txt
-	  	%final_good=&derep("$file_out.cluster",$para{'-min2'},\%derep);
+	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $id -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#second step on higher identity
+	  	%final_good=&derep("$file_out.cluster",$para{'-min2'},\%derep);#remove low coverage clusters
 	  	system("rm $file_out.nonredundant.fa");
-
-	  unlink "usearchlog.txt";
+  	  unlink "usearchlog.txt";
 	  return "$file_out\_unique.fa";
 }
 
 
 #####################
-sub derep{
+sub derep{#This is used to remove low abundant clusters after the second step of clustering
     my ($file,$cutoff,$ids)=@_;
     open HH,"$file" or die "Usearch clustering file $file not found\n";
     my %ids=();
@@ -102,9 +100,7 @@ sub derep{
 #####################
 sub write_raw{
 	 my ($good,$output)=@_;
-	 #open HH,"$file" or die "input raw seq file $file not found\n";
 	 open YY,">$output";
-	 #my $mark=0;
 	 foreach(sort keys %{$good}){
 	 	my $id=$_;
 	 	foreach(@{$good->{$id}}){
@@ -114,7 +110,7 @@ sub write_raw{
 }
 
 ######################
-sub changename{
+sub changename{#change sequence names back to the input sequence name
   my ($input,$seive)=@_;
   open HH,"$seive" or die "usearch file $seive not found\n";
 	open YY,"$input" or die "Original seq file $input not found\n";
@@ -151,7 +147,7 @@ sub changename{
 		  print ZZ "$_";	
 		}
 	}
-	if(-d "./output/sequences/nucleotide"){
+	if(-d "./output/sequences/nucleotide"){#move output files to standard pipeline folders
 		system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
 	}
 	else{

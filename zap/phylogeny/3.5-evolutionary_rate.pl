@@ -20,9 +20,10 @@ Options:
 	-storeEvery\tstore log info every n steps, default:1000
 	-log\tstore a tree every n step, default:1000
 	-beast\tpath to beast2 program
+	-burnin\t percentage of steps to be thrown away before rate estimation (burnin in beast). Default:10 
 
 Example:
-3.5-evolutionary_rate.pl -f test.fa -CDR test_CDR.fa -FW test_FW.fa -o test -beast beast
+3.5-evolutionary_rate.pl -f test.fa -CDR test_CDR.fa -FW test_FW.fa -o test -beast beast -burnin 10
 
 Created by Zizhang Sheng.
 
@@ -41,7 +42,7 @@ if(!$para{'-chainLength'}){$para{'-chainLength'}=10000000;}
 if(!$para{'-pop'}){$para{'-pop'}='bayesian_skyline';}
 if(!$para{'-log'}){$para{'-log'}=1000;}
 if(!$para{'-storeEvery'}){$para{'-storeEvery'}=1000;}
-
+if(!$para{'-burnin'}){$para{'-burnin'}=10;}
 ######Processing######
 my $seq_CDR='';
 my $seq_FW='';
@@ -56,9 +57,9 @@ if(-d "./output/rate/"){
 }
 
 ############################
-sub parsing_results{
+sub parsing_results{#calculate mean rate and 95% highest probability density range (or confidence interval)
     my $file=shift;
-    open HH,"$file" or die "resulte file $file not found\n";
+    open HH,"$file" or die "resulte file $file not found\n";#read in log file
     my $mean_c=0;
     my $mean_CDR=0;
     my $mean_FW=0;	
@@ -66,17 +67,17 @@ sub parsing_results{
     my @rate_CDR=();
     my @rate_FW=();
 	  while(<HH>){
-	  	if($_=~/^Sample/){#find rate colomns
+	  	if($_=~/^Sample/){
 	  		 my @line=split/	/,$_;
 	  		 my $i=0;
 	  		 foreach(@line){
-	  		   if($_=~/rate.mean/){
+	  		   if($_=~/rate.mean/){#find colomn for mean rate 
 	  		       	$mean_c=$i;
 	  		    }
-	  		   elsif($_=~/rate.+FW.mean/){
+	  		   elsif($_=~/rate.+FW.mean/){#find colomn for framework region rate 
 	  		       	$mean_FW=$i;		
 	  		    }
-	  		   elsif($_=~/rate.+CDR.mean/){
+	  		   elsif($_=~/rate.+CDR.mean/){#find colomn for CDRs region rate
 	  		   	   $mean_CDR=$i;
 	  		  }
 	  		  $i++;
@@ -94,20 +95,23 @@ sub parsing_results{
 	   }
 	  	
 	  }
-	  for(my $j=0;$j<@rate/10;$j++){
+	  
+	  #output rates
+	  for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
 	     shift @rate;	
 	  }
+	  
 	  my @rate_s=&statistic(@rate);
 	  print "Mean rate: $rate_s[0]\n95% HPD interval: [$rate_s[3],$rate_s[4]]\n";
 	  if(@rate_CDR){
-	  	for(my $j=0;$j<@rate/10;$j++){
+	  	for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
 	     shift @rate_CDR;	#10% steps of burn in
 	    }
 	    @rate_s=&statistic(@rate_CDR);
 	    print "Mean rate for CDRs: $rate_s[0]\n95% HPD interval: [$rate_s[3],$rate_s[4]]\n";
 	  }
 	  if(@rate_FW){
-	  	for(my $j=0;$j<@rate/10;$j++){
+	  	for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
 	     shift @rate_FW;	#10% steps of burn in
 	    }
 	    @rate_s=&statistic(@rate_FW);
@@ -115,7 +119,7 @@ sub parsing_results{
 	  }
 }
 #########################
-sub statistic{
+sub statistic{# estimate mean, median and standard deviations of rate
     my @array=@_;
     @array=sort {$a <=>$b} @array;
     my $mean=0;
@@ -141,9 +145,8 @@ sub statistic{
     return $median,$mean,$stderr,&HPD(@array);
 }
 #########################
-sub HPD{
+sub HPD{#find 95% high probability density region
     my @array=@_;	
-	  #@array= @array;
 	  my $interval=9999999;
 	  my $low=0;
 	  my $high=0;
@@ -163,7 +166,7 @@ sub HPD{
 	return $low,$high;
 }
 ############################
-sub write_xml{
+sub write_xml{#write cofiguration file for beast
 open YY,">$para{'-o'}.xml";
 
 print YY '<?xml version="1.0" encoding="UTF-8" standalone="no"?><beast beautitemplate=\'Standard\' beautistatus=\'\' namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.evolution.likelihood" version="2.0">',"\n\n\n    <data\n";#print title
@@ -603,7 +606,7 @@ print YY "
 ######################
 
 ######################
-sub read_fasta{ 
+sub read_fasta{ #read in fasta files
      my ($file,$n)=@_;	
      my %seq=();
      my %timepoint=();

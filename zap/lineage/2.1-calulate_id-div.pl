@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use threads;
-# This script is used to calculate sequence identity between germline V, antibody gene and reads
+
 my $usage="Usage: 
 This script is used to calculate sequence identity between germline V, antibody gene and reads or between antibody CDR3 and read CDR3.
 Options:
@@ -49,19 +49,23 @@ print "processing $para{'-f'}...\n";
 my $changefile=$para{'-f'};
 $changefile=~s/\.fa.*//;
 my $output_id=$changefile;
+my $output_cov='';
 if($para{'-CDR3'}){
   	$output_id.="_CDR3-id.tab";
 }
 else{
     $output_id.="_id-div.tab";
 }
-if(-d "./output/tables/"){
+if(-d "./output/tables/"){#detect output folders
   open YY,">./output/tables/$output_id";
-  open ZZ,">./output/tables/$changefile\_coverage.tab";
+  open ZZ,">./output/tables/$changefile\_coverage.tab";  
+  $output_id="./output/tables/$output_id";
+  $output_cov="./output/tables/$changefile\_coverage.tab";
 }
 else{
 	open YY,">$output_id";
   open ZZ,">$changefile\_coverage.tab";
+  $output_cov="$changefile\_coverage.tab";
 }
 
 if($para{'-g'}){print YY "ID\tgerm_div";}
@@ -75,7 +79,7 @@ if($para{'-pu'}){
   system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout $changefile\_unique.fa -uc $changefile.cluster -sizeout > usearchlog.txt");
   $file_calculation="$changefile\_unique.fa";
 }
-open READs,"$file_calculation";
+open READs,"$file_calculation"or die "$file_calculation not found\n";#read sequences and assign to threads
     my $i=1;
     my $j=0;
     my $count_thread=0;
@@ -87,7 +91,7 @@ open READs,"$file_calculation";
         chomp;
         if($_=~/\>/){
                if($i==1+$para{'-npt'}){
-               	 while(threads->list(threads::running)>=$para{'-t'}){
+               	 while(threads->list(threads::running)>=$para{'-t'}){#threading
                	 	foreach(threads->list(threads::joinable)){
                      my @result=$_->join();
                      print  YY $result[0];
@@ -133,11 +137,11 @@ while(threads->list()){
 }
 
 if($para{'-pu'}){
-  &recover($changefile);
-  unlink "$changefile\_unique.fa","$changefile.cluster";
+  &recover($changefile,$output_id,$output_cov);
+  unlink "$changefile\_unique.fa","$changefile.cluster","usearchlog.txt";
 }
 ##################################
-sub rm_r{
+sub rm_r{#remove \r at line end
       my $file=shift;
    open HH,"$file" or die "rm_r didn't find the file $file\n";
    open YY,">rmtem.txt";
@@ -149,7 +153,7 @@ sub rm_r{
   system("mv rmtem.txt $file");	
 }
 ###################
-sub calculation{
+sub calculation{#main subrutine in each thread to do calculation
     my ($seq,$germ,$germV,$anti)=@_;
     my $identity='';
     my $coverage='';
@@ -169,20 +173,21 @@ sub calculation{
     return $identity,$coverage;
 }
 ###################
-sub paired_identity{
+sub paired_identity{#calculate sequence identity
     my($id,$seq,$germ,$anti)=@_;
     my @identity=();
     my @coverage=();
     push @identity,$id;
     push @coverage,$id;
-    if($germ){
+    if($germ){#calculate germline divergence and coverage if germline sequence is given
     	my ($seqg,$seqr)=&aln($germ,$seq,$para{'-p'});
       my $div=sprintf("%.2f",100-&identity($seqg,$seqr));
       my $cov=sprintf("%.2f",&coverage($seqg,$seqr));
       push @coverage,$cov; 
-    push @identity,$div;
+      push @identity,$div;
     }
-    if($anti){
+    
+    if($anti){#calculate identity and coverage to given antibody sequence
     foreach(sort keys %{$anti}){
     	my ($seqg,$seqr)=&aln($anti->{$_},$seq,$para{'-p'});
         push @identity,&identity($seqg,$seqr);
@@ -195,7 +200,7 @@ sub paired_identity{
     return $identity,$coverage;
 }
 ###################
-sub readfasta{
+sub readfasta{# read in sequences and germline assign info from fasta file
     my $file=shift;
     my %seq=();
     my %seqgerm=();
@@ -216,25 +221,9 @@ sub readfasta{
     }
     return \%seq,\%seqgerm;
 }
-#################################
-sub separte_seq{
-    my ($seq,$section)=@_;
-    my @keys=keys %{$seq};
-    my %seq_w=();
-    my $subset=sprintf("%d",@keys/$section);
-    if(@keys%$section>0){$section++;}
-    foreach(1..$section){
-        my $start=($_-1)*$subset;
-        my $end=$_*$subset-1;
-        if($_*$subset>$#keys){
-            $end=$#keys;
-        }
-        @{$seq_w{$_}}=@keys[$start..$end];
-    }
-    return %seq_w;
-}
+
 ###################
-sub aln{
+sub aln{#pairwise sequence alignment using input program
     my @seq=@_;
     if($para{'-ap'} =~/muscle/i){
       return &muscle(@seq);	
@@ -251,7 +240,7 @@ sub aln{
 	
 }
 #################################
-sub mafft{
+sub mafft{#sequence alignment using mafft 
     my ($seq1,$seq2,$type)=@_;    	
 	  my %seq=();
 	  if($seq1=~/\*/||$seq2=~/\*/){print "$seq1\n$seq2\n";}
@@ -273,7 +262,7 @@ sub mafft{
     return $seq{'seq1'},$seq{'seq2'};
 }
 ###################
-sub clustalo{
+sub clustalo{#sequence alignment using clustalo
     my ($seq1,$seq2,$type)=@_;    	
 	  my %seq=();
 	  if($seq1=~/\*/||$seq2=~/\*/){print "$seq1\n$seq2\n";}
@@ -295,10 +284,9 @@ sub clustalo{
     return $seq{'seq1'},$seq{'seq2'};
 }
 #################################
-sub muscle{
+sub muscle{#sequence alignment using muscle
     my ($seq1,$seq2,$type)=@_;
     my %seq=();
-    #if($type eq 'DNA'){$type='nucleo';}
     if($seq1=~/\*/||$seq2=~/\*/){print "$seq1\n$seq2\n";}
     if($seq1!~/[A-Za-z]/||$seq2!~/[A-Za-z]/){warn "$seq1\n$seq2\n no sequence for alignment\n";return '','';last;}
     my @aln=`echo ">seq1\n$seq1\n>seq2\n$seq2\n"| $para{'-ap'} -seqtype $type -quiet -gapopen -1000`;
@@ -351,43 +339,9 @@ sub identity{#include gaps
     $score=sprintf("%.2f",100*$score/$leng);
     return $score;
 }
-#################################
-sub identity1{#exclude gaps
-    my ($seq1,$seq2,$type)=@_;
-    if(!$seq1||!$seq2||$seq2!~/[A-Z]/||$seq1!~/[A-Z]/){warn "Nothing in the sequence for identity calculation:\n$seq1#\n$seq2#\n";return 0;last;}
-    my $score=0;
-    my $leng=0;
-    my $misc='';
-    if($type eq 'DNA'){$misc='N';}
-    else{$misc='X';}
-    my $start=0;#remove terminal gaps
-    my $end=length($seq1);
-    if($seq1=~/^(\-+)/){
-        $start=length($1);
-    }
-    elsif($seq2=~/^(\-+)/){
-        $start=length($1);
-    }
-    
-    if($seq2=~/(\-+)$/){$end=$end-length($1);}
-    elsif($seq1=~/(\-+)$/){
-        $end=$end-length($1);
-    }
-    $seq1=substr($seq1,$start,$end-$start);
-    $seq2=substr($seq2,$start,$end-$start);
-    for(my $j=0;$j<length($seq1);$j++){
-        if(substr($seq1,$j,1) ne $misc &&substr($seq2,$j,1) ne $misc&&substr($seq1,$j,1) ne '-' &&substr($seq2,$j,1) ne '-'){
-            $leng++;
-            if(substr($seq1,$j,1) eq substr($seq2,$j,1)){
-                $score++;
-            }
-        }
-    }
-    $score=sprintf("%.2f",100*$score/$leng);
-    return $score;
-}
+
 ################################
-sub coverage{
+sub coverage{#calculate sequence coverage between pair of seqeunces
     my ($seq1,$seq2)=@_;
         if(!$seq1||!$seq2){warn "Nothing in the sequence for coverage calculation\n";}
     my $start=0;
@@ -406,14 +360,14 @@ sub coverage{
     $str2=~s/[\-\.]//g;
     my $c=length($str2)/length($str1);
     if($c>1){$c=1/$c;}
-return sprintf ("%3.2f",100*$c);    
-    
+ 
+ return sprintf ("%3.2f",100*$c);       
 }
 ################################
-sub recover{#add back all the redundant reads
-   my $filename=shift;
+sub recover{#add back all the identity and coverage calculation for redundant reads to the final output
+   my ($filename,$output_id,$output_cov)=@_;
    my %ids=();
-   system("rm_r.pl $filename.cluster");
+   &rm_r("$filename.cluster");
   open HH,"$filename.cluster" or die "Usearch clustering file not exist";
   
    while(<HH>){
@@ -423,7 +377,7 @@ sub recover{#add back all the redundant reads
       push @{$ids{$line[9]}},$line[8];
      }	
    }  	
-	open CD,"$filename\_identity.txt" or die "$filename\_identity.txt not exist\n";
+	open CD,"$output_id" or die "$output_id not exist\n";#add back identity for redundant reads
 	open ZZ,">tempchange.txt";
 	foreach(<CD>){
 	  my @line=split/\t/,$_;
@@ -436,9 +390,9 @@ sub recover{#add back all the redundant reads
 	}
 	  close ZZ;
 		close CD;
-		system("cat tempchange.txt >>$filename\_identity.txt");
+		system("cat tempchange.txt >>$output_id");
    unlink "tempchange.txt";
-   	open CD,"$filename\_coverage.txt" or die "$filename\_identity.txt not exist\n";
+   	open CD,"$output_cov" or die "$output_cov not exist\n";#add back coverage for redundant reads
 	open ZZ,">tempchange.txt";
 	foreach(<CD>){
 	  my @line=split/\t/,$_;
@@ -451,7 +405,7 @@ sub recover{#add back all the redundant reads
 	}
 	  close ZZ;
 		close CD;
-		system("cat tempchange.txt >>$filename\_coverage.txt");
+		system("cat tempchange.txt >>$output_cov");
    unlink "tempchange.txt";
 
 }
