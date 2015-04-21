@@ -5,7 +5,7 @@ use strict;
 ################################################
 
 my $usage="Usage:
-Evolutionary rate calculation on a lineage from at least two time points.
+Evolutionary rate calculation on a lineage from at least two time points. Only nucleotide sequences accepted at this time
 Options:
 	-f\tinput antibody nucleotide VDJ sequence file with fasta format
 	-CDR\tsequences of the three CDRs
