@@ -84,7 +84,7 @@ GERM_HEAVY_AA	= "%s/db/germline/IgHV_protein.fasta" %HOME_FOLDER
 NAT_HEAVY_AA	= "%s/db/native/vrc_IgHV_protein.fasta" %HOME_FOLDER
 
 
-ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "work/2-clustal/last_round", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs"]
+ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "work/2-clustal/last_round", "work/3-phylo/beast", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs", "output/rates"]
 
 
 #

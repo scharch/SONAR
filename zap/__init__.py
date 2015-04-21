@@ -132,12 +132,14 @@ class ProjectFolders:
 		self.vgene      = "%s/vgene"       %  self.blast
 		self.jgene      = "%s/jgene"       %  self.blast
 		self.last       = "%s/last_round"  %  self.clustal
+		self.beast      = "%s/beast"       %  self.phylo
 
 		#output
 		self.seq        = "%s/sequences"   %  self.out
 		self.tables     = "%s/tables"      %  self.out
 		self.plots      = "%s/plots"       %  self.out
 		self.logs       = "%s/logs"        %  self.out
+		self.rates      = "%s/rates"       %  self.out
 		
 		#second-level
 		self.aa         = "%s/amino_acid"  %  self.seq
