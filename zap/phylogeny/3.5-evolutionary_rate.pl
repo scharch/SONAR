@@ -22,6 +22,7 @@ Options:
 	-storeEvery\tstore log info every n steps, default:1000
 	-log\tstore a tree every n step, default:1000
 	-beast\tpath to beast2 program
+	-lower_limit\tlower limit of when the lineage start evolve, for example, all sequences week 11 and 50 post infection, the suspected time of lineage activation is week 1, then use -lower_limit 1. Default:1. if the date is in the formate yyyy-mm-dd, please convert to yyyy.897123 using number of dates passed divided by 365. 1980-01-01 and 1980-12-31 are 1980.000 and 1980.999 respectively.
 	-burnin\t percentage of steps to be thrown away before rate estimation (burnin in beast). Default:10 
 
 Example:
@@ -46,6 +47,7 @@ if(!$para{'-pop'}){$para{'-pop'}='bayesian_skyline';}
 if(!$para{'-log'}){$para{'-log'}=1000;}
 if(!$para{'-storeEvery'}){$para{'-storeEvery'}=1000;}
 if(!$para{'-burnin'}){$para{'-burnin'}=10;}
+if(!$para{'-lower_limit'}){$para{'-lower_limit'}=1;}
 ######Processing######
 my $seq_CDR='';
 my $seq_FW='';
@@ -368,7 +370,7 @@ foreach(@$seq_name_selected){
 }
 
 print YY "               </taxonset>
-                <Uniform id=\"Uniform.03\" lower=\"1.0\" name=\"distr\" upper=\"Infinity\"/>
+                <Uniform id=\"Uniform.03\" lower=\"$para{'-lower_limit'}\" name=\"distr\" upper=\"Infinity\"/>
             </distribution>
         </distribution>
         <distribution id=\"likelihood\" spec=\"util.CompoundDistribution\">
