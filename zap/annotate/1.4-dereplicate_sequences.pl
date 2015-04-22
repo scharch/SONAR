@@ -9,7 +9,8 @@ This script performs two steps of clustering to remove sequences potentially con
 
 options:
  \t-pu\tpath of the usearch program
- \t-id\t percent sequence identity used for the second step of clustering, default:0.99
+ \t-id1\t percent sequence identity used for the first step of clustering, default:1.00
+ \t-id2\t percent sequence identity used for the second step of clustering, default:0.99
  \t-min1\tminimun coverage of a read to be kept in the first step of clustering, default:2
  \t-min2\tminimun coverage of a read to be kept in the seconde step of clustering, default:3
  \t-f\tsequence file in fasta format
@@ -30,7 +31,8 @@ if(!$para{'-min2'}){$para{'-min2'}=3;}
 if(!$para{'-pu'}){die "please give the correct path to usearch program\n";}
 if(!$para{'-f'}){die "no input seq file\n";}
 if(!$para{'-t'}){$para{'-t'}=1;}
-if(!$para{'-id'}){$para{'-id'}=0.99;}
+if(!$para{'-id2'}){$para{'-id2'}=0.99;}
+if(!$para{'-id1'}){$para{'-id1'}=1;}
 #########do calculation##########
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
 &changename($para{'-f'},$output);
@@ -42,9 +44,13 @@ sub usearch{#do the two steps of clustering
     $file_out=~s/\.fa.*//;	  	
     my %derep=();
 	  	my %final_good=();
-	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
-	  	system("$para{'-pu'} -sortbysize $file_out.nonredundant.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
-	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $para{'-id'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#second step on higher identity
+	  	system("$para{'-pu'} -cluster_fast $file -threads $para{'-t'}  -id $para{'-id1'}  -uc $file_out.cluster -sizeout -centroids $file_out\_unique.fa > usearchlog.txt");
+	  	#system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
+	  	if(-z "$file_out\_unique.fa"){die "No duplicate sequence found in your input sample. Try with lower id1\n";}
+	  	system("$para{'-pu'} -sortbysize $file_out\_unique.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
+	  	if(-z "$file_out.nonredundant.fa"){die "No duplicate sequence found in your input sample.Try with lower id1\n";}
+	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $para{'-id2'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#second step on higher identity
+	  	if(-z "$file_out\_unique.fa"){die "No cluster found for your sequences.\n";}
 	  	%final_good=&derep("$file_out.cluster",$para{'-min2'},\%derep);#remove low coverage clusters
 	  	system("rm $file_out.nonredundant.fa");
   	  unlink "usearchlog.txt";
