@@ -13,7 +13,7 @@ This script uses an iterative phylogenetic analysis to find sequences related
       of the input sequences in a round are in the minimum sub-tree.
 
 This script has an option to run the analysis as a cluster job, in which case
-      2,500 sequences will be processed in each group.
+      1,000 sequences will be processed in each group.
 
 This algorithm is generally intended to find somatically related antibodies
       from a single lineage within a single donor. However, in the special
@@ -89,6 +89,7 @@ def main():
 
 	global npf, converged, maxIters, cluster, force, num_nats, correct_V_only, germlineV, germ_seq, inFile, natFile, locus, library
 	currentIter = 0
+	log = open( "%s/intradonor.log" % prj_tree.logs, "a+" )
 
 	# master loop
 	while not converged:
@@ -151,19 +152,30 @@ def main():
 
 		# processed all trees from last round, now do a sanity check
 		if good == 0 and len(tree_files) > 0:
+			log.write( "%s - Round %d: NO positive sequences found --stopped!" % (time.strftime("%H:%M:%S"), currentIter) )
+			log.close()
 			sys.exit( "NO positive sequences found --stopped!" )
 
 		
 		# Are we starting a new run? If not, limit memory usage by only reading in the retained reads
 		read_dict = dict()
 		if len(tree_files) == 0:
+			log.write( "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S") )
 			print "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S")
 			if correct_V_only:
-				read_dict = load_fastas_with_Vgene( inFile, germlineV )
+				#load by gene but ignore allele
+				read_dict = load_fastas_with_Vgene( inFile, germlineV.split("*")[0] )
 			else:
 				read_dict = load_fastas( inFile )
 		else:
 			read_dict = load_seqs_in_dict( inFile, retained_reads )
+
+		#error checking
+		if len(read_dict) == 0:
+			log.write( "%s - Error: failed to load any sequences from %s, stopped" % (time.strftime("%H:%M:%S"), inFile) )
+			log.close()
+			sys.exit( "Error: failed to load any sequences from %s, stopped" % inFile )
+
 		#randomize the order
 		shuffled_reads = read_dict.values()
 		random.shuffle(shuffled_reads)
@@ -172,10 +184,13 @@ def main():
 		if good/total < 0.95:
 			
 			if currentIter >= maxIters:
+				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), good, good/total) )
+				log.close()
 				sys.exit( "Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (good, good/total) )
 			else:
 				if len(tree_files) > 0: 
 					#it's a silly message to print the first time through
+					log.write( "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total) )
 					print "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total)
 				currentIter +=1
 
@@ -242,7 +257,7 @@ def main():
 				command = "NUM=`printf \"%%05d\" $SGE_TASK_ID`\n%s -in %s/NJ$NUM.fa -out %s/NJ$NUM.aln -cluster1 neighborjoining -maxiters 1 -tree1 %s/NJ$NUM.tree" % \
 				    (cluster_muscle, prj_tree.clustal, prj_tree.clustal, prj_tree.clustal)
 				pbs = open("%s/intradonor.sh" % prj_tree.clustal, 'w')
-				pbs.write( PBS_STRING%(f_ind, "%s-intradonor"%prj_name, "500M", "10:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.clustal, prj_tree.clustal)) )
+				pbs.write( PBS_STRING%(f_ind, "%s-intradonor"%prj_name, "500M", "1:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.clustal, prj_tree.clustal)) )
 				pbs.close()
 
 				# write a second PBS job to restart this script once muscle has finished
@@ -261,6 +276,8 @@ def main():
 
 				os.system("qsub %s/intradonor.sh" % prj_tree.clustal)
 				os.system("qsub %s/nextround.sh"  % prj_tree.clustal)
+				log.write("%s - Submitted current round to cluster" % time.strftime("%H:%M:%S"))
+				log.close()
 				break #exits "while not converged" loop
 
 		
@@ -279,6 +296,8 @@ def main():
 			out_nt.close()
 			out_aa.close()
 			
+			log.write( "%s - Tree has converged with %d reads!" % (time.strftime("%H:%M:%S"), good) )
+			log.close()
 			print "Tree has converged with %d reads!" % good
 			converged = True
 
@@ -326,7 +345,7 @@ if __name__ == '__main__':
 	if len(flag)>0:
 		sys.argv.remove(flag[0])
 		cluster = True
-		npf = 2500
+		npf = 1000
 
 	#get the parameters from the command line
 	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", maxIters="maxIters")
