@@ -5,9 +5,11 @@ use strict;
 #########checking parameters#######
 my $usage="
 Usage:
-This script performs two steps of clustering to remove sequences potentially containing sequencing errors. please install usearch v7 or higher verion. 
- options:
+This script performs two steps of clustering to remove sequences potentially containing sequencing errors. The first step finds duplicates, remove reads with coverage lower then cutoff which may contain sequencing errors, calculate read coverage for each cluster. The second step further cluster the filtered sequences using lower sequence identity cutoff. At the meantime, the second clustering will use reads with high coverage as centroids by assuming biological reads are coming from cDNA with many identical copies while reads containing sequencing errors has very low coverage. please install usearch v7 or higher verion. 
+
+options:
  \t-pu\tpath of the usearch program
+ \t-id\t percent sequence identity used for the second step of clustering, default:0.99
  \t-min1\tminimun coverage of a read to be kept in the first step of clustering, default:2
  \t-min2\tminimun coverage of a read to be kept in the seconde step of clustering, default:3
  \t-f\tsequence file in fasta format
@@ -20,7 +22,7 @@ Created by Zizhang Sheng.
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
  ";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
-if(@ARGV<1||@ARGV%2>0){die "Number of parameters are not right\n";
+if(@ARGV<1||@ARGV%2>0){die "Number of parameters are not right\n$usage";
  }
 my %para=@ARGV;
 if(!$para{'-min1'}){$para{'-min1'}=2;}
@@ -28,13 +30,14 @@ if(!$para{'-min2'}){$para{'-min2'}=3;}
 if(!$para{'-pu'}){die "please give the correct path to usearch program\n";}
 if(!$para{'-f'}){die "no input seq file\n";}
 if(!$para{'-t'}){$para{'-t'}=1;}
+if(!$para{'-id'}){$para{'-id'}=0.99;}
 #########do calculation##########
-my $output=&usearch($para{'-f'},$para{'-p'},$para{'-i'},$para{'-c'});
+my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
 &changename($para{'-f'},$output);
 
 ########subrutines#############
 sub usearch{#do the two steps of clustering
-    my ($file,$program,$id,$co)=@_;	
+    my ($file,$id)=@_;	
     my $file_out=$file;
     $file_out=~s/\.fa.*//;	  	
     my %derep=();
