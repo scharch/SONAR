@@ -44,7 +44,7 @@ sub usearch{#do the two steps of clustering
 	  	my %final_good=();
 	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
 	  	system("$para{'-pu'} -sortbysize $file_out.nonredundant.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
-	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $id -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#second step on higher identity
+	  	system("$para{'-pu'} -cluster_smallmem $file_out.nonredundant.fa -sortedby size -id $para{'-id'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#second step on higher identity
 	  	%final_good=&derep("$file_out.cluster",$para{'-min2'},\%derep);#remove low coverage clusters
 	  	system("rm $file_out.nonredundant.fa");
   	  unlink "usearchlog.txt";
