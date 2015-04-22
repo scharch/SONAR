@@ -152,7 +152,7 @@ def main():
 
 		# processed all trees from last round, now do a sanity check
 		if good == 0 and len(tree_files) > 0:
-			log.write( "%s - Round %d: NO positive sequences found --stopped!" % (time.strftime("%H:%M:%S"), currentIter) )
+			log.write( "%s - Round %d: NO positive sequences found --stopped!\n" % (time.strftime("%H:%M:%S"), currentIter) )
 			log.close()
 			sys.exit( "NO positive sequences found --stopped!" )
 
@@ -160,7 +160,7 @@ def main():
 		# Are we starting a new run? If not, limit memory usage by only reading in the retained reads
 		read_dict = dict()
 		if len(tree_files) == 0:
-			log.write( "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S") )
+			log.write( "%s - Starting a new analysis from scratch...\n" % time.strftime("%H:%M:%S") )
 			print "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S")
 			if correct_V_only:
 				#load by gene but ignore allele
@@ -172,7 +172,7 @@ def main():
 
 		#error checking
 		if len(read_dict) == 0:
-			log.write( "%s - Error: failed to load any sequences from %s, stopped" % (time.strftime("%H:%M:%S"), inFile) )
+			log.write( "%s - Error: failed to load any sequences from %s, stopped\n" % (time.strftime("%H:%M:%S"), inFile) )
 			log.close()
 			sys.exit( "Error: failed to load any sequences from %s, stopped" % inFile )
 
@@ -184,13 +184,13 @@ def main():
 		if good/total < 0.95:
 			
 			if currentIter >= maxIters:
-				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), good, good/total) )
+				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), good, good/total) )
 				log.close()
 				sys.exit( "Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (good, good/total) )
 			else:
 				if len(tree_files) > 0: 
 					#it's a silly message to print the first time through
-					log.write( "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total) )
+					log.write( "%s - Finished processing round %d: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total) )
 					print "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total)
 				currentIter +=1
 
@@ -276,7 +276,7 @@ def main():
 
 				os.system("qsub %s/intradonor.sh" % prj_tree.clustal)
 				os.system("qsub %s/nextround.sh"  % prj_tree.clustal)
-				log.write("%s - Submitted current round to cluster" % time.strftime("%H:%M:%S"))
+				log.write("%s - Submitted current round to cluster\n" % time.strftime("%H:%M:%S"))
 				log.close()
 				break #exits "while not converged" loop
 
@@ -296,7 +296,7 @@ def main():
 			out_nt.close()
 			out_aa.close()
 			
-			log.write( "%s - Tree has converged with %d reads!" % (time.strftime("%H:%M:%S"), good) )
+			log.write( "%s - Tree has converged with %d reads!\n" % (time.strftime("%H:%M:%S"), good) )
 			log.close()
 			print "Tree has converged with %d reads!" % good
 			converged = True
