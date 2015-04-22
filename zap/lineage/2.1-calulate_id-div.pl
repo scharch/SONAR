@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use threads;
+#use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");
+use PPvars qw(ppath);
 
 my $usage="Usage: 
 This script is used to calculate sequence identity between germline V, antibody gene and reads or between antibody CDR3 and read CDR3.
@@ -14,7 +16,7 @@ Options:
 	-t\tthreads, default:5
 	-npt\tnumber of sequences per thread. default:1000
 	-p\tprotein or DNA sequence. default: DNA
-	-ap\tabsolute path to the alignment program. muscle or clustalo or mafft. required. Based on our 
+	-ap\t name of the program for sequence alignment. muscle or clustalo or mafft. required. Based on our 
 	   \texperience, muscle is ~2 fold faster than clustalo.
 	-pu\tpath to usearch program to remove duplicates in the read file. Optional.
   -CDR3\tWhether calculating sequence identity between CDR3s
@@ -31,6 +33,8 @@ if(@ARGV%2>0||@ARGV==0){die "$usage"; }
 my %para=@ARGV;
 if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
+$para{'-ap'}=ppath($para{'-ap'});
+$para{'-pu'}=ppath($para{'-pu'});
 if(!$para{'-ap'}){die "please select a program for sequence alignment\n";}
 if(!$para{'-g'}){warn "No calculation for hypermutation\n";}
 if(!$para{'-p'}){$para{'-p'}='DNA';}
@@ -38,6 +42,7 @@ if($para{'-a'}&& ! -e $para{'-a'}){die "file $para{'-a'} doesn't exist. ):\n";}
 if($para{'-f'}&& ! -e $para{'-f'}){die "file $para{'-f'} doesn't exist. ):\n";}
 if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
 my %germ_db=();
+
 ############Reading seqs####################
 &rm_r($para{'-g'});
 &rm_r($para{'-a'});
@@ -48,6 +53,8 @@ my ($anti,$antigerm)=&readfasta($para{'-a'});
 print "processing $para{'-f'}...\n";
 my $changefile=$para{'-f'};
 $changefile=~s/\.fa.*//;
+my @filepath=split/\//,$changefile;
+$changefile=pop @filepath;
 my $output_id=$changefile;
 my $output_cov='';
 if($para{'-CDR3'}){
@@ -75,7 +82,7 @@ foreach(sort keys %{$anti}){
 }
 print YY "\n";
 my $file_calculation=$para{'-f'};
-if($para{'-pu'}){
+if($para{'-pu'}){#dereplicate
   system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout $changefile\_unique.fa -uc $changefile.cluster -sizeout > usearchlog.txt");
   $file_calculation="$changefile\_unique.fa";
 }
@@ -127,7 +134,7 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
  	
 }   
 
-while(threads->list()){
+while(threads->list()){#waiting for all threads finish
     foreach(threads->list(threads::joinable)){
         my @result=$_->join();
         print  YY $result[0];
@@ -136,7 +143,7 @@ while(threads->list()){
     sleep(1);
 }
 
-if($para{'-pu'}){
+if($para{'-pu'}){#add redundant sequences back
   &recover($changefile,$output_id,$output_cov);
   unlink "$changefile\_unique.fa","$changefile.cluster","usearchlog.txt";
 }

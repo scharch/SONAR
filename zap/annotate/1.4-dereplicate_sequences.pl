@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 # performing usearch for sequences
 use strict;
-
+#use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");
+use PPvars qw(ppath);
 #########checking parameters#######
 my $usage="
 Usage:
@@ -28,6 +29,7 @@ if(@ARGV<1||@ARGV%2>0){die "Number of parameters are not right\n$usage";
 my %para=@ARGV;
 if(!$para{'-min1'}){$para{'-min1'}=2;}
 if(!$para{'-min2'}){$para{'-min2'}=3;}
+$para{'-pu'}=ppath('usearch');
 if(!$para{'-pu'}){die "please give the correct path to usearch program\n";}
 if(!$para{'-f'}){die "no input seq file\n";}
 if(!$para{'-t'}){$para{'-t'}=1;}
