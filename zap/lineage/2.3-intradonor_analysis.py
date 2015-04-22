@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-2.2-intradonor_analysis.py
+2.3-intradonor_analysis.py
 
 This script uses an iterative phylogenetic analysis to find sequences related
       to a set of known antibodies. Preprocessed sequences (including optional
@@ -27,7 +27,7 @@ This algorithm is generally intended to find somatically related antibodies
       It is unknown at this time whether this method would work for other
       classes of antibodies.
 
-Usage: 2.2-intradonor_analysis.py -n native.fa -v germline_V
+Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
                                  [-locus <H|K|L|C> -lib path/to/library.fa
 				  -i custom/input.fa -maxIters 10
 				  -nofilter -a -cluster -h -f]
@@ -270,7 +270,7 @@ def main():
 #$ -cwd\t\t\t\t\t# use current directory\n\
 #$ -o %s/restart-intradonor.out\t#output\n\
 #$ -e %s/restart-intradonor.err\t#error\n\
-%s/lineage/2.2-intradonor_analysis.py -n %s -v %s -locus %s -lib %s -i %s -maxIters %d -cluster\n" % 
+%s/lineage/2.3-intradonor_analysis.py -n %s -v %s -locus %s -lib %s -i %s -maxIters %d -cluster\n" % 
 						  (prj_name, prj_tree.clustal, prj_tree.clustal, ZAP_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
 				next_round.close()
 
