@@ -29,7 +29,7 @@ This algorithm is generally intended to find somatically related antibodies
 
 Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
                                  [-locus <H|K|L|C> -lib path/to/library.fa
-				  -i custom/input.fa -maxIters 10
+				  -i custom/input.fa -maxIters 15
 				  -nofilter -a -cluster -h -f]
 
     Invoke with -h or --help to print this documentation.
@@ -48,16 +48,20 @@ Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
                    Ignored unless "-locus C" is used.
     i		Optional custom set of sequences to be analayzed. "-nofilter"
                    and "-a" flags will be ignored if this option is used.
+		   Default is output/sequences/ROOT_unique.fa (or 
+		   output/sequences/ROOT_allV.fa with the -a flag below)
     maxIters	Optional maximum number of rounds to conduct before giving up.
-                   Default = 10.
+                   Default = 15.
 
     Optional flags:
     nofilter	Do NOT filter NGS sequences for correct germline V gene
                    assignment. Default = OFF (DO filter).
     a		Use all NGS sequences with an assigned V, even those with
                    out-of frame junctions and/or stop codons or without a 
-		   successfuly assigned J gene. Default = OFF (use in-frame
-		   ORF sequences only).
+		   successfuly assigned J gene. Default = OFF (use in-frame ORF
+		   sequences only). Recommended usage is to manually dereplicate
+		   those sequences using 1.4-dereplicate_sequences.pl and then
+		   pass that output to the -i parameter of this script.
     cluster	Submit tree-building jobs to the cluster.
     f		Force a restart of the analysis, even if there are files from
                    a previous run in the working directory.
@@ -103,7 +107,7 @@ def main():
 			force = False #turn it off so we don't get stuck in an infinite loop of restarts
 
 	        #this gets skipped in the first round
-		for tf in tree_files:
+		for idx, tf in enumerate(tree_files):
 			
 		        #read in the tree as a string
 			tree_string = open(tf, "rU").read().strip()
@@ -111,7 +115,9 @@ def main():
 			#get rid of possible negative branch lengths and then parse
 			tree_string, num = re.subn(":-\d+\.\d+",":0", tree_string)
 			tree_string, num = re.subn("\n","", tree_string)
-			tree = Phylo.read(StringIO(tree_string), "newick")
+
+			#need to supply comments_are_confidence=True to prevent Phylo from interpreting numeric sequence IDs as bootstrap support
+			tree = Phylo.read(StringIO(tree_string), "newick", comments_are_confidence=True)
 
 			
 			#outgroup root the tree on the germline
@@ -147,7 +153,8 @@ def main():
 			retained_reads += all_leaves
 			good += len(all_leaves) - num_nats
 			total += len(tree.get_terminals()) - num_nats - 1 #also don't count germline
-			#print "Found %d reads in subtree. Total saved: %d / %d" % ( len(all_leaves)-num_nats, good, total-1)
+			if idx % 25 == 0 and not cluster:
+				print "Found %d reads in subtree %d. Total saved: %d / %d" % ( len(all_leaves)-num_nats, idx, good, total-1)
 
 
 		# processed all trees from last round, now do a sanity check
@@ -184,9 +191,9 @@ def main():
 		if good/total < 0.95:
 			
 			if currentIter >= maxIters:
-				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), good, good/total) )
+				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), good, 100*good/total) )
 				log.close()
-				sys.exit( "Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (good, good/total) )
+				sys.exit( "Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (good, 100*good/total) )
 			else:
 				if len(tree_files) > 0: 
 					#it's a silly message to print the first time through
@@ -283,18 +290,17 @@ def main():
 		
 		# If we have converged, write final output
 		else:
-			out_list = open("%s/%s_intradonor_positives.txt" % (prj_tree.tables, prj_name), "w")
 			out_nt   = open("%s/%s_intradonor_positives.fa"  % (prj_tree.nt, prj_name),     "w")
 			out_aa   = open("%s/%s_intradonor_positives.fa"  % (prj_tree.aa, prj_name),     "w")
-			
-			for r in read_dict.values():
-				out_list.write( ">%s\n%s\n" % (r.id, r.seq) )
-				out_nt.write( ">%s\n%s\n" % (r.id, r.seq) )
-				out_aa.write( ">%s\n%s\n" % (r.id, r.seq.translate()) )
-				
-			out_list.close()
+			SeqIO.write(read_dict.values(), out_nt, "fasta")
+			SeqIO.write( [SeqRecord(r.seq.translate(),id=r.id, description=r.description) for r in read_dict.values()], out_aa, "fasta" )
 			out_nt.close()
 			out_aa.close()
+
+			out_list = open("%s/%s_intradonor_positives.txt" % (prj_tree.tables, prj_name), "w")
+			for r in read_dict.values():
+				out_list.write( "%s\n" % r.id )
+			out_list.close()
 			
 			log.write( "%s - Tree has converged with %d reads!\n" % (time.strftime("%H:%M:%S"), good) )
 			log.close()
@@ -332,7 +338,7 @@ if __name__ == '__main__':
 		correct_V_only = False
 
 	#check sequence quality parameter
-	selectedFile = "%s/%s_goodVJ.fa" % (prj_tree.nt, prj_name)
+	selectedFile = "%s/%s_unique.fa" % (prj_tree.nt, prj_name)
 	flag = [x for x in ["a", "-a", "--a", "all", "-all", "--all"] if q(x)]
 	if len(flag)>0:
 		sys.argv.remove(flag[0])
@@ -349,7 +355,7 @@ if __name__ == '__main__':
 
 	#get the parameters from the command line
 	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", maxIters="maxIters")
-	defaults = dict(locus="H", library="", inFile=selectedFile, maxIters=10)
+	defaults = dict(locus="H", library="", inFile=selectedFile, maxIters=15)
 	natFile, germlineV, locus, library, inFile, maxIters = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile", "maxIters")
 
 	if natFile is None or germlineV is None:
