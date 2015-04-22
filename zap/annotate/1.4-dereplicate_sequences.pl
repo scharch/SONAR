@@ -150,7 +150,7 @@ sub changename{#change sequence names back to the input sequence name
 		  print ZZ "$_";	
 		}
 	}
-	if(-d "./output/sequences/nucleotide"){#move output files to standard pipeline folders
+	if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/){#move output files to standard pipeline folders
 		system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
 	}
 	else{
