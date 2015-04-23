@@ -9,7 +9,6 @@ Usage:
 This script performs two steps of clustering to remove sequences potentially containing sequencing errors. The first step finds duplicates, remove reads with coverage lower then cutoff which may contain sequencing errors, calculate read coverage for each cluster. The second step further cluster the filtered sequences using lower sequence identity cutoff. At the meantime, the second clustering will use reads with high coverage as centroids by assuming biological reads are coming from cDNA with many identical copies while reads containing sequencing errors has very low coverage. please install usearch v7 or higher verion. 
 
 options:
- \t-pu\tpath of the usearch program
  \t-id1\t percent sequence identity used for the first step of clustering, default:1.00
  \t-id2\t percent sequence identity used for the second step of clustering, default:0.99
  \t-min1\tminimun coverage of a read to be kept in the first step of clustering, default:2
@@ -141,6 +140,7 @@ sub changename{#change sequence names back to the input sequence name
 		   }
 		}
 	}
+	close HH;
 	while(<YY>){
 		if($_=~/>([^\t \;\n\r]+)/){
 			chomp;
@@ -158,6 +158,8 @@ sub changename{#change sequence names back to the input sequence name
 		  print ZZ "$_";	
 		}
 	}
+	close YY;
+	close ZZ;
 	if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/){#move output files to standard pipeline folders
 		system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
 	}
