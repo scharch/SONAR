@@ -175,7 +175,7 @@ def main():
 			else:
 				read_dict = load_fastas( inFile )
 		else:
-			read_dict = load_seqs_in_dict( inFile, retained_reads )
+			read_dict = load_seqs_in_dict( inFile, set(retained_reads) )
 
 		#error checking
 		if len(read_dict) == 0:
