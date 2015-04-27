@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 # performing usearch for sequences
 use strict;
-#use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");
 use PPvars qw(ppath);
 #########checking parameters#######
 my $usage="
@@ -23,18 +22,23 @@ Created by Zizhang Sheng.
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
  ";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
-if(@ARGV<1||@ARGV%2>0){die "Number of parameters are not right\n$usage";
+if(@ARGV%2>0){die "Number of parameters are not right\n$usage";
  }
 my %para=@ARGV;
 if(!$para{'-min1'}){$para{'-min1'}=2;}
 if(!$para{'-min2'}){$para{'-min2'}=3;}
 $para{'-pu'}=ppath('usearch');
-if(!$para{'-pu'}){die "please give the correct path to usearch program\n";}
-if(!$para{'-f'}){die "no input seq file\n";}
+if(!$para{'-pu'}){die "please give the correct path to usearch program in the PPvars.pm file\n";}
+if(!$para{'-f'}){
+	my @files=<./output/sequences/nucleotide/*goodVJ.fa>;
+	if(-e "$files[0]"){$para{'-f'}=$files[0];}
+	else{die "no input seq file\n";}
+}
 if(!$para{'-t'}){$para{'-t'}=1;}
 if(!$para{'-id2'}){$para{'-id2'}=0.99;}
 if(!$para{'-id1'}){$para{'-id1'}=1;}
 #########do calculation##########
+
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
 &changename($para{'-f'},$output);
 
@@ -45,8 +49,7 @@ sub usearch{#do the two steps of clustering
     $file_out=~s/\.fa.*//;	  	
     my %derep=();
 	  	my %final_good=();
-	  	system("$para{'-pu'} -cluster_fast $file -threads $para{'-t'}  -id $para{'-id1'}  -uc $file_out.cluster -sizeout -centroids $file_out\_unique.fa > usearchlog.txt");
-	  	#system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out.nonredundant.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
+	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out\_unique.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
 	  	if(-z "$file_out\_unique.fa"){die "No duplicate sequence found in your input sample. Try with lower id1\n";}
 	  	system("$para{'-pu'} -sortbysize $file_out\_unique.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
 	  	if(-z "$file_out.nonredundant.fa"){die "No duplicate sequence found in your input sample.Try with lower id1\n";}
@@ -83,6 +86,7 @@ sub derep{#This is used to remove low abundant clusters after the second step of
 	    	  push @{$ids{$line[9]}},$line[8];
 	      }
       }
+      close HH;
       return %{$ids};
     }
     else{
@@ -103,6 +107,7 @@ sub derep{#This is used to remove low abundant clusters after the second step of
 	    }
 	   	
      }
+     close HH;
      return %ids;
     }	
 	
@@ -117,6 +122,7 @@ sub write_raw{
 	 	  print YY "$_\n";
 	  }
 	}
+	close YY;
 }
 
 ######################
@@ -148,7 +154,7 @@ sub changename{#change sequence names back to the input sequence name
 			$k=~s/centroid\=//;
 		   if($id{$k}==1){
 		   	  $mark=1;	
-		   	  print ZZ "$_\n";
+		   	  print ZZ "$_ size=$size{$k}\n";
 		   }
 		 	 else{
 		 	    $mark=0;	
