@@ -38,7 +38,26 @@ if(!$para{'-id'}){$para{'-id'}=0.99;}
 #########do calculation##########
 
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
-&changename($para{'-f'},$output);
+my $ids_unique=&changename($para{'-f'},$output);
+
+my $file=$para{'-f'};
+$file=~s/goodVJ/goodCDR3/;
+if(-e "$file"){
+    print "Finding nucleotide sequences of CDR3s of unique sequences......\n";	
+    &read_fasta($file,$ids_unique);
+}
+$file=~s/nucleotide/amino_acid/;
+if(-e "$file"){
+    print "Finding amino acid sequences of CDR3s of unique sequences......\n";	
+    &read_fasta($file,$ids_unique);
+}
+
+$file=~s/goodCDR3/goodVJ/;
+if(-e "$file"){
+    print "Finding amino acid sequences of unique sequences......\n";	
+    &read_fasta($file,$ids_unique);
+}
+
 
 ########subrutines#############
 sub usearch{#do the two steps of clustering
@@ -120,5 +139,29 @@ sub changename{#change sequence names back to the input sequence name
 	else{
 	  system("mv tempusearch.fa $seive");
   }
+  return \%id;
 }
 
+sub read_fasta{
+    my ($file,$seqid)=@_;
+    open HH,"$file";
+    $file=~s/\.fa$/\_unique.fa/;
+    open YY,">$file";
+    my $mark=0;
+    while(<HH>){
+    	  if($_=~/>([^\t \;]+)/){
+    	  	if($seqid->{$1}){
+    	  	   print YY $_;
+    	  	   $mark=1;	
+    	  	}
+    	  	else{
+    	  	  $mark=0;	
+    	  	}
+    	  }
+    	  elsif($mark==1){
+    	  	print YY $_;
+    	  }
+    }	
+	close HH;
+	close YY;
+}
