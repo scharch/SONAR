@@ -132,6 +132,7 @@ class ProjectFolders:
 		self.vgene      = "%s/vgene"       %  self.blast
 		self.jgene      = "%s/jgene"       %  self.blast
 		self.last       = "%s/last_round"  %  self.clustal
+		self.lineage    = "%s/lineage"     %  self.clustal
 		self.beast      = "%s/beast"       %  self.phylo
 
 		#output
