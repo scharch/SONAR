@@ -48,7 +48,7 @@ Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
                    Ignored unless "-locus C" is used.
     i		Optional custom set of sequences to be analayzed. "-nofilter"
                    and "-a" flags will be ignored if this option is used.
-		   Default is output/sequences/ROOT_unique.fa (or 
+		   Default is output/sequences/ROOT_goodVJ_unique.fa (or 
 		   output/sequences/ROOT_allV.fa with the -a flag below)
     maxIters	Optional maximum number of rounds to conduct before giving up.
                    Default = 15.
@@ -154,7 +154,7 @@ def main():
 			good += len(all_leaves) - num_nats
 			total += len(tree.get_terminals()) - num_nats - 1 #also don't count germline
 			if idx % 25 == 0 and not cluster:
-				print "Found %d reads in subtree %d. Total saved: %d / %d" % ( len(all_leaves)-num_nats, idx, good, total-1)
+				print "Found %d reads in subtree #%d. Total savedso far: %d / %d" % ( len(all_leaves)-num_nats, idx+1, good, total-1)
 
 
 		# processed all trees from last round, now do a sanity check
@@ -338,7 +338,7 @@ if __name__ == '__main__':
 		correct_V_only = False
 
 	#check sequence quality parameter
-	selectedFile = "%s/%s_unique.fa" % (prj_tree.nt, prj_name)
+	selectedFile = "%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)
 	flag = [x for x in ["a", "-a", "--a", "all", "-all", "--all"] if q(x)]
 	if len(flag)>0:
 		sys.argv.remove(flag[0])
