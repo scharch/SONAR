@@ -83,7 +83,7 @@ if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; then
 
 	#Ask user for input
 	echo ""
-	read -e -p "Please enter the path to qsub: " -i $qsub homeDir
+	read -e -p "Please enter the path to qsub: " -i $qsub qsub
 	read -e -p "Please enter the path to Muscle on the cluster: " -i $clustMuscle clustMuscle
 	read -e -p "Please enter the path to blastall on the cluster: " -i $clustBlast clustBlast
 
