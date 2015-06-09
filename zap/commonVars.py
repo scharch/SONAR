@@ -21,9 +21,9 @@ v_pattern = re.compile("V_gene=(IG.*?)[,| ]")
 
 # databases	
 VH_DB	= "%s/germDB/IgHV.fa"  %HOME_FOLDER
-VK_DB	= "%s/germDB/IgKV_noNL-OR.fa"  %HOME_FOLDER
-VL_DB	= "%s/germDB/IgLV_noNL-OR.fa"  %HOME_FOLDER
-VKL_DB	= "%s/germDB/IgKLV_noNL-OR.fa" %HOME_FOLDER
+VK_DB	= "%s/germDB/IgKV.fa"  %HOME_FOLDER
+VL_DB	= "%s/germDB/IgLV.fa"  %HOME_FOLDER
+VKL_DB	= "%s/germDB/IgKLV.fa" %HOME_FOLDER
 
 JH_DB	= "%s/germDB/IgHJ.fa"  %HOME_FOLDER
 JK_DB	= "%s/germDB/IgKJ.fa"  %HOME_FOLDER

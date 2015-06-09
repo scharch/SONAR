@@ -5,7 +5,7 @@
 
 
 #print useful information
-echo "
+echo -e "
 General Prerequisites: 
 \tPython with BioPython
 \tPerl with BioPerl
@@ -23,8 +23,8 @@ Module 3 (phylogeny) additional prerequisites:
 \tBEAST
 
 Module 4 (plotting) additional prerequisites:
-R with ggplot2, MASS, and grid
-ete2 Python module
+\tR with ggplot2, MASS, and grid
+\tete2 Python module
 
 "
 
@@ -73,7 +73,7 @@ done
 
 #Check for cluster and get cluster paths
 read -e -p "Will you be using an HPC cluster [y/n]?" cluster
-if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; do
+if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; then
     
     while [ "$checked" != "Y" ] && [ "$checked" != "y" ]; do
 	#defaults
@@ -97,18 +97,22 @@ if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; do
 
     done
 
-done #with cluster specific questions
+fi #with cluster specific questions
+
+
+
+#add SOAnAR to path?
+read -e -p "Would you like to permanently add SOAnAR to the path (by adding a line to .bashrc) [y/n]?" path
+if [ "$path" == "Y" ] || [ "$path" == "y" ]; then
+    echo "export \$PATH=$pipeDIR/annotate:$pipeDIR/lineage:$pipeDIR/phylogeny:$pipeDIR/plotting:$pipeDIR/utilities:\$PATH" >> ~/.bashrc
+    pypath = $(cd $pipeDir; cd ..; pwd)
+    echo "export \$PYTHONPATH=$pypath:\$PYTHONPATH" >> ~/.bashrc
+fi
+
 
 
 
 #Now create output:
-
-#add SOAnAR to path:
-echo "\$PATH=$pipeDIR/annotate:$pipeDIR/lineage:$pipeDIR/phylogeny:$pipeDIR/plotting:$pipeDIR/utilities:\$PATH" >> ~/.bashrc
-pypath = $(cd $pipeDir; cd ..; pwd)
-echo "\$PYTHONPATH=$pypath:\$PYTHONPATH" >> ~/.bashrc
-
-
 
 #create a file for the Python portion of the pipeline
 echo "
@@ -149,9 +153,9 @@ my %ppath=();
 \$ppath{'beast'}=\"$beast\";# absolute path to beast
 
 sub ppath{
-    my $p=shift;	
-	if($ppath{$p}){
-	  return $ppath{$p};	
+    my \$p=shift;	
+	if(\$ppath{\$p}){
+	  return \$ppath{\$p};	
 	}
 	else{
 	  return '';	
