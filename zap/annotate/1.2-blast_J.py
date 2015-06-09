@@ -107,7 +107,7 @@ def main():
 
 
 	# write pbs files and auto submit shell script
-	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, library, 
+	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_J_OPTIONS, library, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 	pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
@@ -117,7 +117,7 @@ def main():
 
 
 	if os.path.isfile(const_lib):
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, const_lib, 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_J_OPTIONS, const_lib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
@@ -127,7 +127,7 @@ def main():
 
 
 	if os.path.isfile(dlib):
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (BLAST_J_OPTIONS, dlib, 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_J_OPTIONS, dlib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')

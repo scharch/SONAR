@@ -8,7 +8,7 @@ Copyright (c) 2011 Columbia University and Vaccine Research Center, National Ins
 """
 
 import sys, os, csv, shutil, re, glob, pickle, string, time, random, commands
-from zap import paths
+from zap.paths import *
 
 sep = "\t"
 linesep = os.linesep
@@ -52,7 +52,7 @@ dict_jgerm_db = {
 ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "work/2-clustal/last_round", "work/2-clustal/lineage", "work/3-phylogeny/beast", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs", "output/rates"]
 
 
-CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s" % (blastall_cmd,"%s","%s","%s","%s")
+CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s"
 BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 1 -e 1e-5 "
 BLAST_J_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 5 -b 5 -v 1 -e 1e-3 "
 BLAST_OTHER_OPTIONS = "-e 1e-3"
