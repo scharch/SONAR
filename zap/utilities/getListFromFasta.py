@@ -24,9 +24,8 @@ from zap import *
 def main():
 
     global inFile, outFile
-    seqs = load_fastas(inFile)
     with open(outFile, "w") as output:
-        [output.write("%s\n"%seqID) for seqID in seqs]
+        [output.write("%s\n"%seq.id) for seq in generate_read_fasta(inFile)]
 
 
 if __name__ == '__main__':

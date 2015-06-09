@@ -278,7 +278,7 @@ def main():
 #$ -o %s/restart-intradonor.out\t#output\n\
 #$ -e %s/restart-intradonor.err\t#error\n\
 %s/lineage/2.3-intradonor_analysis.py -n %s -v %s -locus %s -lib %s -i %s -maxIters %d -cluster\n" % 
-						  (prj_name, prj_tree.clustal, prj_tree.clustal, ZAP_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
+						  (prj_name, prj_tree.clustal, prj_tree.clustal, SCRIPT_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
 				next_round.close()
 
 				os.system("qsub %s/intradonor.sh" % prj_tree.clustal)

@@ -71,7 +71,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 			cdr3_start = -1
 
 	jMotif = "TGGGG"
-	if locus>0 and locus<4: #what if user library is light chains?
+	if locus in ["K", "L", "KL"]: #what if user library is light chains?
 		jMotif = "TT[C|T]GG"
 	jMatch = re.search(jMotif,jgene)
 	

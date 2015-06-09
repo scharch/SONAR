@@ -1,2 +1,4 @@
 *.pyc
 *~
+PPVars.pm
+paths.py

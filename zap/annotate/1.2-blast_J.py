@@ -74,7 +74,7 @@ def main():
 					entry.seq = entry.seq[ dict_germ_aln[seq_id].qend : ]
 				else:
 					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart]
-					entry = entry.reverse_complement()
+					entry.seq = entry.reverse_complement().seq
 
 				if len(entry.seq) > 30: #can probably be 50...
 					fasta_handle.write(">%s\n%s\n" % (entry.id,entry.seq))
