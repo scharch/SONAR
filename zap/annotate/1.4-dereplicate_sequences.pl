@@ -9,7 +9,7 @@ This script performs two steps of clustering to remove sequences potentially con
 
 options:
  \t-id\t percent sequence identity used for the second step of clustering, default:0.99
- \t-min1\tminimun sequencing coverage of a read to be kept in the first step of clustering, default:2
+ \t-min1\tminimun sequencing coverage of a read to be kept in the first step of clustering, default:0
  \t-min2\tminimun sequencing coverage of a read to be kept in the seconde step of clustering, default:3
  \t-f\tsequence file in fasta format
  \t-t\tnumber of threads to run the script. Default:1
@@ -24,7 +24,7 @@ foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "Number of parameters are not right\n$usage";
  }
 my %para=@ARGV;
-if(!$para{'-min1'}){$para{'-min1'}=2;}
+if(!$para{'-min1'}){$para{'-min1'}=0;}
 if(!$para{'-min2'}){$para{'-min2'}=3;}
 $para{'-pu'}=ppath('usearch');
 if(!$para{'-pu'}){die "please give the correct path to usearch program in the PPvars.pm file\n";}
