@@ -20,32 +20,36 @@ v_pattern = re.compile("V_gene=(IG.*?)[,| ]")
 
 
 # databases	
-VH_DB	= "%s/germDB/IgHV.fa"  %SCRIPT_FOLDER
-VK_DB	= "%s/germDB/IgKV.fa"  %SCRIPT_FOLDER
-VL_DB	= "%s/germDB/IgLV.fa"  %SCRIPT_FOLDER
-VKL_DB	= "%s/germDB/IgKLV.fa" %SCRIPT_FOLDER
+VH_DB	= "%s/germDB/IgHV.fa"   %SCRIPT_FOLDER
+VK_DB	= "%s/germDB/IgKV.fa"   %SCRIPT_FOLDER
+VL_DB	= "%s/germDB/IgLV.fa"   %SCRIPT_FOLDER
+VKL_DB	= "%s/germDB/IgKLV.fa"  %SCRIPT_FOLDER
+VHKL_DB	= "%s/germDB/IgHKLV.fa" %SCRIPT_FOLDER
 
-JH_DB	= "%s/germDB/IgHJ.fa"  %SCRIPT_FOLDER
-JK_DB	= "%s/germDB/IgKJ.fa"  %SCRIPT_FOLDER
-JL_DB	= "%s/germDB/IgLJ.fa"  %SCRIPT_FOLDER
-JKL_DB	= "%s/germDB/IgKLJ.fa" %SCRIPT_FOLDER
+JH_DB	= "%s/germDB/IgHJ.fa"   %SCRIPT_FOLDER
+JK_DB	= "%s/germDB/IgKJ.fa"   %SCRIPT_FOLDER
+JL_DB	= "%s/germDB/IgLJ.fa"   %SCRIPT_FOLDER
+JKL_DB	= "%s/germDB/IgKLJ.fa"  %SCRIPT_FOLDER
+JHKL_DB	= "%s/germDB/IgHKLJ.fa" %SCRIPT_FOLDER
 
 DH_DB   = "%s/germDB/IgHD.fa"  %SCRIPT_FOLDER
 
 CH_DB	= "%s/germDB/IgHC_CH1.fa" %SCRIPT_FOLDER
 
 dict_vgerm_db = {
-	'H'  : VH_DB,
-	'K'  : VK_DB,
-	'L'  : VL_DB,
-	'KL' : VKL_DB
+	'H'   : VH_DB,
+	'K'   : VK_DB,
+	'L'   : VL_DB,
+	'KL'  : VKL_DB,
+	'HKL' : VHKL_DB
 }
 
 dict_jgerm_db = {
-	'H'  : JH_DB,
-	'K'  : JK_DB,
-	'L'  : JL_DB,
-	'KL' : JKL_DB,
+	'H'   : JH_DB,
+	'K'   : JK_DB,
+	'L'   : JL_DB,
+	'KL'  : JKL_DB,
+	'HKL' : JHKL_DB
 }
 
 
