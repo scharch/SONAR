@@ -73,7 +73,7 @@ def main():
 				if dict_germ_aln[seq_id].strand == "+":
 					entry.seq = entry.seq[ dict_germ_aln[seq_id].qend : ]
 				else:
-					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart]
+					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart -1 ]
 					entry.seq = entry.reverse_complement().seq
 
 				if len(entry.seq) > 30: #can probably be 50...
