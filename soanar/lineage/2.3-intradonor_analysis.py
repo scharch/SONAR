@@ -102,7 +102,7 @@ def main():
 		
 		# parse tree files and get all reads clustered with native antibodies
 		# start total at 1 so good/total < .95 when we start a new analysis
-		tree_files, good, total, retained_reads = sorted(glob.glob("%s/NJ*.tree" %prj_tree.clustal)), 0.0, 1.0, []
+		tree_files, good, total, retained_reads = sorted(glob.glob("%s/NJ*.tree" %prj_tree.lineage)), 0.0, 1.0, []
 								 
 		if force:
 			tree_files = [] #no need to process the files since we will be starting over
@@ -208,13 +208,13 @@ def main():
 			oldFiles = glob.glob("%s/*" % prj_tree.last)
 			for old in oldFiles:
 				os.remove(old)
-			lastRound = glob.glob("%s/NJ*" % prj_tree.clustal)
+			lastRound = glob.glob("%s/NJ*" % prj_tree.lineage)
 			for infile in lastRound:
 				os.rename( infile, "%s/%s" % (prj_tree.last, os.path.basename(infile)) )
 					
 			#open initial output
 			f_ind = 1
-			outFasta = open("%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), "w")
+			outFasta = open("%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), "w")
 			currentSize = 0
 			
 			#process reads
@@ -232,14 +232,14 @@ def main():
 						outFasta.write( ">%s\n%s\n" % (n.id, n.seq) )
 					outFasta.close()
 					if not cluster:
-						run_muscle            = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), out="%s/NJ%05d.aln" % (prj_tree.clustal, f_ind) )
-						run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.clustal, f_ind)
+						run_muscle            = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), out="%s/NJ%05d.aln" % (prj_tree.lineage, f_ind) )
+						run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.lineage, f_ind)
 						run_muscle.cluster1   = "neighborjoining"
 						run_muscle.maxiters   = 1
 						thisVarHidesTheOutput = run_muscle()
 						if f_ind % 25 == 0: print "%s - Finished %dth file of %d in this round..." % (time.strftime("%H:%M:%S"), f_ind, len(shuffled_reads)/npf + 1)
 					f_ind += 1
-					outFasta = open("%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), "w")
+					outFasta = open("%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), "w")
 					currentSize = 0
 
 			#Any leftovers?
@@ -250,8 +250,8 @@ def main():
 				outFasta.close()
 			
 				if not cluster:
-					run_muscle = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.clustal, f_ind), out="%s/NJ%05d.aln" % (prj_tree.clustal, f_ind) )
-					run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.clustal, f_ind)
+					run_muscle = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), out="%s/NJ%05d.aln" % (prj_tree.lineage, f_ind) )
+					run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.lineage, f_ind)
 					run_muscle.cluster1   = "neighborjoining"
 					run_muscle.maxiters   = 1
 					thisVarHidesTheOutput = run_muscle()
@@ -264,13 +264,13 @@ def main():
 			if cluster:
 				# write pbs files and auto submit shell script
 				command = "NUM=`printf \"%%05d\" $SGE_TASK_ID`\n%s -in %s/NJ$NUM.fa -out %s/NJ$NUM.aln -cluster1 neighborjoining -maxiters 1 -tree1 %s/NJ$NUM.tree" % \
-				    (cluster_muscle, prj_tree.clustal, prj_tree.clustal, prj_tree.clustal)
-				pbs = open("%s/intradonor.sh" % prj_tree.clustal, 'w')
-				pbs.write( PBS_STRING%(f_ind, "%s-intradonor"%prj_name, "500M", "1:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.clustal, prj_tree.clustal)) )
+				    (cluster_muscle, prj_tree.lineage, prj_tree.lineage, prj_tree.lineage)
+				pbs = open("%s/intradonor.sh" % prj_tree.lineage, 'w')
+				pbs.write( PBS_STRING%(f_ind, "%s-intradonor"%prj_name, "500M", "1:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.lineage, prj_tree.lineage)) )
 				pbs.close()
 
 				# write a second PBS job to restart this script once muscle has finished
-				next_round = open("%s/nextround.sh" % prj_tree.clustal, 'w')
+				next_round = open("%s/nextround.sh" % prj_tree.lineage, 'w')
 				next_round.write( "\
 #!/bin/bash\n\
 #$ -hold_jid %s-intradonor\t\t# run once previous round has completed\n\
@@ -280,11 +280,11 @@ def main():
 #$ -o %s/restart-intradonor.out\t#output\n\
 #$ -e %s/restart-intradonor.err\t#error\n\
 %s/lineage/2.3-intradonor_analysis.py -n %s -v %s -locus %s -lib %s -i %s -maxIters %d -cluster\n" % 
-						  (prj_name, prj_tree.clustal, prj_tree.clustal, SCRIPT_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
+						  (prj_name, prj_tree.lineage, prj_tree.lineage, SCRIPT_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
 				next_round.close()
 
-				os.system("qsub %s/intradonor.sh" % prj_tree.clustal)
-				os.system("qsub %s/nextround.sh"  % prj_tree.clustal)
+				os.system("qsub %s/intradonor.sh" % prj_tree.lineage)
+				os.system("qsub %s/nextround.sh"  % prj_tree.lineage)
 				log.write("%s - Submitted current round to cluster\n" % time.strftime("%H:%M:%S"))
 				log.close()
 				break #exits "while not converged" loop

@@ -123,16 +123,15 @@ class ProjectFolders:
 		self.out        = "%s/output"      %  proj_home
 
 		#working folders
-		self.blast      = "%s/1-blast"     %  self.work
-		self.clustal    = "%s/2-clustal"   %  self.work
-		self.phylo      = "%s/3-phylogeny" %  self.work
+		self.annotate   = "%s/annotate"    %  self.work
+		self.lineage    = "%s/lineage"     %  self.work
+		self.phylo      = "%s/phylo"       %  self.work
 		self.internal   = "%s/internal"    %  self.work
 
 		#second-level
 		self.vgene      = "%s/vgene"       %  self.blast
 		self.jgene      = "%s/jgene"       %  self.blast
-		self.last       = "%s/last_round"  %  self.clustal
-		self.lineage    = "%s/lineage"     %  self.clustal
+		self.last       = "%s/last_round"  %  self.lineage
 		self.beast      = "%s/beast"       %  self.phylo
 
 		#output

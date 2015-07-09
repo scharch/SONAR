@@ -53,7 +53,7 @@ dict_jgerm_db = {
 }
 
 
-ALL_FOLDERS = ["work/1-blast", "work/2-clustal", "work/3-phylogeny", "work/internal", "work/1-blast/vgene", "work/1-blast/jgene", "work/2-clustal/last_round", "work/2-clustal/lineage", "work/3-phylogeny/beast", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs", "output/rates"]
+ALL_FOLDERS = ["work/annotate", "work/lineage", "work/internal", "work/annotate/vgene", "work/annotate/jgene", "work/lineage/last_round", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs" ]
 
 
 CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s"
