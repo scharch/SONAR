@@ -19,7 +19,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 """
 
-from zap import *
+from soanar import *
 
 def main():
 

@@ -8,7 +8,7 @@ Copyright (c) 2011 Columbia University and Vaccine Research Center, National Ins
 """
 
 import sys, os, csv, shutil, re, glob, pickle, string, time, random, commands
-from zap.paths import *
+from soanar.paths import *
 
 sep = "\t"
 linesep = os.linesep

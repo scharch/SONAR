@@ -79,11 +79,11 @@ Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
 import time, sys
 
 #assume that we haven't necessarily set the path variables on the cluster
-find_ZAP_on_cluster = sys.argv[0].split("zap")
-sys.path.append("%szap" % find_ZAP_on_cluster[0])
+find_SOAnAR_on_cluster = sys.argv[0].split("soanar")
+sys.path.append("%ssoanar" % find_SOAnAR_on_cluster[0])
 
 from cStringIO import StringIO
-from zap.lineage import *
+from soanar.lineage import *
 from Bio import Phylo
 from Bio.Align.Applications import MuscleCommandline
 
