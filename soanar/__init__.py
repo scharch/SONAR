@@ -129,8 +129,8 @@ class ProjectFolders:
 		self.internal   = "%s/internal"    %  self.work
 
 		#second-level
-		self.vgene      = "%s/vgene"       %  self.blast
-		self.jgene      = "%s/jgene"       %  self.blast
+		self.vgene      = "%s/vgene"       %  self.annotate
+		self.jgene      = "%s/jgene"       %  self.annotate
 		self.last       = "%s/last_round"  %  self.lineage
 		self.beast      = "%s/beast"       %  self.phylo
 
