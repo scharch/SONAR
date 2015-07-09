@@ -59,9 +59,11 @@ Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
     a		Use all NGS sequences with an assigned V, even those with
                    out-of frame junctions and/or stop codons or without a 
 		   successfuly assigned J gene. Default = OFF (use in-frame ORF
-		   sequences only). Recommended usage is to manually dereplicate
-		   those sequences using 1.4-dereplicate_sequences.pl and then
-		   pass that output to the -i parameter of this script.
+		   sequences only). Instead of using -a, recommended usage is 
+		   to manually dereplicate the output/sequences/ROOT_allV.fa
+		   file using 1.4-dereplicate_sequences.pl with the -f flag
+		   and then passing that output to the -i parameter of this 
+		   script.
     cluster	Submit tree-building jobs to the cluster.
     f		Force a restart of the analysis, even if there are files from
                    a previous run in the working directory.
