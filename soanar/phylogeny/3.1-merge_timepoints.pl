@@ -5,7 +5,10 @@
  3.1-merge_timepoints.pl
 
  This script uses USearch to recluster selected sequences from multiple timepoints
-       to determine "birthdays" and persistence times.
+       to determine "birthdays" and persistence times. It is recommended to use
+       custom prefixes that correspond to actual time points from longitudinal
+       samples, whether relative (weeks or months post infection) or absolute
+       (sample collection date).
 
  Usage: 3.1-merge_timepoints.pl --seqs time1.fa --seqs time2.fa ...
                                   [ --labels t1 --labels t2 ... --t 100 -f]
