@@ -57,6 +57,15 @@ def main():
 
     global inFile, lookup
 
+    oldFiles = glob.glob("%s/infile"%prj_tree.phylo) + glob.glob("%s/outtree"%prj_tree.phylo) + glob.glob("%s/outfile"%prj_tree.phylo)
+    if len(oldFiles) > 0:
+        if force:
+            for f in oldFiles:
+                os.remove(f)
+        else:
+            sys.exit("Old files exist! Please use the -f flag to force overwrite.")
+        
+
     if doAlign:
 
         #first create a working file to align and add the germline and natives
@@ -95,10 +104,10 @@ def main():
 
     lookup = []
     for seq in aln:
-        lookup.append( seq.id )
-        seq.id = "%010d" % len( lookup )
         if re.search("(IG|VH|VK|VL|HV|KV|LV)", seq.id) is not None:
             germ_pos = ind + 1
+        lookup.append( seq.id )
+        seq.id = "%010d" % len( lookup )
 
     with open("%s/infile" % prj_tree.phylo, "w") as output:
         AlignIO.write(aln, output, "phylip")
@@ -131,7 +140,7 @@ def main():
         mystuff = instuff.read()
     fixedstuff = re.sub("\d{10}", revertName, mystuff)
     with open("%s/%s.dnaml.out"%(prj_tree.logs,prj_name), "w") as outstuff:
-        outtree.write(fixedtree)
+        outstuff.write(fixedstuff)
         
     #clean up
     os.remove("infile")
