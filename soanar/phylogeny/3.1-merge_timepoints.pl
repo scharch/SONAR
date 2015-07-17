@@ -46,10 +46,11 @@ if ($#ARGV < 0) { pod2usage(1); }
 
 my @seqFiles   = ( );
 my @prefix     = ( );
-my ($t, $force, $help) = ( 100, 0, 0 );
+my ($t, $min, $force, $help) = ( 100, 1, 0, 0 );
 GetOptions("seqs=s{1,}" => \@seqFiles,
 	   "labels=s"   => \@prefix,
 	   "t=i"        => \$t,
+	   "m=i"        => \$min,
            "force!"     => \$force,
            "help!"      => \$help
     );
