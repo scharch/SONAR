@@ -1,28 +1,35 @@
 #!/usr/bin/perl
 use strict;
-#use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");
+use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");
 use PPvars qw(ppath);
 ################################################
 #This is a mater script that allow user to generate xml configuration files and perform MCMC simulation to estimate evolutionary rate. User has to install beast package first. The script accepts fasta format sequence file as input. Be aware that only temporal data with at least from two time points, are allowed to calculate evolutionary rate. All sequences in the dataset must be non-redundant. Please remove duplicate sequences before running the script. If there are duplicate sequences in the dataset, it's better keep the one with earlier time point. Currently, only GTR substitution model was incorporated but our tests showed the rate calculation is robust to substitution models. it's users' responsibility to check if the MCMC simulation converged using Tracer in Beast2 Package.
 ################################################
 
 my $usage="Usage:
-Evolutionary rate calculation on a lineage from at least two time points. Only nucleotide sequences accepted at this time
+Evolutionary rate calculation on an antibody lineage from at least two time points. Only nucleotide sequences accepted at this time
 Options:
-	-f\tinput antibody nucleotide VDJ sequence file with fasta format
+	-f\tinput antibody nucleotide VDJ sequence file with fasta format, must be aligned sequences
 	-CDR\tsequences of the three CDRs
 	-FW\tsequences of the four FWs
+	-CDRb\tInstead of providing sequences for CDRs and FWs, user can also provide boundaries of the three CDR regions in the DNA sequences 
+	   \tconnected with :. For example, 76:99:151:174:289:399
+	-codon_pos\twhether calculate rate for the first,second and third codon positions seperately. Currently only support seperating 1+2 
+	   \tfrom 3 codon position. The calculation is for full length sequence only. Default is 0 (not seperate them,otherwise give it 1).
 	-spliter\twhich marker used to seperate seq name, default:_
 	-nc\twhich column is time info after parsing using -spliter in the sequence name, start from 1. The time 
 	   \tinfo must be numerical. default:1
 	-pop\tmodel of coalecent population size, constant or bayesian_skyline, default is later
 	-o\toutput file prefix
-	-n \thow many sequences to randomly choose from each time point. default: 25
+	-n\thow many sequences to randomly choose from each time point. default: 25
 	-chainLength\tnumber of steps to run, default:10000000
-	-storeEvery\tstore log info every n steps, default:1000
+	-storeEvery\tstore mcmc state info every n steps, default:5000
 	-log\tstore a tree every n step, default:1000
 	-beast\tpath to beast2 program
-	-lower_limit\tlower limit of when the lineage start evolve, for example, all sequences week 11 and 50 post infection, the suspected time of lineage activation is week 1, then use -lower_limit 1. Default:1. if the date is in the formate yyyy-mm-dd, please convert to yyyy.897123 using number of dates passed divided by 365. 1980-01-01 and 1980-12-31 are 1980.000 and 1980.999 respectively.
+	-lower_limit\tlower limit of when the lineage start evolve, for example, all sequences week 11 and 50 post infection, the suspected 
+	   \ttime of lineage activation is week 1, then use -lower_limit 1. Default:1. if the date includes year and month,please use this format yyyy-mm-dd.
+	-upper_limit\tupper limit of when the lineage end evolve, Default:Infinity. if the date includes year and month,please use this 
+	   \tformat yyyy-mm-dd.
 	-burnin\t percentage of steps to be thrown away before rate estimation (burnin in beast). Default:10 
 
 Example:
@@ -45,15 +52,33 @@ if(!$para{'-o'}){$para{'-o'}=$para{'-f'};$para{'-o'}=~s/\..*//;}
 if(!$para{'-chainLength'}){$para{'-chainLength'}=10000000;}
 if(!$para{'-pop'}){$para{'-pop'}='bayesian_skyline';}
 if(!$para{'-log'}){$para{'-log'}=1000;}
-if(!$para{'-storeEvery'}){$para{'-storeEvery'}=1000;}
+if(!$para{'-storeEvery'}){$para{'-storeEvery'}=5000;}
 if(!$para{'-burnin'}){$para{'-burnin'}=10;}
 if(!$para{'-lower_limit'}){$para{'-lower_limit'}=1;}
+if(!$para{'-upper_limit'}){$para{'-upper_limit'}='Infinity';}
+if($para{'-lower_limit'}=~/[0-9]{4}\-[0-9]{2}\-[0-9]{2}/){$para{'-lower_limit'}=&year_to_digital($para{'-lower_limit'});}
+if($para{'-upper_limit'}=~/[0-9]{4}\-[0-9]{2}\-[0-9]{2}/){$para{'-upper_limit'}=&year_to_digital($para{'-upper_limit'});}
+if(!$para{'-codon_pos'}){$para{'-codon_pos'}=0;}
+
+
 ######Processing######
-my $seq_CDR='';
-my $seq_FW='';
+my $seq_pos12='';
+my $seq_pos3='';
+my $result='';
+my %rate_partitions=();
+my @partition_names=();
 my ($seq,$seq_name_selected)=&read_fasta($para{'-f'},$para{'-n'});#read sequences and select n sequences for each time point
-if($para{'-CDR'}){$seq_CDR=&read_fasta($para{'-CDR'});}
-if($para{'-FW'}){$seq_FW=&read_fasta($para{'-FW'});}
+if($para{'-CDR'}){$rate_partitions{'CDR'}=&read_fasta($para{'-CDR'});}
+if($para{'-FW'}){$rate_partitions{'FW'}=&read_fasta($para{'-FW'});}
+
+if(!$para{'-CDR'}&&!$para{'-FW'}&&$para{'-CDRb'}){#find CDR seqences
+	  my @regions=split/\:/,$para{'-CDRb'};
+	  if(@regions!=6&&@regions!=4){die "Provided CDR boundaries are not correct\n";}
+	  ($rate_partitions{'CDR'},$rate_partitions{'FW'})=&extract_CDR(@regions);
+	}
+	
+if($para{'-codon_pos'}){($rate_partitions{'pos12'},$rate_partitions{'pos3'})=&extract_codon_pos();}#find sequences for codon positions
+
 &write_xml();
 system("$para{'-beast'} $para{'-o'}.xml");
 &parsing_results("$para{'-o'}.log");
@@ -61,67 +86,88 @@ if(-d "./output/rate/"){
   system("mv $para{'-o'}.xml $para{'-o'}.xml.state $para{'-o'}.log $para{'-o'}.trees ./output/rate/");	
 }
 
+print $result;
+############################
+sub extract_codon_pos{
+	  my %pos12=();
+	  my %pos3=();
+	  foreach(@$seq_name_selected){
+	  	my $name=$_;
+	  	chomp $seq->{$name};
+	  	for(my $i=0;$i<length($seq->{$name});$i+=3){
+	  		$pos3{$name}.=substr($seq->{$name},$i+2,1);
+	  		$pos12{$name}.=substr($seq->{$name},$i,2);
+	  		
+	  	}
+	  }
+	return \%pos12,\%pos3;
+}
+############################
+sub extract_CDR{
+    my (@region)=@_;
+    my %seqCDR=();
+    my %seqFW=();
+    foreach(@$seq_name_selected){
+        $seqCDR{$_}=substr($seq->{$_},$region[0]-1,$region[1]-$region[0]+1).substr($seq->{$_},$region[2]-1,$region[3]-$region[2]+1).substr($seq->{$_},$region[4]-1,$region[5]-$region[4]+1);
+        $seqFW{$_}=substr($seq->{$_},0,$region[0]-1).substr($seq->{$_},$region[1],$region[2]-1-$region[1]).substr($seq->{$_},$region[3],$region[4]-1-$region[3]).substr($seq->{$_},$region[5],);	
+    }	
+	 return \%seqCDR,\%seqFW;
+}
 ############################
 sub parsing_results{#calculate mean rate and 95% highest probability density range (or confidence interval)
-    my $file=shift;
+    my ($file,$codon)=@_;
     open HH,"$file" or die "resulte file $file not found\n";#read in log file
-    my $mean_c=0;
-    my $mean_CDR=0;
-    my $mean_FW=0;	
-    my @rate=();
-    my @rate_CDR=();
-    my @rate_FW=();
+    my %rate=();
+    my %rate_colomn=();
 	  while(<HH>){
 	  	if($_=~/^Sample/){
 	  		 my @line=split/	/,$_;
 	  		 my $i=0;
 	  		 foreach(@line){
 	  		   if($_=~/rate.mean/){#find colomn for mean rate 
-	  		       	$mean_c=$i;
+	  		       	$rate_colomn{'overall'}=$i;
 	  		    }
-	  		   elsif($_=~/rate.+FW.mean/){#find colomn for framework region rate 
-	  		       	$mean_FW=$i;		
+	  		   elsif($_=~/rate\.\_(.+)\.mean/){#find colomn for framework region rate 
+	  		       	$rate_colomn{$1}=$i;		
 	  		    }
-	  		   elsif($_=~/rate.+CDR.mean/){#find colomn for CDRs region rate
-	  		   	   $mean_CDR=$i;
-	  		  }
 	  		  $i++;
 	  		}
 	  	}
 	  elsif($_=~/^[0-9]/){
 	     my @line1=split/\t/,$_;
-	     push @rate,$line1[$mean_c];
-	     if($mean_CDR>0){
-	        push @rate_CDR,$line1[$mean_CDR];	
-	     }	
-	     if($mean_FW>0){
-	        push @rate_FW,$line1[$mean_FW];	
-	     }	
+	     foreach(keys %rate_colomn){
+	       push @{$rate{$_}},$line1[$rate_colomn{$_}];	
+	    }
 	   }
 	  	
 	  }
 	  
 	  #output rates
-	  for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
+	  foreach(sort keys %rate){
+	  	my @rate=@{$rate{$_}};
+	    for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
 	     shift @rate;	
-	  }
-	  
-	  my @rate_s=&statistic(@rate);
-	  print "Mean rate: $rate_s[0]\n95% HPD interval: [$rate_s[3],$rate_s[4]]\n";
-	  if(@rate_CDR){
-	  	for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
-	     shift @rate_CDR;	#10% steps of burn in
 	    }
-	    @rate_s=&statistic(@rate_CDR);
-	    print "Mean rate for CDRs: $rate_s[0]\n95% HPD interval: [$rate_s[3],$rate_s[4]]\n";
+	    my @rate_s=&statistic(@rate);
+	    $result.="Mean rate $_: $rate_s[0]\n95% HPD interval: [$rate_s[3],$rate_s[4]]\n\n";
 	  }
-	  if(@rate_FW){
-	  	for(my $j=0;$j<@rate/$para{'-burnin'};$j++){
-	     shift @rate_FW;	#10% steps of burn in
-	    }
-	    @rate_s=&statistic(@rate_FW);
-	    print "Mean rate for FWs: $rate_s[0]\n95% HPD interval: [$rate_s[3],$rate_s[4]]\n";
+
+}
+#############################
+sub year_to_digital{
+    my ($date)=@_;
+    my %month=('01',31,'02',28,'03',31,'04',30,'05',31,'06',30,'07',31,'08',31,'09',30,'10',31,'11',30,'12',31);	
+	  my @line=split/\-/,$date;
+	  my $dates=0;
+	  foreach(sort {$a<=>$b} keys %month){
+	      if($_<$line[1]){
+	      	 $dates+=$month{$_};
+	      }	
 	  }
+	  $dates+=$line[2];
+	  $dates=$dates/365;
+	  if($dates>=1){$dates=0.99999;}
+	  return $line[0].substr($dates,1,);
 }
 #########################
 sub statistic{# estimate mean, median and standard deviations of rate
@@ -172,8 +218,10 @@ sub HPD{#find 95% high probability density region
 }
 ############################
 sub write_xml{#write cofiguration file for beast
+my $type='';
 open YY,">$para{'-o'}.xml";
-
+my %distribution=();
+my $key='';
 print YY '<?xml version="1.0" encoding="UTF-8" standalone="no"?><beast beautitemplate=\'Standard\' beautistatus=\'\' namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.evolution.likelihood" version="2.0">',"\n\n\n    <data\n";#print title
 print YY "id=\"$para{'-o'}\"\nname=\"alignment\">\n";
 my $taxas=@$seq_name_selected;
@@ -181,22 +229,18 @@ foreach(@$seq_name_selected){
 	print YY "                        <sequence id=\"seq_$_\" taxon=\"$_\" totalcount=\"4\" value=\"$seq->{$_}\"/>\n";	
 	}
 print YY "                    </data>\n";
-if($para{'-FW'}){
-	print YY "<data\nid=\"$para{'-o'}\_FW\">\n";
+my $seqtaxon=1;
+foreach(sort keys %rate_partitions){
+	$key=$_;
+	print YY "<data\nid=\"$para{'-o'}\_$key\">\n";
 	foreach(@$seq_name_selected){
-		if(!$seq_FW->{$_}){die "Please make sure you have the same sequencs in full length and FW files\n";}
-	print YY "                        <sequence id=\"seq_$_",1,"\" taxon=\"$_\" totalcount=\"4\" value=\"$seq_FW->{$_}\"/>\n";	
+		if(!$rate_partitions{$key}->{$_}){die "Please make sure you have the same sequencs in full length and $key files\n";}
+	print YY "                        <sequence id=\"seq_$_",$seqtaxon,"\" taxon=\"$_\" totalcount=\"4\" value=\"$rate_partitions{$key}->{$_}\"/>\n";	
 	}
 	print YY "                    </data>\n";
-}
-if($para{'-CDR'}){
-  print YY "<data\nid=\"$para{'-o'}\_CDR\">\n"; 
-	foreach(@$seq_name_selected){
-		if(!$seq_CDR->{$_}){die "Please make sure you have the same sequencs in full length and CDR files\n";}
-	print YY "                        <sequence id=\"seq_$_",2,"\" taxon=\"$_\" totalcount=\"4\" value=\"$seq_CDR->{$_}\"/>\n";	
+	$seqtaxon++;
 	}
-	print YY "                    </data>\n";
-}	
+
 
 print YY '
 <map name="Beta">beast.math.distributions.Beta</map>
@@ -221,7 +265,7 @@ my $taxon='';
 foreach(@$seq_name_selected){
 	my @line=split/[$para{'-spliter'}]/,$_;
 	$line[$para{'-nc'}-1]=~s/^0+//;
-	$taxon.="$_=$line[$para{'-nc'}-1],\n"
+	$taxon.="$_=".&year_to_digital($line[$para{'-nc'}-1]).",\n"
 	}
 	chomp $taxon;
 	chop $taxon;
@@ -245,16 +289,11 @@ name=\"alignment\"/>
         <parameter id=\"ucldStdev.c:$para{'-o'}\" lower=\"0.0\" name=\"stateNode\" upper=\"5.0\">0.5</parameter>
         <stateNode dimension=\"",2*$taxas-2,"\" id=\"rateCategories.c:$para{'-o'}\" spec=\"parameter.IntegerParameter\">1</stateNode>
 ";	
-if($para{'-FW'}){
-print YY "        <parameter id=\"ucldMean.c:$para{'-o'}_FW\" name=\"stateNode\">1.0</parameter>
-        <parameter id=\"ucldStdev.c:$para{'-o'}_FW\" lower=\"0.0\" name=\"stateNode\" upper=\"5.0\">0.5</parameter>
-        <stateNode dimension=\"$taxas\" id=\"rateCategories.c:$para{'-o'}_FW\" spec=\"parameter.IntegerParameter\">1</stateNode>\n";
-
-}
-if($para{'-CDR'}){
-print YY "        <parameter id=\"ucldMean.c:$para{'-o'}_CDR\" name=\"stateNode\">1.0</parameter>
-        <parameter id=\"ucldStdev.c:$para{'-o'}_CDR\" lower=\"0.0\" name=\"stateNode\" upper=\"5.0\">0.5</parameter>
-        <stateNode dimension=\"$taxas\" id=\"rateCategories.c:$para{'-o'}_CDR\" spec=\"parameter.IntegerParameter\">1</stateNode>\n";
+foreach(sort keys %rate_partitions){
+	$key=$_;
+print YY "        <parameter id=\"ucldMean.c:$para{'-o'}_$key\" name=\"stateNode\">1.0</parameter>
+        <parameter id=\"ucldStdev.c:$para{'-o'}_$key\" lower=\"0.0\" name=\"stateNode\" upper=\"5.0\">0.5</parameter>
+        <stateNode dimension=\"$taxas\" id=\"rateCategories.c:$para{'-o'}_$key\" spec=\"parameter.IntegerParameter\">1</stateNode>\n";
 
 }#rate setting up
 
@@ -342,27 +381,35 @@ print YY "            <prior id=\"RateACPrior.s:$para{'-o'}\" name=\"distributio
             <prior id=\"MeanRatePrior.c:$para{'-o'}\" name=\"distribution\" x=\"\@ucldMean.c:$para{'-o'}\">
                 <Uniform id=\"Uniform.0\" name=\"distr\" upper=\"Infinity\"/>
             </prior>\n";
-      if($para{'-FW'}){print YY "            <prior id=\"MeanRatePrior.c:$para{'-o'}\_FW\" name=\"distribution\" x=\"\@ucldMean.c:$para{'-o'}\_FW\">
-                <Uniform id=\"Uniform.01\" name=\"distr\" upper=\"Infinity\"/>
-            </prior>\n";}
-      if($para{'-CDR'}){print YY "            <prior id=\"MeanRatePrior.c:$para{'-o'}\_CDR\" name=\"distribution\" x=\"\@ucldMean.c:$para{'-o'}\_CDR\">
-                <Uniform id=\"Uniform.02\" name=\"distr\" upper=\"Infinity\"/>
-            </prior>\n";}
+            $distribution{'uniform'}=1;
+            foreach(sort keys %rate_partitions){
+	             $key=$_;	             
+               print YY "            <prior id=\"MeanRatePrior.c:$para{'-o'}\_$key\" name=\"distribution\" x=\"\@ucldMean.c:$para{'-o'}\_$key\">
+                <Uniform id=\"Uniform.0$distribution{'uniform'}\" name=\"distr\" upper=\"Infinity\"/>
+            </prior>\n";
+            $distribution{'uniform'}++;
+            }
+            
+            
+     
 print YY "            <prior id=\"ucldStdevPrior.c:$para{'-o'}\" name=\"distribution\" x=\"\@ucldStdev.c:$para{'-o'}\">
                 <Exponential id=\"Exponential.01\" name=\"distr\">
                     <parameter estimate=\"false\" id=\"RealParameter.011\" name=\"mean\">0.3333</parameter>
                 </Exponential>
             </prior>\n";
-      if($para{'-FW'}){print YY "            <prior id=\"ucldStdevPrior.c:$para{'-o'}\_FW\" name=\"distribution\" x=\"\@ucldStdev.c:$para{'-o'}\_FW\">
-                <Exponential id=\"Exponential.02\" name=\"distr\">
-                    <parameter estimate=\"false\" id=\"RealParameter.012\" name=\"mean\">0.3333</parameter>
+$distribution{'exp'}=2; 
+$distribution{'realp'}=12;            
+           foreach(sort keys %rate_partitions){
+	             $key=$_;	             
+	             print YY "            <prior id=\"ucldStdevPrior.c:$para{'-o'}\_$key\" name=\"distribution\" x=\"\@ucldStdev.c:$para{'-o'}\_$key\">
+                <Exponential id=\"Exponential.0$distribution{'exp'}\" name=\"distr\">
+                    <parameter estimate=\"false\" id=\"RealParameter.0$distribution{'realp'}\" name=\"mean\">0.3333</parameter>
                 </Exponential>
-            </prior>\n";}
-      if($para{'-CDR'}){print YY "            <prior id=\"ucldStdevPrior.c:$para{'-o'}\_CDR\" name=\"distribution\" x=\"\@ucldStdev.c:$para{'-o'}\_CDR\">
-                <Exponential id=\"Exponential.03\" name=\"distr\">
-                    <parameter estimate=\"false\" id=\"RealParameter.013\" name=\"mean\">0.3333</parameter>
-                </Exponential>
-            </prior>\n";}      
+            </prior>\n";
+            $distribution{'exp'}++;
+            $distribution{'realp'}++;
+	         }
+     
 print YY "            <distribution id=\"all.prior\" monophyletic=\"true\" spec=\"beast.math.distributions.MRCAPrior\" tree=\"\@Tree.t:$para{'-o'}\">
                 <taxonset id=\"all\" spec=\"TaxonSet\">\n";
 foreach(@$seq_name_selected){
@@ -370,7 +417,7 @@ foreach(@$seq_name_selected){
 }
 
 print YY "               </taxonset>
-                <Uniform id=\"Uniform.03\" lower=\"$para{'-lower_limit'}\" name=\"distr\" upper=\"Infinity\"/>
+                <Uniform id=\"Uniform.0$distribution{'uniform'}\" lower=\"$para{'-lower_limit'}\" name=\"distr\" upper=\"$para{'-upper_limit'}\"/>
             </distribution>
         </distribution>
         <distribution id=\"likelihood\" spec=\"util.CompoundDistribution\">
@@ -385,36 +432,27 @@ print YY "               </taxonset>
                 </siteModel>
                 <branchRateModel clock.rate=\"\@ucldMean.c:$para{'-o'}\" id=\"RelaxedClock.c:$para{'-o'}\" rateCategories=\"\@rateCategories.c:$para{'-o'}\" spec=\"beast.evolution.branchratemodel.UCRelaxedClockModel\" tree=\"\@Tree.t:$para{'-o'}\">
                     <LogNormal S=\"\@ucldStdev.c:$para{'-o'}\" id=\"LogNormalDistributionModel.c:$para{'-o'}\" meanInRealSpace=\"true\" name=\"distr\">
-                        <parameter estimate=\"false\" id=\"RealParameter.014\" lower=\"0.0\" name=\"M\" upper=\"1.0\">1.0</parameter>
+                        <parameter estimate=\"false\" id=\"RealParameter.0$distribution{'realp'}\" lower=\"0.0\" name=\"M\" upper=\"1.0\">1.0</parameter>
                     </LogNormal>
                 </branchRateModel>
             </distribution>\n";
- if($para{'-FW'}){
- 
-    print YY "<distribution id=\"treeLikelihood.$para{'-o'}\_FW\" siteModel=\"\@SiteModel.s:$para{'-o'}\" spec=\"TreeLikelihood\" tree=\"\@Tree.t:$para{'-o'}\">
+            $distribution{'realp'}++;
+            $distribution{'uniform'}++;
+            
+foreach(sort keys %rate_partitions){
+	             $key=$_;	  
+   print YY "<distribution id=\"treeLikelihood.$para{'-o'}\_$key\" siteModel=\"\@SiteModel.s:$para{'-o'}\" spec=\"TreeLikelihood\" tree=\"\@Tree.t:$para{'-o'}\">
                 <data
-idref=\"$para{'-o'}\_FW\"/>
-                <branchRateModel clock.rate=\"\@ucldMean.c:$para{'-o'}\_FW\" id=\"RelaxedClock.c:$para{'-o'}\_FW\" rateCategories=\"\@rateCategories.c:$para{'-o'}\_FW\" spec=\"beast.evolution.branchratemodel.UCRelaxedClockModel\" tree=\"\@Tree.t:$para{'-o'}\">
-                    <LogNormal S=\"\@ucldStdev.c:$para{'-o'}\_FW\" id=\"LogNormalDistributionModel.c:$para{'-o'}\_FW\" meanInRealSpace=\"true\" name=\"distr\">
-                        <parameter estimate=\"false\" id=\"RealParameter.015\" lower=\"0.0\" name=\"M\" upper=\"1.0\">1.0</parameter>
+idref=\"$para{'-o'}\_$key\"/>
+                <branchRateModel clock.rate=\"\@ucldMean.c:$para{'-o'}\_$key\" id=\"RelaxedClock.c:$para{'-o'}\_$key\" rateCategories=\"\@rateCategories.c:$para{'-o'}\_$key\" spec=\"beast.evolution.branchratemodel.UCRelaxedClockModel\" tree=\"\@Tree.t:$para{'-o'}\">
+                    <LogNormal S=\"\@ucldStdev.c:$para{'-o'}\_$key\" id=\"LogNormalDistributionModel.c:$para{'-o'}\_$key\" meanInRealSpace=\"true\" name=\"distr\">
+                        <parameter estimate=\"false\" id=\"RealParameter.0$distribution{'realp'}\" lower=\"0.0\" name=\"M\" upper=\"1.0\">1.0</parameter>
                     </LogNormal>
                 </branchRateModel>
             </distribution>\n";
- 
-}
- if($para{'-CDR'}){
- 
-    print YY "<distribution id=\"treeLikelihood.$para{'-o'}\_CDR\" siteModel=\"\@SiteModel.s:$para{'-o'}\" spec=\"TreeLikelihood\" tree=\"\@Tree.t:$para{'-o'}\">
-                <data
-idref=\"$para{'-o'}\_CDR\"/>
-                <branchRateModel clock.rate=\"\@ucldMean.c:$para{'-o'}\_CDR\" id=\"RelaxedClock.c:$para{'-o'}\_CDR\" rateCategories=\"\@rateCategories.c:$para{'-o'}\_CDR\" spec=\"beast.evolution.branchratemodel.UCRelaxedClockModel\" tree=\"\@Tree.t:$para{'-o'}\">
-                    <LogNormal S=\"\@ucldStdev.c:$para{'-o'}\_CDR\" id=\"LogNormalDistributionModel.c:$para{'-o'}\_CDR\" meanInRealSpace=\"true\" name=\"distr\">
-                        <parameter estimate=\"false\" id=\"RealParameter.016\" lower=\"0.0\" name=\"M\" upper=\"1.0\">1.0</parameter>
-                    </LogNormal>
-                </branchRateModel>
-            </distribution>\n";
- 
-}           
+            $distribution{'realp'}++;
+            }
+           
 print YY "
         </distribution>
     </distribution>
@@ -465,38 +503,24 @@ print YY "
         <tree idref=\"Tree.t:$para{'-o'}\" name=\"down\"/>
     </operator>\n";
     
-if($para{'-FW'}){
-print YY"    <operator id=\"ucldMeanScaler.c:$para{'-o'}\_FW\" parameter=\"\@ucldMean.c:$para{'-o'}\_FW\" scaleFactor=\"0.5\" spec=\"ScaleOperator\" weight=\"1.0\"/>
+foreach(sort keys %rate_partitions){
+	             $key=$_;	
+print YY"    <operator id=\"ucldMeanScaler.c:$para{'-o'}\_$key\" parameter=\"\@ucldMean.c:$para{'-o'}\_$key\" scaleFactor=\"0.5\" spec=\"ScaleOperator\" weight=\"1.0\"/>
 
-    <operator id=\"ucldStdevScaler.c:$para{'-o'}\_FW\" parameter=\"\@ucldStdev.c:$para{'-o'}\_FW\" scaleFactor=\"0.5\" spec=\"ScaleOperator\" weight=\"3.0\"/>
+    <operator id=\"ucldStdevScaler.c:$para{'-o'}\_$key\" parameter=\"\@ucldStdev.c:$para{'-o'}\_$key\" scaleFactor=\"0.5\" spec=\"ScaleOperator\" weight=\"3.0\"/>
 
-    <operator id=\"CategoriesRandomWalk.c:$para{'-o'}\_FW\" parameter=\"\@rateCategories.c:$para{'-o'}\_FW\" spec=\"IntRandomWalkOperator\" weight=\"10.0\" windowSize=\"1\"/>
+    <operator id=\"CategoriesRandomWalk.c:$para{'-o'}\_$key\" parameter=\"\@rateCategories.c:$para{'-o'}\_$key\" spec=\"IntRandomWalkOperator\" weight=\"10.0\" windowSize=\"1\"/>
 
-    <operator id=\"CategoriesSwapOperator.c:$para{'-o'}\_FW\" intparameter=\"\@rateCategories.c:$para{'-o'}\_FW\" spec=\"SwapOperator\" weight=\"10.0\"/>
+    <operator id=\"CategoriesSwapOperator.c:$para{'-o'}\_$key\" intparameter=\"\@rateCategories.c:$para{'-o'}\_$key\" spec=\"SwapOperator\" weight=\"10.0\"/>
 
-    <operator id=\"CategoriesUniform.c:$para{'-o'}\_FW\" parameter=\"\@rateCategories.c:$para{'-o'}\_FW\" spec=\"UniformOperator\" weight=\"10.0\"/>
+    <operator id=\"CategoriesUniform.c:$para{'-o'}\_$key\" parameter=\"\@rateCategories.c:$para{'-o'}\_$key\" spec=\"UniformOperator\" weight=\"10.0\"/>
 
-    <operator id=\"relaxedUpDownOperator.c:$para{'-o'}\_FW\" scaleFactor=\"0.75\" spec=\"UpDownOperator\" weight=\"3.0\">
-        <parameter idref=\"ucldMean.c:$para{'-o'}\_FW\" name=\"up\"/>
+    <operator id=\"relaxedUpDownOperator.c:$para{'-o'}\_$key\" scaleFactor=\"0.75\" spec=\"UpDownOperator\" weight=\"3.0\">
+        <parameter idref=\"ucldMean.c:$para{'-o'}\_$key\" name=\"up\"/>
         <tree idref=\"Tree.t:$para{'-o'}\" name=\"down\"/>
     </operator>\n";
 }
-if($para{'-CDR'}){
-print YY "     <operator id=\"ucldMeanScaler.c:$para{'-o'}\_CDR\" parameter=\"\@ucldMean.c:$para{'-o'}\_CDR\" scaleFactor=\"0.5\" spec=\"ScaleOperator\" weight=\"1.0\"/>
 
-    <operator id=\"ucldStdevScaler.c:$para{'-o'}\_CDR\" parameter=\"\@ucldStdev.c:$para{'-o'}\_CDR\" scaleFactor=\"0.5\" spec=\"ScaleOperator\" weight=\"3.0\"/>
-
-    <operator id=\"CategoriesRandomWalk.c:$para{'-o'}\_CDR\" parameter=\"\@rateCategories.c:$para{'-o'}\_CDR\" spec=\"IntRandomWalkOperator\" weight=\"10.0\" windowSize=\"1\"/>
-
-    <operator id=\"CategoriesSwapOperator.c:$para{'-o'}\_CDR\" intparameter=\"\@rateCategories.c:$para{'-o'}\_CDR\" spec=\"SwapOperator\" weight=\"10.0\"/>
-
-    <operator id=\"CategoriesUniform.c:$para{'-o'}\_CDR\" parameter=\"\@rateCategories.c:$para{'-o'}\_CDR\" spec=\"UniformOperator\" weight=\"10.0\"/>
-
-    <operator id=\"relaxedUpDownOperator.c:$para{'-o'}\_CDR\" scaleFactor=\"0.75\" spec=\"UpDownOperator\" weight=\"3.0\">
-        <parameter idref=\"ucldMean.c:$para{'-o'}\_CDR\" name=\"up\"/>
-        <tree idref=\"Tree.t:$para{'-o'}\" name=\"down\"/>
-    </operator>\n";
-}
 
 if($para{'-pop'} =~/constant/){
   print YY "    <operator id=\"PopSizeScaler.t:$para{'-o'}\" parameter=\"\@popSize.t:$para{'-o'}\" scaleFactor=\"0.75\" spec=\"ScaleOperator\" weight=\"3.0\"/>
@@ -517,16 +541,13 @@ if($para{'-pop'} =~/constant/){
         <parameter idref=\"ucldMean.c:$para{'-o'}\" name=\"log\"/>
         <parameter idref=\"ucldStdev.c:$para{'-o'}\" name=\"log\"/>
         <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\" id=\"rate.c:$para{'-o'}\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
-if($para{"-FW"}){
-    print YY "        <parameter idref=\"ucldMean.c:$para{'-o'}\_FW\" name=\"log\"/>
-        <parameter idref=\"ucldStdev.c:$para{'-o'}\_FW\" name=\"log\"/>
-        <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\_FW\" id=\"rate.c:$para{'-o'}\_FW\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
+foreach(sort keys %rate_partitions){
+	             $key=$_;	
+    print YY "        <parameter idref=\"ucldMean.c:$para{'-o'}\_$key\" name=\"log\"/>
+        <parameter idref=\"ucldStdev.c:$para{'-o'}\_$key\" name=\"log\"/>
+        <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\_$key\" id=\"rate.c:$para{'-o'}\_$key\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
 }
-if($para{"-CDR"}){
-    print YY "        <parameter idref=\"ucldMean.c:$para{'-o'}\_CDR\" name=\"log\"/>
-        <parameter idref=\"ucldStdev.c:$para{'-o'}\_CDR\" name=\"log\"/>
-        <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\_CDR\" id=\"rate.c:$para{'-o'}\_CDR\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
-}
+
 print YY "
         <log idref=\"all.prior\"/>
         <parameter idref=\"popSize.t:$para{'-o'}\" name=\"log\"/>
@@ -574,16 +595,12 @@ print YY "
         <parameter idref=\"ucldMean.c:$para{'-o'}\" name=\"log\"/>
         <parameter idref=\"ucldStdev.c:$para{'-o'}\" name=\"log\"/>
         <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\" id=\"rate.c:$para{'-o'}\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
-if($para{'-FW'}){
-    print YY "        <parameter idref=\"ucldMean.c:$para{'-o'}\_FW\" name=\"log\"/>
-        <parameter idref=\"ucldStdev.c:$para{'-o'}\_FW\" name=\"log\"/>
-        <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\_FW\" id=\"rate.c:$para{'-o'}\_FW\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
-}
-if($para{"-CDR"}){
-    print YY "        <parameter idref=\"ucldMean.c:$para{'-o'}\_CDR\" name=\"log\"/>
-        <parameter idref=\"ucldStdev.c:$para{'-o'}\_CDR\" name=\"log\"/>
-        <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\_CDR\" id=\"rate.c:$para{'-o'}\_CDR\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
-}        
+foreach(sort keys %rate_partitions){
+	             $key=$_;	
+    print YY "        <parameter idref=\"ucldMean.c:$para{'-o'}\_$key\" name=\"log\"/>
+        <parameter idref=\"ucldStdev.c:$para{'-o'}\_$key\" name=\"log\"/>
+        <log branchratemodel=\"\@RelaxedClock.c:$para{'-o'}\_$key\" id=\"rate.c:$para{'-o'}\_$key\" spec=\"beast.evolution.branchratemodel.RateStatistic\" tree=\"\@Tree.t:$para{'-o'}\"/>\n";
+}     
 
 print YY "
         <log idref=\"BayesianSkyline.t:$para{'-o'}\"/>
@@ -620,10 +637,13 @@ sub read_fasta{ #read in fasta files
 	open HH,"$file" or die "seq file $file not found :(\n";
   while(<HH>){
 	  chomp;
-  	if($_=~/>(.+)/){
+  	if($_=~/>([^\t ]+)/){
   		my @id=split/$para{'-spliter'}/,$1; 		
   		$id=$1;
-  		 push @{$timepoint{$id[$para{'-nc'}-1]}},$id;
+  		my $timepoint=$id[$para{'-nc'}-1];
+  		if($timepoint=~/[^\d\-]/){die "Time info contain no digit characters\n";}
+  		if($timepoint=~/[0-9]{4}\-[0-9]{2}\-[0-9]{2}/){$timepoint=&year_to_digital($timepoint);}
+  		 push @{$timepoint{$timepoint}},$id;
   	}
 	 else{
 	  $seq{$id}.=$_;	
