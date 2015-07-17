@@ -17,7 +17,7 @@ Options:
 	-npt\tnumber of sequences per thread. default:1000
 	-p\tprotein or DNA sequence. default: DNA
 	-ap\t name of the program for sequence alignment. muscle or clustalo or mafft. required. Based on our 
-	   \texperience, muscle is ~2 fold faster than clustalo.
+	   \texperience, muscle is ~2 fold faster than clustalo. Clustalo version of 1.2.0 or higher is required.
 	-pu\tpath to usearch program to remove duplicates in the read file. Optional.
   -CDR3\tWhether calculating sequence identity between CDR3s
   
@@ -157,6 +157,7 @@ sub rm_r{#remove \r at line end
       print YY "$_";
    }
     close HH;
+    close YY;
   system("mv rmtem.txt $file");	
 }
 ###################
