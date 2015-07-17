@@ -11,7 +11,7 @@
        (sample collection date).
 
  Usage: 3.1-merge_timepoints.pl --seqs time1.fa --seqs time2.fa ...
-                                  [ --labels t1 --labels t2 ... --t 100 -f]
+                                  [ --labels t1 --labels t2 ... --t 100 -m 1 -f]
 
  Invoke with -h or --help to print this documentation.
 
@@ -21,8 +21,8 @@
      --labels => Optional list of timepoint IDs to be used in relabeling
                      input sequences. Must be in proper chronological order.
                      Defaults to "01-", "02-", etc.
-     --t      => Optional % threshold for clustering reads across time points.
-                     Defaults to 100.
+     --m      => Optional minimum number of time points a sequence must be
+                     observed in to be saved. Defaults to 1.
 
  Created by Chaim A. Schramm 2015-06-12.
 
@@ -174,8 +174,9 @@ print TABLE "rep\tcount\ttimes\tpersist\tlatest\n";
 while (my $seq = $in->next_seq) {
 
     next unless -defined( $cluster{$seq->id} );
+    next unless $cluster{$seq->id}{'times'} >= $min;
 
-    my $desc = $seq->desc . " long_obs=$cluster{$seq->id}{'count'} long_timepoints=$cluster{$seq->id}{'times'} persist=$cluster{$seq->id}{'persist'} last_timepoint=$cluster{$seq->id}{'latest'}";
+    my $desc = $seq->desc . " total_observations=$cluster{$seq->id}{'count'} num_timepoints=$cluster{$seq->id}{'times'} persist=$cluster{$seq->id}{'persist'} last_timepoint=$cluster{$seq->id}{'latest'}";
     $seq->desc($desc);
     $out->write_seq($seq);
     $outAA->write_seq($seq->translate);
