@@ -37,7 +37,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from zap.annotate import *
+from soanar.annotate import *
 
 
 def main():
@@ -73,7 +73,7 @@ def main():
 				if dict_germ_aln[seq_id].strand == "+":
 					entry.seq = entry.seq[ dict_germ_aln[seq_id].qend : ]
 				else:
-					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart]
+					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart -1 ]
 					entry.seq = entry.reverse_complement().seq
 
 				if len(entry.seq) > 30: #can probably be 50...

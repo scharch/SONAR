@@ -23,7 +23,10 @@ Usage: 2.4-cluster_into_groups.py [ -id 90 -gaps 0
                    sequences in the same group. Default = 0. NOTE: This is
                    implemented in nucleotide space using the USearch "maxgaps"
                    parameter, so does not guarantee an even codon in-del in the
-                   alignment used for clustering!
+                   alignment used for clustering! Also, usearch will still count
+                   gaps as mismatches, so a CDR3 of 20AA will be counted as 95%
+                   id to an identical-other-than-deletion 19AA CDR3. Set your
+                   thresholds accordingly.
     natives.fa  Fasta file of known antibody sequences to be clustered together
                    with the NGS data. Useful for focusing on a known lineage.
     nat_v_gene  V gene used by the known antibodies (no allele, eg: "HV1-2")
@@ -37,7 +40,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 """
 
 from collections import *
-from zap.lineage import *
+from soanar.lineage import *
 
 
 def main():
@@ -94,7 +97,8 @@ def main():
         #cluster with usearch
         subprocess.call([usearch, "-cluster_fast", "%s/%s.fa"%(prj_tree.lineage, group), 
                          "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps),
-                         "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group)], 
+                         "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group).
+                         "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
                         stdout=log, stderr=subprocess.STDOUT)
 
         #now reconstruct pseudo-lineages

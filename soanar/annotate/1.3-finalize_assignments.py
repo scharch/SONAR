@@ -23,7 +23,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from zap.annotate import *
+from soanar.annotate import *
 
 
 def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_read,jgaps,read_sequence):
@@ -31,12 +31,15 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 	'''
 	v_id = name of assigned V gene (eg IGHV1-2*02)
 	vgene = germline sequence of assigned V gene
-	vlength = length of QUERY sequence taken up by match (might be different from blast-reported length and/or vend-vstart+1 because of in-dels)
+	vlength = length of QUERY sequence taken up by match
+	            (might be different from blast-reported length 
+		     and/or vend-vstart+1 because of in-dels)
 	vstart = position on germline V gene where match begins (hopefully = 1)
 	vend = position on germline V gene where match ends
 	jgene = germline sequence of assigned J gene
 	jstart = position on germline J gene where match begins
-	j_start_on_read = position on query (v-cut version, not full 454 read) where match with germline J begins
+	j_start_on_read = position on query (v-cut version, not full 454 read) 
+	            where match with germline J begins
 	jgaps = blast-reported number of gaps in J assignment
 	read_sequence = V(D)J-trimmed sequence of the 454 read
 	'''
@@ -71,11 +74,14 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 			cdr3_start = -1
 
 	jMotif = "TGGGG"
-	if locus in ["K", "L", "KL"]: #what if user library is light chains?
+	if "KV" in v_id or "LV" in v_id: #it's a light chain!
 		jMotif = "TT[C|T]GG"
 	jMatch = re.search(jMotif,jgene)
-	
-	cdr3_end = vlength + j_start_on_read + (jMatch.start() - jstart) +3
+
+	try:
+		cdr3_end = vlength + j_start_on_read + (jMatch.start() - jstart) +3
+	except:
+		cdr3_end = -1 #if we didn't find the motif, we'll count it as a bad cdr3 without crashing
 
 	if jgaps > 0:
 		#check for jMotif on read to correct for gaps and get the last one
@@ -87,7 +93,6 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		if len(wgxg) > 0:
 			if abs(wgxg[-1].start() + 3 - cdr3_end) <= 3:
 				cdr3_end = wgxg.start() + 3
-
 
 	return cdr3_start, cdr3_end
 
@@ -195,7 +200,6 @@ def main():
 			else:
 
 				found += 1
-
 				myV = dict_vgerm_aln[seq_id]
 				myJ = dict_jgerm_aln[seq_id]
 				indel = "no"
@@ -208,7 +212,7 @@ def main():
 				if (myV.strand == '+'):
 					entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
 				else:
-					entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
+					entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
 				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,dict_v[myV.sid].seq.tostring(), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), dict_j[myJ.sid].seq.tostring(), myJ.sstart, myJ.qstart, myJ.gaps, entry.seq.tostring()) #min and max statments take care of switching possible minus strand hit
@@ -239,7 +243,7 @@ def main():
 					else:
 						#use blast gaps to detect frame shift in-dels
 						#most of these have stop codons or other sequence problems, but we'll catch a few extra this way
-						if ((myV.send-myV.sstart)-(myV.qend-myV.qstart)) % 3 != 0 or ((myJ.send-myJ.sstart)-(myJ.qend-myJ.qstart)) % 3 != 0:
+						if (abs(myV.send-myV.sstart)-(myV.qend-myV.qstart)) % 3 != 0 or ((myJ.send-myJ.sstart)-(myJ.qend-myJ.qstart)) % 3 != 0:
 							indel = "yes"
 
 				#make sure cdr3 boundaries make sense
@@ -253,7 +257,6 @@ def main():
 					status = "indel"
 				elif stop == "yes":
 					status = "stop"
-
 
 				#add germline assignments to fasta description and write to disk
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(seq_id,[]) )
