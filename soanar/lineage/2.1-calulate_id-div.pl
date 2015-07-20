@@ -122,6 +122,7 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
              $readgerm{$id}=$line[1];
             $readgerm{$id}=~s/\-//g;
             $readgerm{$id}=~s/V\_gene\=//g;
+            
         }
         else{
             $seq{$id}.=$_;
@@ -187,12 +188,16 @@ sub paired_identity{#calculate sequence identity
     my @coverage=();
     push @identity,$id;
     push @coverage,$id;
-    if($germ){#calculate germline divergence and coverage if germline sequence is given
+    if($germ ){#calculate germline divergence and coverage if germline sequence is given
     	my ($seqg,$seqr)=&aln($germ,$seq,$para{'-p'});
       my $div=sprintf("%.2f",100-&identity($seqg,$seqr));
       my $cov=sprintf("%.2f",&coverage($seqg,$seqr));
       push @coverage,$cov; 
       push @identity,$div;
+    }
+    elsif($para{'-g'}&&!$germ){
+    	push @coverage,'NA'; 
+      push @identity,'NA';
     }
     
     if($anti){#calculate identity and coverage to given antibody sequence
@@ -345,6 +350,7 @@ sub identity{#include gaps
         }
     }
     $score=sprintf("%.2f",100*$score/$leng);
+    if($score !~/[0-9]/){$score='NA';}
     return $score;
 }
 
@@ -368,8 +374,9 @@ sub coverage{#calculate sequence coverage between pair of seqeunces
     $str2=~s/[\-\.]//g;
     my $c=length($str2)/length($str1);
     if($c>1){$c=1/$c;}
- 
- return sprintf ("%3.2f",100*$c);       
+    my $d=sprintf ("%3.2f",100*$c);
+    if($d!~/[0-9]/){$d='NA';}
+ return $d;       
 }
 ################################
 sub recover{#add back all the identity and coverage calculation for redundant reads to the final output
