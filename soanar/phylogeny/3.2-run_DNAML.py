@@ -104,10 +104,11 @@ def main():
 
     lookup = []
     for seq in aln:
-        if re.search("(IG|VH|VK|VL|HV|KV|LV)", seq.id) is not None:
-            germ_pos = ind + 1
         lookup.append( seq.id )
+        if re.search("(IG|VH|VK|VL|HV|KV|LV)", seq.id) is not None:
+            germ_pos = len( lookup )
         seq.id = "%010d" % len( lookup )
+
 
     with open("%s/infile" % prj_tree.phylo, "w") as output:
         AlignIO.write(aln, output, "phylip")
