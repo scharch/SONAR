@@ -11,7 +11,8 @@
        (sample collection date).
 
  Usage: 3.1-merge_timepoints.pl --seqs time1.fa --seqs time2.fa ...
-                                  [ --labels t1 --labels t2 ... --t 100 -m 1 -f]
+                                  [ --labels t1 --labels t2 ... 
+                                    -c --t 100 -m 1 -f]
 
  Invoke with -h or --help to print this documentation.
 
@@ -21,10 +22,17 @@
      --labels => Optional list of timepoint IDs to be used in relabeling
                      input sequences. Must be in proper chronological order.
                      Defaults to "01-", "02-", etc.
+      -c      => Use USearch's cluster_fast command instead of derep_fulllength.
+                     Allows fragments missing a few AA at either end to be
+                     counted as the same as a full-length sequence.
+     --t      => Clustering threshold to use. Not setable when using the 
+                     derep_fulllength algorithm. Defaults to 100 (%) even when
+                     using cluster_fast.
      --m      => Optional minimum number of time points a sequence must be
                      observed in to be saved. Defaults to 1.
 
  Created by Chaim A. Schramm 2015-06-12.
+ Fixed algorithm and added some options 2015-07-22.
 
  Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
@@ -46,16 +54,18 @@ if ($#ARGV < 0) { pod2usage(1); }
 
 my @seqFiles   = ( );
 my @prefix     = ( );
-my ($t, $min, $force, $help) = ( 100, 1, 0, 0 );
+my ($t, $min, $clustFast, $force, $help) = ( 100, 1, 0, 0, 0 );
 GetOptions("seqs=s{1,}" => \@seqFiles,
 	   "labels=s"   => \@prefix,
-	   "t=i"        => \$t,
+	   "c!"         => \$clustFast,
+	   "t=f"        => \$t,
 	   "m=i"        => \$min,
            "force!"     => \$force,
            "help!"      => \$help
     );
 
 if ($help) { pod2usage(1); }
+if ( $t < 100 && ! $clustFast ) { die("Must specify use of the cluster_fast command to use a custom id threshold.\n"); }
 my $threshold = $t/100;
 
 #check to make sure inputs match
@@ -111,12 +121,12 @@ $all->close();
 
 
 # run USearch
-# -maxgaps parameter treats sequences unique except for an indel as distinct
-# Since we have order the sequences by timepoint, we are guaranteed that the
-#            centroid from each cluster will be from the earliest time point
-#            at which that cluster is found, which saves us a re-sort step.
-
-my $cmd = ppath('usearch') . " -cluster_smallmem work/phylo/all_seqs.fa -sortedby other -id $threshold -uc work/phylo/uc -maxgaps 2";
+my $cmd =  ppath('usearch') . " -derep_fulllength work/phylo/all_seqs.fa -uc work/phylo/uc";
+if ($clustFast){
+    # -maxgaps parameter treats sequences unique except for an indel as distinct
+    # need to sort by length because of possible fragments
+    $cmd = ppath('usearch') . " -cluster_fast work/phylo/all_seqs.fa -sort length -id $threshold -uc work/phylo/uc -maxgaps 2";
+}
 print "$cmd\n";
 system($cmd);
 
@@ -138,20 +148,21 @@ while (<UC>) {
     if ($a[0] eq "S") {
 
 	#initialize new cluster
-	$cluster{$a[8]}{'times'} = 1;
-	$cluster{$a[8]}{'seen'}[$order{$time}] = 1;
+	$cluster{$a[8]}{'rep'} = $a[8];	
+	$cluster{$a[8]}{'seen'}{$time} = 1;
 	$cluster{$a[8]}{'first'} = $order{$time};
 	$cluster{$a[8]}{'latest'} = $time;
 	$cluster{$a[8]}{'persist'} = 1;
 	$cluster{$a[8]}{'count'} = 1;
-	next; #allows me to increment the total count for H lines outside the else below
 
-    } elsif (! -defined $cluster{$a[9]}{'seen'}[$order{$time}] ) {
+    } else {
 
-	#We haven't seen this cluster at this time point yet
-	$cluster{$a[9]}{'times'}++;
-	$cluster{$a[9]}{'seen'}[$order{$time}] = 1;
-	if ( $order{$time} > $order{$cluster{$a[9]}{'latest'}} ) {
+	$cluster{$a[9]}{'seen'}{$time}++;
+	if ( $order{$time} < $cluster{$a[9]}{'first'} ) {
+	    $cluster{$a[9]}{'first'} = $order{$time};
+	    $cluster{$a[9]}{'persist'} = $order{$cluster{$a[9]}{'latest'}} - $order{$time} + 1;
+	    $cluster{$a[8]}{'rep'} = $a[8];
+	} elsif ( $order{$time} > $order{$cluster{$a[9]}{'latest'}} ) {
 	    $cluster{$a[9]}{'latest'} = $time;
 	    $cluster{$a[9]}{'persist'} = $order{$time} - $cluster{$a[9]}{'first'} + 1;
 	}
@@ -168,20 +179,31 @@ close UC;
 
 my $in    = Bio::SeqIO->new(-file=>"work/phylo/all_seqs.fa");
 my $out   = Bio::SeqIO->new(-file=>">output/sequences/nucleotide/$prj_name-collected.fa", -format=>'fasta');
+$out->width(600);
 my $outAA = Bio::SeqIO->new(-file=>">output/sequences/amino_acid/$prj_name-collected.fa", -format=>'fasta');
+$outAA->width(200);
 open TABLE, ">output/tables/$prj_name.txt" or die "Can't write to output/tables/$prj_name.txt: $!\n";
 print TABLE "rep\tcount\ttimes\tpersist\tlatest\n";
 
 while (my $seq = $in->next_seq) {
 
     next unless -defined( $cluster{$seq->id} );
-    next unless $cluster{$seq->id}{'times'} >= $min;
 
-    my $desc = $seq->desc . " total_observations=$cluster{$seq->id}{'count'} num_timepoints=$cluster{$seq->id}{'times'} persist=$cluster{$seq->id}{'persist'} last_timepoint=$cluster{$seq->id}{'latest'}";
+    my $numTimes = scalar( keys( %{$cluster{$seq->id}{'seen'}} ) );
+    next unless $numTimes >= $min;
+
+    #this sets the "birthday" time correctly
+    #for derep, the sequence is by definition the same, anyway
+    #for cluster fast, especially at lower thresholds, it's probably
+    #  different, but we want to keep the centroid sequence so we'll
+    #  just rename it
+    $seq->id($cluster{$seq->id}{'rep'}); 
+
+    my $desc = $seq->desc . " total_observations=$cluster{$seq->id}{'count'} num_timepoints=$numTimes persist=$cluster{$seq->id}{'persist'} last_timepoint=$cluster{$seq->id}{'latest'}";
     $seq->desc($desc);
     $out->write_seq($seq);
     $outAA->write_seq($seq->translate);
-    print TABLE $seq->id."\t$cluster{$seq->id}{'count'}\t$cluster{$seq->id}{'times'}\t$cluster{$seq->id}{'persist'}\t$cluster{$seq->id}{'latest'}\n";
+    print TABLE $seq->id."\t$cluster{$seq->id}{'count'}\t$numTimes\t$cluster{$seq->id}{'persist'}\t$cluster{$seq->id}{'latest'}\n";
 
 }
 
