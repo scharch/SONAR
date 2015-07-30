@@ -57,7 +57,7 @@ ALL_FOLDERS = ["work/annotate", "work/lineage", "work/internal", "work/annotate/
 
 
 CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s"
-BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 1 -e 1e-5 "
+BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 2 -e 1e-5 "
 BLAST_J_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 5 -b 5 -v 1 -e 1e-3 "
 BLAST_OTHER_OPTIONS = "-e 1e-3"
 
