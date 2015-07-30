@@ -92,7 +92,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 			wgxg.append(m)
 		if len(wgxg) > 0:
 			if abs(wgxg[-1].start() + 3 - cdr3_end) <= 3:
-				cdr3_end = wgxg.start() + 3
+				cdr3_end = wgxg[-1].start() + 3
 
 	return cdr3_start, cdr3_end
 
