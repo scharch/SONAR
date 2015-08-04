@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-1.2-blast-J_assignment.py
+1.2-blast-J.py
 
 This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       for which a V assignment was successfully made, the section of the read
@@ -9,12 +9,13 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       of the J gene. Will also try to assign the D gene if relevant and the 
       constant region class. 
 
-Usage: 1.2-blast-J_assignment.py -lib  path/to/j-library.fa
-                                 -dlib path/to/d-library.fa
-				 -clib path/to/c-library.fa
-				 -h
+Usage: 1.2-blast-J.py -lib  path/to/j-library.fa
+                      -dlib path/to/d-library.fa
+		      -clib path/to/c-library.fa
+		      -callFinal -h
 
-    Invoke with -h or --help to print this documentation.
+    All parameters are optional. Invoke with -h or --help to print this
+        documentation.
 
     lib 	fasta file containing germline J gene sequences. Required only
                      if "-locus C" was specificied to 1.1-blast-V_assignment.py;
@@ -23,20 +24,27 @@ Usage: 1.2-blast-J_assignment.py -lib  path/to/j-library.fa
                      custom libraries.
     clib 	Optional fasta file containing CH1 gene sequences, for custom
                      libraries.
+    callFinal   Optional flag to call 1.3-finalize_assignments.py when done.
+                     Default = False.
 
 Created by Zhenhai Zhang on 2011-04-14.
 Modified by Chaim A Schramm 2013-07-03 to include j assignment.
 Modified by Chaim A Schramm 2014-03-25 to not swamp RAM when processing Illumina
     data.
 Edited and commented for publication by Chaim A Schramm on 2015-02-09.
+Edited to add queue monitoring by CAS 2015-08-03.
 
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
 
-import sys
-import os
+import sys, os
+
+#need this if called on cluster by checkClusterBlast.py
+find_SOAnAR_on_cluster = sys.argv[0].split("soanar/annotate")
+sys.path.append(find_SOAnAR_on_cluster[0])
+
 from soanar.annotate import *
 
 
@@ -111,9 +119,18 @@ def main():
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 	pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
-	pbs.write( PBS_STRING%(f_ind, "jBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+	pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 	pbs.close()
-	os.system("qsub %s/jblast.sh"%prj_tree.jgene)
+	os.system("qsub -t 1-%d %s/jblast.sh"%(f_ind,prj_tree.jgene))
+
+        check = "%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+        if callF:
+                check += " -after %s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
+        monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
+        monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
+        monitor.close()
+        os.system("qsub %s/jmonitor.sh"%prj_tree.jgene)
+
 
 
 	if os.path.isfile(const_lib):
@@ -121,9 +138,15 @@ def main():
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%(f_ind, "cBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
-		os.system("qsub %s/cblast.sh"%prj_tree.jgene)
+		os.system("qsub -t 1-%d %s/cblast.sh"%(f_ind,prj_tree.jgene))
+
+		check = "%s/utilities/checkClusterBlast.py -gene c -big %d -check %s/cmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+		monitor = open("%s/cmonitor.sh"%prj_tree.jgene, 'w')
+		monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+		monitor.close()
+		os.system("qsub %s/cmonitor.sh"%prj_tree.jgene)
 
 
 	if os.path.isfile(dlib):
@@ -131,9 +154,16 @@ def main():
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%(f_ind, "dBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
-		os.system("qsub %s/dblast.sh"%prj_tree.jgene)
+		os.system("qsub -t 1-%d %s/dblast.sh"%(f_ind,prj_tree.jgene))
+
+                check = "%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/cmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+                monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
+                monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+                monitor.close()
+                os.system("qsub %s/dmonitor.sh"%prj_tree.jgene)
+
 
 
 if __name__ == '__main__':
@@ -143,6 +173,12 @@ if __name__ == '__main__':
 	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
 		print __doc__
 		sys.exit(0)
+
+        #check if call 1.3
+        callF = False
+        if q("-callFinal"):
+                sys.argv.remove("-callFinal")
+                callF = True
 
 	#get parameters from input
 	dict_args = processParas(sys.argv, lib="library", dlib="dlib", clib="const_lib")

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-1.1-blast-V_assignment.py
+1.1-blast-V.py
 
 This script looks for raw NGS data files in the "0-original" folder and parses
       them into manageable chunks for searching with BLAST on the cluster. Each
@@ -14,8 +14,9 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       output files created. Resource requests for the cluster are calibrated to
       groups of 50K sequences, so that number is hard-coded below.
 
-Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <H|K|L|KL|C>
-                                 [-qual <0|1>] -lib path/to/library.fa -h -f
+Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|C>
+                      [-qual <0|1>] -lib path/to/library.fa -h -f
+		      [-callJ -jArgs "-lib path/to/custom/j-library.fa]
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
@@ -25,14 +26,19 @@ Usage: 1.1-blast-V_assignment.py -minl min_len -maxl max_len -locus <H|K|L|KL|C>
     locus	H: heavy chain / K: kappa chain / L: lambda chain / KL: kappa OR
                    lambda / C: custom library (supply -lib)
                    Default = 0
-    qual 	0: noquals/use fasta only / 1: use qual information 
-                   Default = 0; currently deprecated
+    qual 	CURRENTLY DEPRECATED!
+                0: noquals/use fasta only / 1: use qual information 
+                   Default = 0
     lib  	location of file containing custom library (e.g. for use with
                    non-human genes)
     f 	 	forcing flag to overwrite existing working directories.
+    callJ 	flag to call 1.2-blast_J.py when done. Default = False
+    jArgs       optional arguments to be provided to 1.2-blast_j.py. If provided,
+                   forces callJ flag to True
 
 Created by Zhenhai Zhang on 2011-04-12.
 Edited and commented for publication by Chaim A Schramm on 2014-12-22.
+Edited to add queue monitoring by CAS 2015-07-30.
 
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -115,10 +121,18 @@ def main():
 									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name)) )
 	pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
-	pbs.write( PBS_STRING%(f_ind, "vBlast-%s"%prj_name, "500M", "30:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
+	pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "500M", "30:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
 	pbs.close()
-	os.system("qsub %s/vblast.sh"%folder_tree.vgene)
+	os.system("qsub -t 1-%d %s/vblast.sh"%(f_ind,folder_tree.vgene))
 
+	check = "%s/utilities/checkClusterBlast.py -gene v -big %d -check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
+	if callJ:
+		check += " -after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, jArgs)
+	monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
+	monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
+	monitor.close()
+	os.system("qsub %s/vmonitor.sh"%folder_tree.vgene)
+	
 
 if __name__ == '__main__':
 
@@ -135,9 +149,19 @@ if __name__ == '__main__':
 		sys.argv.remove(flag[0])
 		force = True
 
+	#check if call J
+	callJ = False
+	if q("-callJ"):
+		sys.argv.remove("-callJ")
+		callJ = True
+
 	# get parameters from input
-	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library")
-	min_len, max_len, locus, use_qual, library = getParasWithDefaults(dict_args, dict(min_len=300, max_len=600, use_qual=0, locus='H', library=""), "min_len", "max_len", "locus", "use_qual", "library")
+	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", jArgs="jArgs")
+	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", jArgs="")
+	min_len, max_len, locus, use_qual, library, jArgs= getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "jArgs")
+
+	if not jArgs == "":
+		callJ = True
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()

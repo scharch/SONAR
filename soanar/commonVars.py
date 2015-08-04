@@ -63,7 +63,6 @@ BLAST_OTHER_OPTIONS = "-e 1e-3"
 
 PBS_STRING = "\
 #!/bin/bash\n\
-#$ -t 1-%d			# array task\n\
 #$ -N %s		# job name\n\
 #$ -l mem=%s,time=%s	# resource requests\n\
 #$ -cwd				# use current directory as job status output\n\
