@@ -38,7 +38,7 @@ $para{'-pu'}=ppath($para{'-pu'});
 if(!$para{'-ap'}){die "please select a program for sequence alignment\n";}
 if(!$para{'-g'}){warn "No calculation for hypermutation\n";}
 if(!$para{'-p'}){$para{'-p'}='DNA';}
-if($para{'-a'}&& ! -e $para{'-a'}){die "file $para{'-a'} doesn't exist. ):\n";}
+if($para{'-a'}&& ! -e $para{'-a'}){warn "file $para{'-a'} doesn't exist. ):\n";}
 if($para{'-f'}&& ! -e $para{'-f'}){die "file $para{'-f'} doesn't exist. ):\n";}
 if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
 my %germ_db=();
