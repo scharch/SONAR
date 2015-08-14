@@ -97,7 +97,7 @@ def main():
         #cluster with usearch
         subprocess.call([usearch, "-cluster_fast", "%s/%s.fa"%(prj_tree.lineage, group), 
                          "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps),
-                         "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group).
+                         "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
                          "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
                         stdout=log, stderr=subprocess.STDOUT)
 
