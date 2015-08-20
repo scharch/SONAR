@@ -182,6 +182,7 @@ my $out   = Bio::SeqIO->new(-file=>">output/sequences/nucleotide/$prj_name-colle
 $out->width(600);
 my $outAA = Bio::SeqIO->new(-file=>">output/sequences/amino_acid/$prj_name-collected.fa", -format=>'fasta');
 $outAA->width(200);
+my @cdr3;
 open TABLE, ">output/tables/$prj_name.txt" or die "Can't write to output/tables/$prj_name.txt: $!\n";
 print TABLE "rep\tcount\ttimes\tpersist\tlatest\n";
 
@@ -205,7 +206,15 @@ while (my $seq = $in->next_seq) {
     $outAA->write_seq($seq->translate);
     print TABLE $seq->id."\t$cluster{$seq->id}{'count'}\t$numTimes\t$cluster{$seq->id}{'persist'}\t$cluster{$seq->id}{'latest'}\n";
 
+    if ( $desc =~ /cdr3_aa_seq=([A-Z]+)/ ) { 
+	push @cdr3, Bio::Seq->new( -display_id => $cluster{$seq->id}{'rep'}, -seq=> $1 );
+    }
+
 }
 
 close TABLE;
 
+if ($#cdr3 >= 0) {
+    my $outCDR3 = Bio::SeqIO->new(-file=>">output/sequences/amino_acid/$prj_name-CDR3.fa", -format=>'fasta');
+    for my $s (@cdr3) { $outCDR3->write_seq($s); }
+}
