@@ -14,7 +14,7 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       output files created. Resource requests for the cluster are calibrated to
       groups of 50K sequences, so that number is hard-coded below.
 
-Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|C>
+Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
                       [-qual <0|1>] -lib path/to/library.fa -h -f
 		      [-callJ -jArgs "-lib path/to/custom/j-library.fa]
 
@@ -24,7 +24,7 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|C>
     minl	Minimum length for read filtering (inclusive). Default = 300
     maxl	Maximum length for read filtering (inclusive). Default = 600.
     locus	H: heavy chain / K: kappa chain / L: lambda chain / KL: kappa OR
-                   lambda / C: custom library (supply -lib)
+                   lambda / HKL: any / C: custom library (supply -lib)
                    Default = 0
     qual 	CURRENTLY DEPRECATED!
                 0: noquals/use fasta only / 1: use qual information 
