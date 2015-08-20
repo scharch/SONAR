@@ -219,7 +219,7 @@ def main():
 					entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
-				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,dict_v[myV.sid].seq.tostring(), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), dict_j[myJ.sid].seq.tostring(), myJ.sstart, myJ.qstart, myJ.gaps, entry.seq.tostring()) #min and max statments take care of switching possible minus strand hit
+				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq)) #min and max statments take care of switching possible minus strand hit
 				cdr3_seq = entry.seq[ cdr3_start : cdr3_end ]
 
 				#push the sequence into frame for translation, if need be
