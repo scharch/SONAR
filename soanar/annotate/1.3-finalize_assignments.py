@@ -356,6 +356,12 @@ def main():
 	handle.write(message)
 	handle.close()
 
+	#clean up!!
+	oldFiles = glob.glob("%s/*txt"%prj_tree.vgene) + glob.glob("%s/*fasta"%prj_tree.vgene) +  glob.glob("%s/*txt"%prj_tree.jgene) + glob.glob("%s/*fasta"%prj_tree.jgene)
+	if len(oldFiles) > 0:
+		[os.remove(f) for f in oldFiles]
+			
+
 
 if __name__ == '__main__':
 	
