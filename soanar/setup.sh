@@ -123,9 +123,9 @@ fi #with cluster specific questions
 #add SOAnAR to path?
 read -e -p "Would you like to permanently add SOAnAR to the path (by adding a line to .bashrc) [y/n]?" path
 if [ "$path" == "Y" ] || [ "$path" == "y" ]; then
-    echo "export \$PATH=$pipeDir/annotate:$pipeDir/lineage:$pipeDir/phylogeny:$pipeDir/plotting:$pipeDir/utilities:\$PATH" >> ~/.bashrc
+    echo "export PATH=$pipeDir/annotate:$pipeDir/lineage:$pipeDir/phylogeny:$pipeDir/plotting:$pipeDir/utilities:\$PATH" >> ~/.bashrc
     pypath=$(cd $pipeDir; cd ..; pwd)
-    echo "export \$PYTHONPATH=$pypath:\$PYTHONPATH" >> ~/.bashrc
+    echo "export PYTHONPATH=$pypath:\$PYTHONPATH" >> ~/.bashrc
 fi
 
 
