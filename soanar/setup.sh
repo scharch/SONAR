@@ -45,15 +45,27 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 
 #Ask user for input
     echo ""
-    read -e -p "Please enter the default root directory: " -i $homeDir homeDir
-    read -e -p "Please enter the directory where SOAnAR is installed: " -i $pipeDir pipeDir
-    read -e -p "Please enter the path to ClustalO: " -i $clustal clustal
-    read -e -p "Please enter the path to Muscle: " -i $muscle muscle
-    read -e -p "Please enter the path to USearch: " -i $usearch usearch
-    read -e -p "Please enter the path to blastall: " -i $blast blastall
-    read -e -p "Please enter the path to DNAML: " -i $dnaml dnaml
-    read -e -p "Please enter the path to BEAST: " -i $beast beast
-    
+    if [[ ${BASH_VERSION[0]} < 4 ]]
+    then
+	read -e -p "Please enter the default root directory (default $)homeDir: " var; homeDir=${var:-$homeDir}
+	read -e -p "Please enter the directory where SOAnAR is installed (default $pipeDir): " var; pipeDir=${var:-$pipeDir}
+	read -e -p "Please enter the path to ClustalO (default $clustal): " var; clustal=${var:-$clustal}
+	read -e -p "Please enter the path to Muscle (default $muscle): " var; muscle=${var:-$muscle}
+	read -e -p "Please enter the path to USearch (default $usearch): " var; usearch=${var:-$usearch}
+	read -e -p "Please enter the path to blastall (default $blast): " var; blast=${var:-$blast}
+	read -e -p "Please enter the path to DNAML (default $dnaml): " var; dnaml=${var:-$dnaml}
+	read -e -p "Please enter the path to BEAST (default $beast):" var; beast=${var:-$beast}
+    else
+	read -e -p "Please enter the default root directory: " -i $homeDir homeDir
+	read -e -p "Please enter the directory where SOAnAR is installed: " -i $pipeDir pipeDir
+	read -e -p "Please enter the path to ClustalO: " -i $clustal clustal
+	read -e -p "Please enter the path to Muscle: " -i $muscle muscle
+	read -e -p "Please enter the path to USearch: " -i $usearch usearch
+	read -e -p "Please enter the path to blastall: " -i $blast blast
+	read -e -p "Please enter the path to DNAML: " -i $dnaml dnaml
+	read -e -p "Please enter the path to BEAST: " -i $beast beast
+    fi
+
     #verify inputs
     echo -e "\n\nYou have entered the following values:
 \tDefault root directory: $homeDir
@@ -83,9 +95,16 @@ if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; then
 
 	#Ask user for input
 	echo ""
-	read -e -p "Please enter the path to qsub: " -i $qsub qsub
-	read -e -p "Please enter the path to Muscle on the cluster: " -i $clustMuscle clustMuscle
-	read -e -p "Please enter the path to blastall on the cluster: " -i $clustBlast clustBlast
+	if [[ ${BASH_VERSION[0]} < 4 ]]
+	then
+	    read -e -p "Please enter the path to qsub (default $qsub): " var; qsub=${var:-$qsub}
+	    read -e -p "Please enter the path to Muscle on the cluster (default $clustMuscle): "  var; clustMuscle=${var:-$clustMuscle}
+	    read -e -p "Please enter the path to blastall on the cluster (default $clustBlast): " var; clustBlast=${var:-$clustBlast}
+	else
+	    read -e -p "Please enter the path to qsub: " -i $qsub qsub
+	    read -e -p "Please enter the path to Muscle on the cluster: " -i $clustMuscle clustMuscle
+	    read -e -p "Please enter the path to blastall on the cluster: " -i $clustBlast clustBlast
+	fi
 
 	#and check
 	echo -e "\n\nYou have entered the following values:
