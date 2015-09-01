@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 use threads;
 #use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");

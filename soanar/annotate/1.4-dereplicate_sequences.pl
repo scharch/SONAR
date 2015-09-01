@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # performing usearch for sequences
 use strict;
 use PPvars qw(ppath);

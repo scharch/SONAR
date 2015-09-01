@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 
 # USAGE: plotDivHist.r <divergence.txt> <germ_stat.txt>
 # 

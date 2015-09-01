@@ -1,5 +1,5 @@
 
-#~/bin/bash
+#!/bin/bash
 
 #This script sets up paths for the SOAnAR (Antibodyomics) pipeline
 
@@ -154,7 +154,7 @@ cluster_blast  = \"$clustBlast\"
 
 #create a file for the Perl portion of the pipeline
 echo "
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 package PPvars;
 use strict;
