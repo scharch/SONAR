@@ -11,7 +11,7 @@ Options:
 	  \tcontain a field saying it's germline V gene for somatic hypermutation calculation. Otherwise, no 
 	  \tsomatic hypermutation is calculated. fasta file output from pipeline is ok. For example, 
 	  \t'>00000089 V_gene=IGHV1-2*02'. Please seperate '00000089 and 'V_gene' with space or tab.
-	-g\tgermline V gene file, optional.
+	-g\tgermline V gene file, optional.Default: IgHV.fa in the program folder.
 	-a\tfasta file has the sequence of interested antibody. optional.
 	-t\tthreads, default:5
 	-npt\tnumber of sequences per thread. default:1000
@@ -35,11 +35,33 @@ if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
 $para{'-ap'}=ppath($para{'-ap'});
 $para{'-pu'}=ppath($para{'-pu'});
-if(!$para{'-ap'}){die "please select a program for sequence alignment\n";}
-if(!$para{'-g'}){warn "No calculation for hypermutation\n";}
+if(!$para{'-ap'}){
+	 if(ppath('muscle')){
+	   $para{'-ap'}=ppath('muscle');	
+	}else{
+	 die "please select a program for sequence alignment\n";
+	}
+	}
+if(!$para{'-g'}){
+	$para{'-g'}=ppath('germ')."/germDB/IgHV.fa";
+	if(-e $para{'-g'}){
+	  	print "using $para{'-g'} as germline file\n";
+	 }
+	else{
+	   warn "No calculation for hypermutation\n";
+	 }
+	}
 if(!$para{'-p'}){$para{'-p'}='DNA';}
 if($para{'-a'}&& ! -e $para{'-a'}){warn "file $para{'-a'} doesn't exist. ):\n";}
-if($para{'-f'}&& ! -e $para{'-f'}){die "file $para{'-f'} doesn't exist. ):\n";}
+if($para{'-f'}&& ! -e $para{'-f'}){
+	my @files=<./output/sequences/nucleotide/*goodVJ_unique.fa>;
+	if(-e "$files[0]"){
+	   $para{'-f'}=$files[0];	
+	 }
+	else{
+	    die "file $para{'-f'} doesn't exist. ):\n";
+   }
+	}
 if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
 my %germ_db=();
 
@@ -422,5 +444,57 @@ sub recover{#add back all the identity and coverage calculation for redundant re
 		close CD;
 		system("cat tempchange.txt >>$output_cov");
    unlink "tempchange.txt";
+}
 
+sub add_column_to_statistic{
+    my ($identity_file)=@_;
+    open HH,"$identity_file";
+    my $l=<HH>;
+    my @l=split/\t/,$l;
+    my %identity=();
+    if($l[1]!~/germ_div/){
+      	last;
+    }	
+    else{
+        	while(<HH>){
+        	    @l=split/\t/,$_;
+        	    $identity{$l[0]}=$l[1];	
+        	}
+    }
+    close HH;
+	my @stats=<./output/tables/*all_seq_stats.txt>;
+	if(-e "$stats[0]"){
+		&rm_r($stats[0]);
+	   open ST,"$stats[0]";
+	   open STo,">temstat.txt";
+		 my $line=<ST>;
+		 if($line=~/V_div/){
+		   last;	
+		 }
+		 else{
+		   while(<ST>){
+		   	chomp;
+		   	if($_=~/^[\d\w]/){
+		     my @li=split/\t/,$_;	
+		     print STo "$_\t$identity{$li[0]}\n";
+		   }
+		  }  	
+		 }
+	}
+	close ST;
+	close STo;
+	system("mv temstat.txt $stats[0]");
+}
+
+sub rm_r{#remove \r at line end
+      my $file=shift;
+   open HH,"$file" or die "rm_r didn't find the file $file\n";
+   open YY,">rmtem.txt";
+   while(<HH>){
+      ~s/\r/\n/g;
+      print YY "$_";
+   }
+    close HH;
+    close YY;
+  system("mv rmtem.txt $file");	
 }

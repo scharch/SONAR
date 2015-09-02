@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 # performing usearch for sequences
 use strict;
 use PPvars qw(ppath);
@@ -39,7 +39,6 @@ if(!$para{'-id'}){$para{'-id'}=0.99;}
 
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
 my $ids_unique=&changename($para{'-f'},$output);
-
 my $file=$para{'-f'};
 $file=~s/goodVJ/goodCDR3/;
 if(-e "$file"){
@@ -96,9 +95,10 @@ sub write_raw{
 sub changename{#change sequence names back to the input sequence name
   my ($input,$seive)=@_;
   open HH,"$seive" or die "usearch file $seive not found\n";
-	open YY,"$input" or die "Original seq file $input not found\n";
-	open ZZ,">tempusearch.fa";
-	my %id=();
+	my %state=();
+	my $statis_label=0;
+	my @stat_file=<./output/tables/*all_seq_stats.txt>;
+		my %id=();
 	my $id='';
 	my $mark=0;
 	my %size=0;
@@ -114,6 +114,31 @@ sub changename{#change sequence names back to the input sequence name
 		}
 	}
 	close HH;
+	
+	if(-e "$stat_file[0]"){#write statistic info to ./output/table/project_all_seq_stats.txt
+		&rm_r($stat_file[0]);
+	  open STi,"$stat_file[0]";	
+	  my $title=<STi>;
+	  if($title!~/Unique\tsize/){	  
+	  	$statis_label=1;
+	  open STo,">stats.txt";
+	  chomp $title;
+	  $title.="\tUnique\tsize\n";
+	  print STo "$title";
+	  
+	  while(<STi>){
+	  	if($_=~/^ID\t/||$_!~/[\d\w]/){next;}
+	  	chomp;
+	  	~s/[\r\n]//g;
+	  	my @l=split/\t+/,$_;
+	  	$state{$l[0]}=$_;
+	  }
+	 }
+	 
+	}
+	open YY,"$input" or die "Original seq file $input not found\n";
+	open ZZ,">tempusearch.fa";
+
 	while(<YY>){
 		if($_=~/>([^\t \;\n\r]+)/){
 			chomp;
@@ -122,6 +147,7 @@ sub changename{#change sequence names back to the input sequence name
 		   if($id{$k}==1){
 		   	  $mark=1;	
 		   	  print ZZ "$_ size=$size{$k}\n";
+		   	  
 		   }
 		 	 else{
 		 	    $mark=0;	
@@ -130,9 +156,19 @@ sub changename{#change sequence names back to the input sequence name
 		elsif($mark==1){
 		  print ZZ "$_";	
 		}
-	}
+	}	
 	close YY;
 	close ZZ;
+	if($statis_label==1){
+	   foreach(sort {$a<=>$b} %state){ 
+		   	  	if($id{$_}&&$state{$_}=~/[\d\w]/){print STo "$state{$_}\tT\t$size{$_}\n";}
+		   	  	elsif($state{$_}=~/[\d\w]/){print STo "$state{$_}\tNA\tNA\n";}
+		   	  }		
+	}
+
+	close STi;
+	close STo;
+	if($statis_label==1){system("mv stats.txt $stat_file[0]");}
 	if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/){#move output files to standard pipeline folders
 		system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
 	}
@@ -140,6 +176,19 @@ sub changename{#change sequence names back to the input sequence name
 	  system("mv tempusearch.fa $seive");
   }
   return \%id;
+}
+
+sub rm_r{#remove \r at line end
+      my $file=shift;
+   open HH,"$file" or die "rm_r didn't find the file $file\n";
+   open YY,">rmtem.txt";
+   while(<HH>){
+      ~s/\r/\n/g;
+      print YY "$_";
+   }
+    close HH;
+    close YY;
+  system("mv rmtem.txt $file");	
 }
 
 sub read_fasta{
