@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use threads;
-#use lib ("/Users/sheng/work/HIV/scripts/github/zap/zap/");
+use lib ("/Users/sheng/work/HIV/scripts/github/zap/soanar/");
 use PPvars qw(ppath);
 
 my $usage="Usage: 
@@ -29,7 +29,7 @@ Created by Zizhang Sheng.
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.	
  ";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
-if(@ARGV%2>0||@ARGV==0){die "$usage"; }
+if(@ARGV%2>0){die "$usage"; }
 my %para=@ARGV;
 if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
@@ -53,21 +53,22 @@ if(!$para{'-g'}){
 	}
 if(!$para{'-p'}){$para{'-p'}='DNA';}
 if($para{'-a'}&& ! -e $para{'-a'}){warn "file $para{'-a'} doesn't exist. ):\n";}
-if($para{'-f'}&& ! -e $para{'-f'}){
+if(!$para{'-f'}|| ! -e $para{'-f'}){
 	my @files=<./output/sequences/nucleotide/*goodVJ_unique.fa>;
 	if(-e "$files[0]"){
 	   $para{'-f'}=$files[0];	
+	   print "Using sequence file $files[0]\n";
 	 }
 	else{
-	    die "file $para{'-f'} doesn't exist. ):\n";
+	    die "Sequence file $para{'-f'} doesn't exist. ):\n";
    }
 	}
-if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
+#if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
 my %germ_db=();
 
 ############Reading seqs####################
 &rm_r($para{'-g'});
-&rm_r($para{'-a'});
+if($para{'-a'}){&rm_r($para{'-a'});}
 my ($germV,$germg)=&readfasta($para{'-g'});
 my ($anti,$antigerm)=&readfasta($para{'-a'});
 
@@ -170,6 +171,7 @@ if($para{'-pu'}){#add redundant sequences back
   &recover($changefile,$output_id,$output_cov);
   unlink "$changefile\_unique.fa","$changefile.cluster","usearchlog.txt";
 }
+&add_column_to_statistic($output_id);
 ##################################
 sub rm_r{#remove \r at line end
       my $file=shift;
@@ -240,7 +242,7 @@ sub readfasta{# read in sequences and germline assign info from fasta file
     my %seq=();
     my %seqgerm=();
     my $id='';
-    open HH,"$file" or die "file $file not exist\n";
+    open HH,"$file" or warn "Sequence file $file not exist\n";
     while(<HH>){
         chomp;
         if($_=~/>(.+)/){
@@ -448,7 +450,7 @@ sub recover{#add back all the identity and coverage calculation for redundant re
 
 sub add_column_to_statistic{
     my ($identity_file)=@_;
-    open HH,"$identity_file";
+    open HH,"$identity_file" or die "Sequence identity file $identity_file not found\n";
     my $l=<HH>;
     my @l=split/\t/,$l;
     my %identity=();
@@ -457,44 +459,39 @@ sub add_column_to_statistic{
     }	
     else{
         	while(<HH>){
+        		chomp;
         	    @l=split/\t/,$_;
         	    $identity{$l[0]}=$l[1];	
         	}
     }
     close HH;
 	my @stats=<./output/tables/*all_seq_stats.txt>;
-	if(-e "$stats[0]"){
+	if(-e "$stats[0]"){print "$stats[0]##\n";
 		&rm_r($stats[0]);
 	   open ST,"$stats[0]";
-	   open STo,">temstat.txt";
+	   
 		 my $line=<ST>;
-		 if($line=~/V_div/){
-		   last;	
-		 }
-		 else{
+		 if($line!~/V\_div/){
+		 	chomp $line;		 	
+     open STo,">temstat.txt";
+     print STo "$line\tV_div\n";
 		   while(<ST>){
 		   	chomp;
 		   	if($_=~/^[\d\w]/){
-		     my @li=split/\t/,$_;	
-		     print STo "$_\t$identity{$li[0]}\n";
+		     my @li=split/\t/,$_;
+		     if($identity{$li[0]})	{
+		       print STo "$_\t$identity{$li[0]}\%\n";print "$_ $identity{$li[0]}\n";
+		     }
+		     else{
+		     	 print STo "$_\tNA\n";
+		    }
 		   }
-		  }  	
+		  } 	
+		  close ST;
+	    close STo;
+		  system("mv temstat.txt $stats[0]"); 	
 		 }
 	}
-	close ST;
-	close STo;
-	system("mv temstat.txt $stats[0]");
+
 }
 
-sub rm_r{#remove \r at line end
-      my $file=shift;
-   open HH,"$file" or die "rm_r didn't find the file $file\n";
-   open YY,">rmtem.txt";
-   while(<HH>){
-      ~s/\r/\n/g;
-      print YY "$_";
-   }
-    close HH;
-    close YY;
-  system("mv rmtem.txt $file");	
-}
