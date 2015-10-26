@@ -189,7 +189,7 @@ def getParas(my_dict, *args):
 	"""return the value of the argument """	
 	
 	if len(args) == 1:	return my_dict[args[0]]
-	else:	return (my_dict[arg] for arg in args)
+	else:	return (my_dict.get(arg) for arg in args)
 		
 		
 def getParasWithDefaults(my_dict, default_dict, *args):
