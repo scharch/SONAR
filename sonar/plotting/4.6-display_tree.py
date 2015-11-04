@@ -116,7 +116,7 @@ Copyright (c) 2013-2015 Columbia University and Vaccine Research Center, Nationa
 
 
 import sys, os, re, colorsys
-from soanar import *
+from sonar import *
 from ete2 import *
 from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush
 import string, random

@@ -4,13 +4,13 @@
 checkClusterBlast.py
 
 This script monitors the SGE array jobs submitted by scripts 1.1 and 1.2 of the
-      SOAnAR pipeline. When finished, it checks for failed BLAST jobs and
+      SONAR pipeline. When finished, it checks for failed BLAST jobs and
       resubmits as necessary. (Failure is defined as absence of a BLAST output
       file; there may be other failure modes that will not be caught.) If all 
       jobs completed successfully, can optionally start the next step of the
       pipeline.
 
-Intended for internal use within SOAnAR only...
+Intended for internal use within SONAR only...
 
 Usage: checkClusterBlast.py -gene <v|j|d|c> -big 100 -check check.sh
                             [ -after "next_step.py -args ..." ]
@@ -32,9 +32,9 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys
-find_SOAnAR_on_cluster = sys.argv[0].split("soanar/utilities")
-sys.path.append(find_SOAnAR_on_cluster[0])
-from soanar import *
+find_SONAR_on_cluster = sys.argv[0].split("sonar/utilities")
+sys.path.append(find_SONAR_on_cluster[0])
+from sonar import *
 
 
 

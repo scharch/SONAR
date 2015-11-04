@@ -20,7 +20,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 """
 
-from soanar import *
+from sonar import *
 
 def main():
 

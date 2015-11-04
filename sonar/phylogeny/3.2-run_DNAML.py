@@ -44,7 +44,7 @@ Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
 
 """
 
-from soanar import *
+from sonar import *
 from Bio import AlignIO
 from Bio.Align.Applications import MuscleCommandline
 

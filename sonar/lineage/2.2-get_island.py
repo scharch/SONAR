@@ -30,7 +30,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 """
 
-from soanar import *
+from soaar import *
 
 global inFile, native
 

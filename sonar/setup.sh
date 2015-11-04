@@ -1,7 +1,7 @@
 
 #!/bin/bash
 
-#This script sets up paths for the SOAnAR (Antibodyomics) pipeline
+#This script sets up paths for the SONAR (Antibodyomics) pipeline
 
 
 #print useful information
@@ -48,7 +48,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     if [[ ${BASH_VERSION[0]} < 4 ]]
     then
 	read -e -p "Please enter the default root directory (default $homeDir): " var; homeDir=${var:-$homeDir}
-	read -e -p "Please enter the directory where SOAnAR is installed (default $pipeDir): " var; pipeDir=${var:-$pipeDir}
+	read -e -p "Please enter the directory where SONAR is installed (default $pipeDir): " var; pipeDir=${var:-$pipeDir}
 	read -e -p "Please enter the path to ClustalO (default $clustal): " var; clustal=${var:-$clustal}
 	read -e -p "Please enter the path to Muscle (default $muscle): " var; muscle=${var:-$muscle}
 	read -e -p "Please enter the path to USearch (default $usearch): " var; usearch=${var:-$usearch}
@@ -57,7 +57,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 	read -e -p "Please enter the path to BEAST (default $beast):" var; beast=${var:-$beast}
     else
 	read -e -p "Please enter the default root directory: " -i $homeDir homeDir
-	read -e -p "Please enter the directory where SOAnAR is installed: " -i $pipeDir pipeDir
+	read -e -p "Please enter the directory where SONAR is installed: " -i $pipeDir pipeDir
 	read -e -p "Please enter the path to ClustalO: " -i $clustal clustal
 	read -e -p "Please enter the path to Muscle: " -i $muscle muscle
 	read -e -p "Please enter the path to USearch: " -i $usearch usearch
@@ -69,7 +69,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     #verify inputs
     echo -e "\n\nYou have entered the following values:
 \tDefault root directory: $homeDir
-\tDirectory where SOAnAR is installed: $pipeDir
+\tDirectory where SONAR is installed: $pipeDir
 \tPath to ClustalO: $clustal
 \tPath to Muscle: $muscle
 \tPath to USearch: $usearch
@@ -120,8 +120,8 @@ fi #with cluster specific questions
 
 
 
-#add SOAnAR to path?
-read -e -p "Would you like to permanently add SOAnAR to the path (by adding a line to .bashrc) [y/n]?" path
+#add SONAR to path?
+read -e -p "Would you like to permanently add SONAR to the path (by adding a line to .bashrc) [y/n]?" path
 if [ "$path" == "Y" ] || [ "$path" == "y" ]; then
     echo "export PATH=$pipeDir/annotate:$pipeDir/lineage:$pipeDir/phylogeny:$pipeDir/plotting:$pipeDir/utilities:\$PATH" >> ~/.bashrc
     echo "export PERL5LIB=$pipeDir:\$PERL5LIB" >> ~/.bashrc
