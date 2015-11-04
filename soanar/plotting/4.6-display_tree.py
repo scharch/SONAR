@@ -7,8 +7,8 @@ This script uses the ete2 module to display figure-quality phylogenetic
       "birthday" trees from longitudinal data.
 
 Usage: 4.6-plot_tree.py -t newick.txt -n natives.csv
-                        [ -o tree.png -c collapse.txt -i intermediates.csv -f 40
-		          -m 10 -r 600 -s 3600 -w 6 -path -noDots -noUCA -noV    ]
+                        [ -o tree.png -c collapse.txt -i intermediates.csv -f 1
+		          -r 300 -sc 1000 -sp 12 -h 4 -w 4 -path -noDots -noUCA -noV ]
 
     Invoke with -h or --help to print this documentation.
 
@@ -39,33 +39,50 @@ Usage: 4.6-plot_tree.py -t newick.txt -n natives.csv
                          the ete2 rendering engine will recognize a .pdf
 			 extension (and possibly others) and respond accordingly.
 			 Default = tree.png
-    c         -    Optional single-column text file specifying a list of internal
+    c         -    Optional tab-delimited text file specifying a list of internal
                          nodes which should be collapsed in the final display.
+			 First column is the id of the node to collapse (must be
+			 labeled in the newick file), second column is an optional
+			 message/label to print at the collapsed node. If no label
+			 is provided, the collapsed node will be annotated with
+			 the number of leaves hidden.
     i         -    Optional tab-delimited text file specifying intermediate nodes
                          to highlight. First column is the node label in the
 			 newick file, optional second column gives a formatted
 			 label to display on the tree.
-    f         -    Desired font size for text labels. (Font face is hard-coded as
-                         Arial.) Default = 40.
-    m         -    Desired vertical spacing of tree brances. ete2 documentation
-                         has this as the number of pixels between adjacent
-			 branches; please see note for the -s parameter.
-			 Default = 10.
+    f         -    Optional magnification factor for text labels. Default size is
+                         approximately 0.1 inches high at the specified resolution.
+			 (Font face is hard-coded as Arial.) Default = 1.
     r         -    Desired resolution of the output image. Please see note for 
-                         the -s parameter. Default = 600 dpi.
-    s         -    Desired display scale for the tree. According to ete2
-                         documentation, this value corresponds to the length in
-			 pixels of a tree branch with unit length. In practice,
-			 the effects of this parameter are inconsistent and 
-			 interact in important ways with the -r, -s, and -w
-			 parameters. The defaults for these 4 should work well
-			 for most applications, but in the event that one needs
-			 to be changed, the other 3 will likely need to be
-			 adjusted via trial-and-error, as well. Default = 3600.
-    w         -    Desired width (in inches) of the output image. Together with
-                         options -r, -s, and -m, this will also fix image height,
-			 which is therefore not provided as a free parameter.
-			 Please see note for the -s parameter. Default = 6.
+                         the -s parameter. Default = 300 dpi.
+    sc        -    Desired display scale for the tree. According to ete2
+                         documentation, this value corresponds to the size in
+			 pixels of a tree branch with unit length. Mutually 
+			 exclusive with -w. Default = 1000.
+    sp        -    Desired vertical spacing of adjacent tree brances, in pixels.
+                         Mutually exclusive with -h. Default is scaled to 
+			 approximately 0.04 inches (12.5 pixels at 300 dpi).
+    h         -    Desired height (in inches) of the output image. Includes a 
+                         quarter-inch margin around all borders. The program uses
+			 this value as a guideline to estimate the desired spacing
+			 parameter (-sp), so the result will not be exact. Because
+			 spacing cannot be less than 0 and the program tries to 
+			 ensure that branches and labels are legible, there is a 
+			 minimum possible height, and the program will throw an
+			 error if the value of -h is less than that minimum. In
+			 the event that a smaller tree is required, I recommend
+			 increasing the -f option and then reducing the output
+			 image as necessary. This will at at least keep the
+			 labels legible even as the branches start to run
+			 together. Mutually exclusive with -sp.
+			 Default = not set (use -sp).
+    w         -    Desired width (in inches) of the output image. Includes a
+                         quarter-inch margin around all borders and a half-inch
+			 strip on the right side dedicated to a color guide, so
+			 the minimum value is 2. The program uses this value as
+			 a guideline to estimate the desired scale parameter
+			 (-sc), so the result will not be exact. Mutually
+			 exclusive with -sc. Default = not set (use -sc).
     path      -    Flag indicating that the evolutionary pathway(s) from root to
                          the native antibody/ies should be highlighted with a
 			 thicker line (does not change any colors). Default = No.
@@ -90,7 +107,7 @@ Sample format of natives.csv:
 
 
 Created by Chaim A Schramm 2013-06-18
-Edited and commented for publication by Chaim A Schramm on 2015-10-26.
+Edited and commented for publication by Chaim A Schramm on 2015-11-04 --happy birthday, Lisa <3
 
 Copyright (c) 2013-2015 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -99,10 +116,11 @@ Copyright (c) 2013-2015 Columbia University and Vaccine Research Center, Nationa
 
 
 import sys, os, re, colorsys
-from mytools import *
+from soanar import *
 from ete2 import *
 from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush
 import string, random
+
 
 
 def parseNatives(infile):
@@ -117,7 +135,8 @@ def parseNatives(infile):
 			date, name = row
 			show = name
 		elif len(row) == 1:
-			date = row
+			[ date ] = row
+			name = ''
 		else:
 			print "Unrecognized row: ", row
 
@@ -132,7 +151,7 @@ def parseNatives(infile):
 	return nats, times
 
 
-def parseIntermediates(infile):
+def parseInternalNodes(infile):
 	if ( infile is None ):
 		return []
 
@@ -143,8 +162,8 @@ def parseIntermediates(infile):
                 if len(row)==2:
                         name, show = row
                 elif len(row)==1:
-                        name = row
-                        show = name
+                        [ name ] = row
+                        show     = name
                 else:
                         print "Unrecognized row: ", row
 
@@ -154,14 +173,6 @@ def parseIntermediates(infile):
 		iNodes[name] = show
 
 	return iNodes
-
-
-def parseCollapse(infile):
-	if ( infile is None ):
-		return []
-
-	with open(infile) as f:
-		return [line.strip() for line in f.readlines()]
 
 
 def layout(node):
@@ -178,29 +189,41 @@ def layout(node):
 		ns['hz_line_type'] = 1
 		ns['vt_line_color'] = '#FFFFFF'
 		ns["draw_descendants"] = False
+		ns['shape'] = 'diamond'
+		
+		label = collapseList[node.name]
+		if label == node.name:
+			label = "Collapsed %d leaves in %d levels" % (len(node.get_leaves()), node.get_farthest_leaf(topology_only=True)[1]+1)
+		tf = TextFace(" %s"%label,fgcolor="#B0B0B0",ftype='Arial',fsize=fontSize*.75, fstyle='italic')
+		faces.add_face_to_node(tf, node, 0, position='branch-right')
+		if dots: ns['size'] = 2 * ns['hz_line_width']
+		ns['fgcolor'] = '#B0B0B0'
 	else:
 		#default appearance
 		ns['size'] = 0
 		ns['fgcolor'] = myRGB
 		ns['vt_line_color'] = myRGB
 		ns['hz_line_color'] = myRGB
+		ns['hz_line_width'] = res/72
+		ns['vt_line_width'] = res/72
 		
 		#highlight pathways to natives, if desired
 		if pathway and node.onPathway:
-			ns['hz_line_width'] = 2
-			ns['vt_line_width'] = 3
+			ns['hz_line_width'] = res/24
+			ns['vt_line_width'] = res/24
 			
 		#label natives
 		if node.isNat:
 			tf = TextFace(" %s"%node.name,fgcolor=myRGB,ftype='Arial',fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-right')
-			if dots: ns['size'] = 7
+			if dots: ns['size'] = 2 * ns['hz_line_width']
 			ns['fgcolor'] = '#000000'
 
 		#label germline outgroup, if desired
 		if vgene and re.match("(IG|VH|VK|VL)", node.name):
 			ns['hz_line_color']='#FFFFFF'
 			tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
+			faces.add_face_to_node(tf, node, 0, position='branch-right')
 			ns['fgcolor'] = '#000000'
 
 		#label intermediates, if desired
@@ -231,13 +254,13 @@ def iLabel(node, *args, **kargs):
 
 	my_label = args[0][0] #or maybe just node.name?
 
-	ellipse = QGraphicsEllipseItem(0,0,16,16) #I think the first two are coords of center; second pair is major/minor axis
+	ellipse = QGraphicsEllipseItem(0,0,fontSize*2,fontSize*2) #I think the first two are coords of center; second pair is major/minor axis
 	ellipse.setBrush(QBrush(QColor( 'black' )))
 
 	text = QGraphicsSimpleTextItem(my_label)
 	text.setParentItem(ellipse)
 	text.setBrush(QBrush(QColor("white")))
-	text.setFont(QFont("Arial",8))
+	text.setFont(QFont("Arial",fontSize*.75))
 
 	#Center text according to masterItem size
 	tw = text.boundingRect().width()
@@ -253,6 +276,8 @@ def iLabel(node, *args, **kargs):
 
 
 def main():
+
+	global spacing, scale, fontSize
 	
 	#read in tree
 	myTree= Tree(treeFile, format=1)
@@ -273,24 +298,28 @@ def main():
 			level = level.up
 
 	#mark the intermediates
-	intNodes = filter( lambda x: any( re.match("%s$"%n, x.name) for n in intermediates), myTree.iter_leaves() )
-	for i in iNodes:
+	intNodes = filter( lambda x: any( re.match("%s$"%n, x.name) for n in intermediates), myTree.traverse() )
+	for i in intNodes:
 		if (not i.onPathway):
 			print "Warning: intermediate %s (%s) doesn't seem to be on a pathway to one of the natives...\n" % (i.name, intermediates[i.name])
 		i.isIntermediate = True
 		i.name = intermediates[i.name]
 
 	#should we collapse any nodes?
-	collapseNodes = filter( lambda x: any( re.match("%s$"%n, x.name) for n in collapseList), myTree.iter_leaves() )
+	numCollapsed = 0
+	collapseNodes = filter( lambda x: any( re.match("%s$"%n, x.name) for n in collapseList), myTree.traverse() )
 	for c in collapseNodes:
 		c.collapse = True
+		numCollapsed += len(c.get_leaves()) - 1 #will be wrong if one collapsed node is in the
+		                                        #subtree of another collapsed node, but that 
+		                                        #should be sufficiently rare that I am ignoring it
 
 	#for everything else, read off its timepoint
 	for leaf in myTree.iter_leaves():
 		if leaf.isNat or re.match("(IG|VH)", leaf.name):
 			# these nodes are not expected to fit the standard time-labeling scheme
 			continue 
-		leaf.timepoint = re.match(timeRegex,leaf.name.group())
+		leaf.timepoint = re.match(timeRegex,leaf.name).group()
 		if leaf.timepoint is None:
 			print "Warning: Could not match leaf %s to a known time point!\n" % leaf.name
 		
@@ -302,21 +331,115 @@ def main():
 				node.timepoint = date
 				node = node.up
 			
-	#basically done; set TreeStyle, call layout, and render!
-	ts = TreeStyle()
-	ts.layout_fn = layout
-	ts.show_scale = True
-	ts.show_leaf_name = False
+	#optimize graphical parameters
+	estimatedH = ( len(myTree.get_leaves()) - numCollapsed )*(res/72) + fontSize*1.4*len(natives)         #bare minimum based on line thickness and label size
+	if height is not None:
+		pixelH = (height-0.5) * res
+		if estimatedH <= pixelH:
+			spacing = (pixelH - estimatedH) / (len(myTree.get_leaves())-numCollapsed)             #easy, just increase spacing to match
+		else:
+			sys.exit("Specified image height %2.1f is too small for the input tree. Minimum is ~%2.1f.\n"%(height, estimatedH/res + .5) )
+	elif spacing is None:
+		spacing = res/24
 
-	#if we set these, can only set either width OR height
-	ts.branch_vertical_margin = margin
-	ts.scale = scale
+	if width is not None:
+		pixelW = (width - 1.75) * res #.5 for margin, .5 for color key, .5 for native labels (may not be necessary), .25 for branch behind UCA
+		scale = pixelW / myTree.get_farthest_leaf()[1]
+	elif scale is None:
+		scale = 1000 #seems like a decent default
+		
+
+	#overload package functions for nicer graphics
+	from ete2.treeview import qt4_render
+	qt4_render.add_scale  = _custom_add_scale
+	qt4_render.add_legend = _custom_add_legend
+
+	#basically done; set TreeStyle, call layout, and render!
+	ts                        = TreeStyle()
+	ts.layout_fn              = layout
+	ts.show_scale             = True
+	ts.show_leaf_name         = False
+	ts.branch_vertical_margin = spacing
+	ts.scale                  = scale
+	ts.margin_left            = res/4
+	ts.margin_right           = res/4
+	ts.margin_bottom          = res/4
+	ts.margin_top             = res/4
+
+	#make color guide
+	for time in range( len(timepoints) ):
+		color = makeRainbow(time, len(timepoints))
+		bar = RectFace(res/4,res/24,color,color)
+		bar.margin_top    = res/24
+		bar.margin_bottom = res/24
+		bar.margin_right  = res/24
+		bar.margin_left   = res/24
+		ts.legend.add_face(bar, column=0)
+		text = TextFace(timepoints[time],ftype="Arial",fsize=fontSize*0.75,fgcolor="#000000")
+		text.hz_align     = 0
+		text.vt_align     = 1
+		text.margin_left  = res/24
+		text.margin_right = res/24
+		ts.legend.add_face(text, column=1)
 
 	myTree.dist=0.05
-	myTree.render(outFile, dpi=res, tree_style=ts, w=width, units="in")
+	myTree.render(outFile, dpi=res, tree_style=ts)
+
+####################################
+
+#Custom modifications of functions from within ete2 package
+def _custom_add_scale(img, mainRect, parent):
+
+    from PyQt4 import QtGui
+    from ete2.treeview.qt4_render import _EmptyItem
+
+    length    = fontBig * res / 4
+    length    = img._scale * numpy.ceil( 100 * float(length) / img._scale ) / 100 #this is my OCD...
+    
+    height    = length/3
+    scaleItem = _EmptyItem()
+    customPen = QtGui.QPen(QtGui.QColor("black"), res/72)
+    
+    line = QtGui.QGraphicsLineItem(scaleItem)
+    line2 = QtGui.QGraphicsLineItem(scaleItem)
+    line3 = QtGui.QGraphicsLineItem(scaleItem)
+    line.setPen(customPen)
+    line2.setPen(customPen)
+    line3.setPen(customPen)
+    
+    line.setLine(0, height/2, length, height/2)
+    line2.setLine(0, 0, 0, height)
+    line3.setLine(length, 0, length, height)
+    length_text = float(length) / img._scale
+    scale_text = "%0.2f" % (length_text)
+    scale = QtGui.QGraphicsSimpleTextItem(scale_text)
+    scale.setFont(QtGui.QFont("Arial", fontSize*0.75))
+    scale.setParentItem(scaleItem)
+    scale.setPos(length/3, -height)
+    
+    scaleItem.setParentItem(parent)
+    scaleItem.setPos(mainRect.bottomLeft())
+    scaleItem.moveBy(img.margin_left, -img.margin_bottom)
+    mainRect.adjust(0, 0, 0, height)
 
 
+def _custom_add_legend(img, mainRect, parent):
 
+     from ete2.treeview.qt4_render import _FaceGroupItem
+
+     legend = _FaceGroupItem(img.legend, None)
+     legend.setup_grid()
+     legend.render()
+     lg_w, lg_h = legend.get_size()
+     mid_height = mainRect.height() / 2
+     place_at = mid_height - lg_h/2
+     legend.setParentItem(parent)
+     legend.setPos(mainRect.width(), place_at)
+     legend.moveBy(-img.margin_right,0)
+     mainRect.adjust(0, 0, lg_w, 0)
+		      
+
+############################################
 
 if __name__ == '__main__':
 	# get parameters from input
@@ -355,19 +478,33 @@ if __name__ == '__main__':
 
 	#parse remainder of options
 	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile",
-				 c="collapseFile", s="scale", m="margin", r="res", f="fontSize", w="width")
-	dict_defaults = dict( scale=3600, margin=10, res=600, fontSize=40, width=6, outFile="tree.png" )
-	treeFile, nativeFile, outFile, intFile, collapseFile, scale, margin, res, fontSize, width = \
-	    getParasWithDefaults( dict_args, "treeFile", "nativeFile", "outFile", "intFile", "collapseFile", "scale", "margin", "res", "fontSize", "width" )
+				 c="collapseFile", sc="scale", sp="spacing", r="res", f="fontBig", w="width", h="height")
+	dict_defaults = dict( scale=None, spacing=None, res=300, fontBig=1, height=None, width=None, outFile="tree.png" )
+	treeFile, nativeFile, outFile, intFile, collapseFile, scale, spacing, res, fontBig, width, height = \
+	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "collapseFile", "scale", "spacing", "res", "fontBig", "width", "height" )
+
+
+	#figure out image dimensions
+	if scale is not None and width is not None:
+		sys.exit("Only one horizontal parameter (scale XOR width) may be specified\n");
+	if spacing is not None and height is not None:
+		sys.exit("Only one vertical parameter (spacing XOR height) may be specified\n");
+	if width is not None and width < 2:
+		sys.exit("Minimum figure width is 2 inches (includes margin and color guide)\n");
+	
+
+	#convert font magnification to actual size
+	fontSize = fontBig * 20 * res/300
+
 
 	#load natives
 	natives, timepoints = parseNatives(nativeFile)
 	timeRegex = re.compile( "(" + ")|(".join(timepoints) + ")" )
 
 	#parse intermediates and nodes to collapse
-	# (functions return empty list if file is not specified)
-	intermediates = parseIntermediates(intFile)
-	collapseList = parseCollapse(collapseFile)
+	# (function returns empty list if file is not specified)
+	intermediates = parseInternalNodes(intFile)
+	collapseList  = parseInternalNodes(collapseFile)
 
 
 	main()
