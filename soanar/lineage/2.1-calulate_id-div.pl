@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 use strict;
 use threads;
-use lib ("/Users/sheng/work/HIV/scripts/github/zap/soanar/");
 use PPvars qw(ppath);
 
 my $usage="Usage: 
