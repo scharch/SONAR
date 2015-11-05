@@ -48,7 +48,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from soanar.annotate import *
+from sonar.annotate import *
 
 
 # global variables

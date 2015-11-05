@@ -42,10 +42,10 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 import sys, os
 
 #need this if called on cluster by checkClusterBlast.py
-find_SOAnAR_on_cluster = sys.argv[0].split("soanar/annotate")
-sys.path.append(find_SOAnAR_on_cluster[0])
+find_SONAR_on_cluster = sys.argv[0].split("sonar/annotate")
+sys.path.append(find_SONAR_on_cluster[0])
 
-from soanar.annotate import *
+from sonar.annotate import *
 
 
 def main():

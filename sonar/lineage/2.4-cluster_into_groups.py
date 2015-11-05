@@ -40,7 +40,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 """
 
 from collections import *
-from soanar.lineage import *
+from sonar.lineage import *
 
 
 def main():
