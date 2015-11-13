@@ -76,7 +76,7 @@ class MyAlignment:
 		self.send	= int(row[9]) 			# subject end
 		self.evalue 	= float(row[10])		# e-value
 		self.score	= float(row[11])		# bit score
-		self.strand	= ""				# strand
+		self.strand	= str(row[12])			# strand
 		
 		self.qlen	= 0
 		self.slen	= 0

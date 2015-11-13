@@ -13,7 +13,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 	reader = csv.reader(open(infile, "rU"), delimiter = sep)
 	for row in reader:
 
-		if len(row) != 12:
+		if len(row) != 13:
 			pass;
 
 		else:
@@ -21,7 +21,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 
                         if my_alignment.qid != old_id:
                                 if old_id != "":
-                                        aline = best_row + [best_alignment.strand]
+					aline = best_row
                                         if len(others)>0:
                                                 aline.append(",".join(others))
                                                 dict_other_germs[best_alignment.qid] = others
@@ -29,7 +29,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
                                         if topHitWriter is not None:
                                                 topHitWriter.writerow(aline)
                                                 if len(second_match)>0:
-                                                        topHitWriter.writerow(second_match + [best_alignment.strand])
+                                                        topHitWriter.writerow(second_match)
 
                                         dict_germ_aln[best_alignment.qid] = best_alignment
 
@@ -48,22 +48,14 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
                                         old_id=""
                                         continue
 
-				strand, old_id = "+", my_alignment.qid
+				old_id = my_alignment.qid
 				best_alignment = my_alignment
 				best_row = row
 				others = []
 				second_match = []
-				if my_alignment.sstart > my_alignment.send:
-					strand = "-"
-				best_alignment.set_strand(strand)
 				
 			else:
 				#added 20150107 by CAS
-				strand="+"
-				if my_alignment.sstart > my_alignment.send:
-					strand = "-"
-				my_alignment.set_strand(strand)
-				
 				'''
 				need three conditions:
 				1. hit is on same gene
@@ -75,24 +67,24 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 					#change boundaries of alignment on both query and hit (to get J properly)
 					if my_alignment.send < best_alignment.sstart:
 						best_alignment.sstart = my_alignment.sstart
-						if strand == "+":
+						if best_alignment.strand == "plus":
 							best_alignment.qstart = my_alignment.qstart
 						else:
 							best_alignment.qend = my_alignment.qend
 					else:
 						best_alignment.send = my_alignment.send
-						if strand == "+":
+						if best_alignment.strand == "plus":
 							best_alignment.qend = my_alignment.qend
 						else:
 							best_alignment.qstart = my_alignment.qstart
 
 						
-				elif my_alignment.score == best_alignment.score:
+				elif my_alignment.score <= best_alignment.score - 3:
 					others.append(my_alignment.sid)
 
         #last line, repeat of what's in the loop
         if old_id != "":
-                aline = best_row + [best_alignment.strand]
+                aline = best_row
                 if len(others)>0:
                         aline.append(",".join(others))
                         dict_other_germs[best_alignment.qid] = others
@@ -100,7 +92,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
                 if topHitWriter is not None:
                         topHitWriter.writerow(aline)
                         if len(second_match)>0:
-                                topHitWriter.writerow(second_match + [best_alignment.strand])
+                                topHitWriter.writerow(second_match)
 
                 dict_germ_aln[best_alignment.qid] = best_alignment
 

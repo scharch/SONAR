@@ -39,7 +39,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     clustal="clustalo"
     usearch="usearch"
     muscle="muscle"
-    blast="blastall"
+    blast="blastn"
     dnaml="dnaml"
     beast="/Applications/BEAST/bin/beast";
 
@@ -52,7 +52,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 	read -e -p "Please enter the path to ClustalO (default $clustal): " var; clustal=${var:-$clustal}
 	read -e -p "Please enter the path to Muscle (default $muscle): " var; muscle=${var:-$muscle}
 	read -e -p "Please enter the path to USearch (default $usearch): " var; usearch=${var:-$usearch}
-	read -e -p "Please enter the path to blastall (default $blast): " var; blast=${var:-$blast}
+	read -e -p "Please enter the path to blastn (default $blast): " var; blast=${var:-$blast}
 	read -e -p "Please enter the path to DNAML (default $dnaml): " var; dnaml=${var:-$dnaml}
 	read -e -p "Please enter the path to BEAST (default $beast):" var; beast=${var:-$beast}
     else
@@ -61,7 +61,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 	read -e -p "Please enter the path to ClustalO: " -i $clustal clustal
 	read -e -p "Please enter the path to Muscle: " -i $muscle muscle
 	read -e -p "Please enter the path to USearch: " -i $usearch usearch
-	read -e -p "Please enter the path to blastall: " -i $blast blast
+	read -e -p "Please enter the path to blastn: " -i $blast blast
 	read -e -p "Please enter the path to DNAML: " -i $dnaml dnaml
 	read -e -p "Please enter the path to BEAST: " -i $beast beast
     fi
@@ -73,7 +73,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 \tPath to ClustalO: $clustal
 \tPath to Muscle: $muscle
 \tPath to USearch: $usearch
-\tPath to blastall: $blast
+\tPath to blastn: $blast
 \tPath to DNAML: $dnaml
 \tPath to BEAST:  $beast\n"
 
@@ -91,7 +91,7 @@ if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; then
 	#defaults
 	qsub="qsub"
 	clustMuscle="muscle"
-	clustBlast="blastall"
+	clustBlast="blastn"
 
 	#Ask user for input
 	echo ""
@@ -99,18 +99,18 @@ if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; then
 	then
 	    read -e -p "Please enter the path to qsub (default $qsub): " var; qsub=${var:-$qsub}
 	    read -e -p "Please enter the path to Muscle on the cluster (default $clustMuscle): "  var; clustMuscle=${var:-$clustMuscle}
-	    read -e -p "Please enter the path to blastall on the cluster (default $clustBlast): " var; clustBlast=${var:-$clustBlast}
+	    read -e -p "Please enter the path to blastn on the cluster (default $clustBlast): " var; clustBlast=${var:-$clustBlast}
 	else
 	    read -e -p "Please enter the path to qsub: " -i $qsub qsub
 	    read -e -p "Please enter the path to Muscle on the cluster: " -i $clustMuscle clustMuscle
-	    read -e -p "Please enter the path to blastall on the cluster: " -i $clustBlast clustBlast
+	    read -e -p "Please enter the path to blastn on the cluster: " -i $clustBlast clustBlast
 	fi
 
 	#and check
 	echo -e "\n\nYou have entered the following values:
 \tPath to qsub:  $qsub
 \tPath to Muscle on the cluster: $clustMuscle
-\tPath to blastall on the cluster: $clustBlast\n"
+\tPath to blastn on the cluster: $clustBlast\n"
 
 	read -e -p "Is this correct [y/n]? " checked
 
@@ -138,9 +138,9 @@ fi
 echo "
 
 HOME_FOLDER    = \"$homeDir\"
-SCRIPT_FOLDER     = \"$pipeDir\"
+SCRIPT_FOLDER  = \"$pipeDir\"
 clustal	       = \"$clustal\"
-blastall_cmd   = \"$blast\"
+blast_cmd      = \"$blast\"
 usearch        = \"$usearch\"
 
 clusterExists  = True

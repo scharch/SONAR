@@ -117,11 +117,11 @@ def main():
 	handle.close()
 	
 	# write pbs files and auto submit shell script
-	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_V_OPTIONS, library, 
+	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_V_OPTIONS, library, 
 									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name)) )
 	pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
-	pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "500M", "30:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
+	pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "3G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
 	pbs.close()
 	os.system("qsub -t 1-%d %s/vblast.sh"%(f_ind,folder_tree.vgene))
 

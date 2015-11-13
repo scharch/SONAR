@@ -70,18 +70,12 @@ def main():
 		# process each sequence
 		for entry in SeqIO.parse("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind), "fasta"):
 
-			try:
-				#to match BLAST, which also kills zero-padding
-				seq_id = str(int(entry.id))
-			except:
-				seq_id = entry.id
-
 			total += 1
-			if seq_id in dict_germ_aln:
-				if dict_germ_aln[seq_id].strand == "+":
-					entry.seq = entry.seq[ dict_germ_aln[seq_id].qend : ]
+			if entry.id in dict_germ_aln:
+				if dict_germ_aln[entry.id].strand == "plus":
+					entry.seq = entry.seq[ dict_germ_aln[entry.id].qend : ]
 				else:
-					entry.seq = entry.seq[ : dict_germ_aln[seq_id].qstart -1 ]
+					entry.seq = entry.seq[ : dict_germ_aln[entry.id].qstart -1 ]
 					entry.seq = entry.reverse_complement().seq
 
 				if len(entry.seq) > 30: #can probably be 50...
@@ -115,11 +109,11 @@ def main():
 
 
 	# write pbs files and auto submit shell script
-	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_J_OPTIONS, library, 
+	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_J_OPTIONS, library, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 	pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
-	pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+	pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 	pbs.close()
 	os.system("qsub -t 1-%d %s/jblast.sh"%(f_ind,prj_tree.jgene))
 
@@ -134,11 +128,11 @@ def main():
 
 
 	if os.path.isfile(const_lib):
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_J_OPTIONS, const_lib, 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_J_OPTIONS, const_lib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
 		os.system("qsub -t 1-%d %s/cblast.sh"%(f_ind,prj_tree.jgene))
 
@@ -150,11 +144,11 @@ def main():
 
 
 	if os.path.isfile(dlib):
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLASTALL % (cluster_blast, BLAST_J_OPTIONS, dlib, 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_J_OPTIONS, dlib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
 		pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "500M", "10:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
 		os.system("qsub -t 1-%d %s/dblast.sh"%(f_ind,prj_tree.jgene))
 

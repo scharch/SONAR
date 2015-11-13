@@ -56,10 +56,10 @@ dict_jgerm_db = {
 ALL_FOLDERS = ["work/annotate", "work/lineage", "work/internal", "work/annotate/vgene", "work/annotate/jgene", "work/lineage/last_round", "output/sequences", "output/sequences/amino_acid", "output/sequences/nucleotide", "output/tables", "output/plots", "output/logs" ]
 
 
-CMD_BLASTALL            = "%s -p blastn -m 8 %s -d %s -i %s -o %s"
-BLAST_V_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 7 -b 5 -v 2 -e 1e-5 "
-BLAST_J_OPTIONS 	= " -J T -G 5 -E 2 -q -1 -r 1 -W 5 -b 5 -v 1 -e 1e-3 "
-BLAST_OTHER_OPTIONS = "-e 1e-3"
+CMD_BLAST           = "%s %s -db %s -query %s -out %s -outfmt '6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand' -gapopen 5 -gapextend 2 -penalty -1 -reward 1 -evalue 1e-3 -max_target_seqs 10"
+BLAST_V_OPTIONS     = "-word_size 7"
+BLAST_J_OPTIONS     = "-word_size 5"
+BLAST_OTHER_OPTIONS = "-evalue 1e-3"
 
 PBS_STRING = "\
 #!/bin/bash\n\

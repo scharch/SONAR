@@ -167,12 +167,6 @@ def main():
 		for entry in SeqIO.parse( "%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind), "fasta"):
 			total += 1
 
-			try:
-				seq_id = str(int(entry.id)) #gets rid of leading zeros to match BLAST
-			except:
-				seq_id = entry.id
-
-
 			raw_stats = raw.next()
 			raw_count += 1
 			while not entry.id == raw_stats[0]:
@@ -182,17 +176,17 @@ def main():
 				raw_count += 1
 
 
-			if not seq_id in dict_vgerm_aln:
+			if not entry.id in dict_vgerm_aln:
 				noV+=1
 				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"])
-			elif not seq_id in dict_jgerm_aln:
+			elif not entry.id in dict_jgerm_aln:
 				noJ+=1
-				myV = dict_vgerm_aln[seq_id]
-				if (myV.strand == '+'):
+				myV = dict_vgerm_aln[entry.id]
+				if (myV.strand == 'plus'):
 					entry.seq = entry.seq[ myV.qstart - 1 :  ]
 				else:
 					entry.seq = entry.seq[  : myV.qend ].reverse_complement()
-				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(seq_id,[]) )
+				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
 				entry.description = "V_gene=%s status=noJ" % (myVgenes)
 				allV_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
 
@@ -204,8 +198,8 @@ def main():
 			else:
 
 				found += 1
-				myV = dict_vgerm_aln[seq_id]
-				myJ = dict_jgerm_aln[seq_id]
+				myV = dict_vgerm_aln[entry.id]
+				myJ = dict_jgerm_aln[entry.id]
 				indel = "no"
 				stop = "no"
 				cdr3 = True
@@ -213,7 +207,7 @@ def main():
 				#get actual V(D)J sequence
 				v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
 				vdj_len = v_len + myJ.qend
-				if (myV.strand == '+'):
+				if (myV.strand == 'plus'):
 					entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
 				else:
 					entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
@@ -263,20 +257,20 @@ def main():
 					status = "stop"
 
 				#add germline assignments to fasta description and write to disk
-				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(seq_id,[]) )
-				myJgenes = ",".join( [myJ.sid] + dict_other_jgerms.get(seq_id,[]) )
+				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
+				myJgenes = ",".join( [myJ.sid] + dict_other_jgerms.get(entry.id,[]) )
 				
 				myDgenes = "NA"
 				if d:
-					if seq_id in dict_dgerm_aln:
-						myDgenes = ",".join( [dict_dgerm_aln[seq_id].sid] + dict_other_dgerms.get(seq_id,[]) )
+					if entry.id in dict_dgerm_aln:
+						myDgenes = ",".join( [dict_dgerm_aln[entry.id].sid] + dict_other_dgerms.get(entry.id,[]) )
 					else:
 						myDgenes = "not_found"
 
 				myCgenes = "NA"
 				if c:
-					if seq_id in dict_cgerm_aln:
-						myCgenes = dict_cgerm_aln[seq_id].sid
+					if entry.id in dict_cgerm_aln:
+						myCgenes = dict_cgerm_aln[entry.id].sid
 					else:
 						myCgenes = "not_found"
 				elif any( x in myV.sid for x in ["LV", "lambda", "Lambda", "LAMBDA"] ):
