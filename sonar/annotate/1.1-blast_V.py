@@ -16,7 +16,8 @@ This script looks for raw NGS data files in the "0-original" folder and parses
 
 Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
                       [-qual <0|1>] -lib path/to/library.fa -h -f
-		      [-callJ -jArgs "-lib path/to/custom/j-library.fa]
+		      [-threads 1 -cluster -callJ
+		       -jArgs "-lib path/to/custom/j-library.fa]
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
@@ -25,20 +26,26 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
     maxl	Maximum length for read filtering (inclusive). Default = 600.
     locus	H: heavy chain / K: kappa chain / L: lambda chain / KL: kappa OR
                    lambda / HKL: any / C: custom library (supply -lib)
-                   Default = 0
+                   Default = 0.
     qual 	CURRENTLY DEPRECATED!
                 0: noquals/use fasta only / 1: use qual information 
-                   Default = 0
-    lib  	location of file containing custom library (e.g. for use with
-                   non-human genes)
-    f 	 	forcing flag to overwrite existing working directories.
-    callJ 	flag to call 1.2-blast_J.py when done. Default = False
-    jArgs       optional arguments to be provided to 1.2-blast_j.py. If provided,
-                   forces callJ flag to True
+                   Default = 0.
+    lib  	Location of file containing custom library (e.g. for use with
+                   non-human genes).
+    f 	 	Forcing flag to overwrite existing working directories.
+    threads     Number of threads to use when running locally. Ignored if 
+                   -cluster is specified. Default = 1.
+    cluster     Flag to indicate that blast jobs should be submitted to the
+                   SGE cluster. Throws an error if presence of a cluster was
+		   not indicated during setup. Default = run locally.
+    callJ 	Flag to call 1.2-blast_J.py when done. Default = False.
+    jArgs       Optional arguments to be provided to 1.2-blast_j.py. If provided,
+                   forces callJ flag to True.
 
 Created by Zhenhai Zhang on 2011-04-12.
 Edited and commented for publication by Chaim A Schramm on 2014-12-22.
 Edited to add queue monitoring by CAS 2015-07-30.
+Added local option with threading CAS 2015-11-13.
 
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -49,6 +56,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 import sys
 import os
 from sonar.annotate import *
+import time
 
 
 # global variables
@@ -116,22 +124,49 @@ def main():
 	handle.write("total: %d; good: %d; percentile: %f\n" %(total, total_good, float(total_good)/total * 100))
 	handle.close()
 	
-	# write pbs files and auto submit shell script
-	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_V_OPTIONS, library, 
-									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
-									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name)) )
-	pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
-	pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "3G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
-	pbs.close()
-	os.system("qsub -t 1-%d %s/vblast.sh"%(f_ind,folder_tree.vgene))
 
-	check = "%s/utilities/checkClusterBlast.py -gene v -big %d -check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
-	if callJ:
-		check += " -after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, jArgs)
-	monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
-	monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
-	monitor.close()
-	os.system("qsub %s/vmonitor.sh"%folder_tree.vgene)
+	#run BLAST
+	if useCluster:
+
+		# write pbs files and auto submit shell script
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, library, 
+									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
+									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name), V_BLAST_WORD_SIZE) )
+		pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
+		pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
+		pbs.close()
+		os.system( "%s -t 1-%d %s/vblast.sh"%(qsub,f_ind,folder_tree.vgene) )
+		
+		check = "%s/utilities/checkClusterBlast.py -gene v -big %d -check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
+		if callJ:
+			check += " -after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, jArgs)
+			monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
+			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
+			monitor.close()
+			os.system( "%s %s/vmonitor.sh"%(qsub,folder_tree.vgene) )
+
+	else:
+
+		#run locally
+		currentFile = 1
+		allThreads = []
+		while currentFile <= f_ind:
+			if threading.activeCount() <= numThreads:
+				blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (folder_tree.vgene, prj_name, currentFile),
+						     library, "%s/%s_%03d.txt" % (folder_tree.vgene, prj_name, currentFile), V_BLAST_WORD_SIZE)
+				print "Starting blast of %s/%s_%03d.fasta against %s..." % (folder_tree.vgene, prj_name, currentFile, library)
+				blast.start()
+				allThreads.append(blast)
+				currentFile += 1
+			else:
+				#queue is full and these aren't fast jobs, so take a break
+				time.sleep(60)
+		for t in allThreads:
+			t.join()
+		if callJ:
+			os.system( "%s/annotate/1.2-blast_J.py %s" % (SCRIPT_FOLDER, jArgs) )
+
+
 	
 
 if __name__ == '__main__':
@@ -149,6 +184,14 @@ if __name__ == '__main__':
 		sys.argv.remove(flag[0])
 		force = True
 
+	#check cluster usage
+	useCluster = False
+	if q("-cluster"):
+		sys.argv.remove("-cluster")
+		useCluster = True
+		if not clusterExists:
+			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
+
 	#check if call J
 	callJ = False
 	if q("-callJ"):
@@ -156,9 +199,9 @@ if __name__ == '__main__':
 		callJ = True
 
 	# get parameters from input
-	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", jArgs="jArgs")
-	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", jArgs="")
-	min_len, max_len, locus, use_qual, library, jArgs= getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "jArgs")
+	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", threads = "numThreads", jArgs="jArgs")
+	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="")
+	min_len, max_len, locus, use_qual, library, numThreads, jArgs= getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "numThreads", "jArgs")
 
 	if not jArgs == "":
 		callJ = True

@@ -1,5 +1,24 @@
 
 from .. import *
+import threading
+from Bio.Blast.Applications import NcbiblastnCommandline
+
+
+
+class blastThread (threading.Thread):
+	def __init__(self, threadID, fasta, db, output, wordSize):
+		threading.Thread.__init__(self)
+		self.threadID = threadID
+		self.fasta    = fasta
+		self.db       = db
+		self.output   = output
+		self.wordSize = wordSize
+	def run(self):
+		cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
+					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=10, word_size=self.wordSize)
+		cline()
+
 
 
 def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict(), minQStart=dict()):

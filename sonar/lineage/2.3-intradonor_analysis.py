@@ -5,15 +5,15 @@
 
 This script uses an iterative phylogenetic analysis to find sequences related
       to a set of known antibodies. Preprocessed sequences (including optional
-      filtering by assigned germline) are split into groups of 250 and used to
-      together with known sequences to build neighbor-joining trees rooted on
-      the germline V gene of the known antibodies. Sequences in the minimum
+      filtering by assigned germline) are split into groups and used together
+      with known sequences to build neighbor-joining trees rooted on the
+      germline V gene of the known antibodies. Sequences in the minimum
       sub-tree spanning all of the known sequences are passed forward into the
       next iteration. The algorithm is considered to have converged when 95%
       of the input sequences in a round are in the minimum sub-tree.
 
-This script has an option to run the analysis as a cluster job, in which case
-      1,000 sequences will be processed in each group.
+This script has an option to run the analysis as a cluster job. If run locally,
+      can be multithreaded with use of the -threads parameter.
 
 This algorithm is generally intended to find somatically related antibodies
       from a single lineage within a single donor. However, in the special
@@ -30,7 +30,8 @@ This algorithm is generally intended to find somatically related antibodies
 Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
                                  [-locus <H|K|L|C> -lib path/to/library.fa
 				  -i custom/input.fa -maxIters 15
-				  -nofilter -a -cluster -h -f]
+				  -cluster -npf 250 -threads 1
+				  -nofilter -a -h -f]
 
     Invoke with -h or --help to print this documentation.
 
@@ -52,8 +53,14 @@ Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
 		   output/sequences/ROOT_allV.fa with the -a flag below)
     maxIters	Optional maximum number of rounds to conduct before giving up.
                    Default = 15.
+    npf         Optional number of sequences to include in each split file.
+                   Larger number results in slower runtime due to constructing
+		   the MSA but fewer iterations to convergence. Default = 250
+		   when running locally and 1,000 on a cluster.
+    threads     Number of threads to use when running locally. Default = 1.
 
     Optional flags:
+    cluster	Submit tree-building jobs to the cluster.
     nofilter	Do NOT filter NGS sequences for correct germline V gene
                    assignment. Default = OFF (DO filter).
     a		Use all NGS sequences with an assigned V, even those with
@@ -64,7 +71,6 @@ Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
 		   file using 1.4-dereplicate_sequences.pl with the -f flag
 		   and then passing that output to the -i parameter of this 
 		   script.
-    cluster	Submit tree-building jobs to the cluster.
     f		Force a restart of the analysis, even if there are files from
                    a previous run in the working directory.
 
@@ -78,7 +84,7 @@ Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
 
 """
 
-import time, sys
+import time, sys, threading
 
 #assume that we haven't necessarily set the path variables on the cluster
 find_SONAR_on_cluster = sys.argv[0].split("sonar/lineage")
@@ -88,6 +94,22 @@ from cStringIO import StringIO
 from sonar.lineage import *
 from Bio import Phylo
 from Bio.Align.Applications import MuscleCommandline
+
+
+class muscleThread (threading.Thread):
+	def __init__(self, threadID, fasta, output, treeFile):
+		threading.Thread.__init__(self)
+		self.threadID = threadID
+		self.fasta    = fasta
+		self.output   = output
+		self.tree     = treeFile	
+	def run(self):
+		run_muscle = MuscleCommandline( input=self.fasta, out=self.output )
+		run_muscle.tree1      = self.tree
+		run_muscle.cluster1   = "neighborjoining"
+		run_muscle.maxiters   = 1
+		thisVarHidesTheOutput = run_muscle()
+
 
 
 
@@ -156,7 +178,7 @@ def main():
 			good += len(all_leaves) - num_nats
 			total += len(tree.get_terminals()) - num_nats - 1 #also don't count germline
 			if idx % 25 == 0 and not cluster:
-				print "Found %d reads in subtree #%d. Total savedso far: %d / %d" % ( len(all_leaves)-num_nats, idx+1, good, total-1)
+				print "Found %d reads in subtree #%d. Total saved so far: %d / %d" % ( len(all_leaves)-num_nats, idx+1, good, total-1)
 
 
 		# processed all trees from last round, now do a sanity check
@@ -231,13 +253,6 @@ def main():
 					for n in natives.values():
 						outFasta.write( ">%s\n%s\n" % (n.id, n.seq) )
 					outFasta.close()
-					if not cluster:
-						run_muscle            = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), out="%s/NJ%05d.aln" % (prj_tree.lineage, f_ind) )
-						run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.lineage, f_ind)
-						run_muscle.cluster1   = "neighborjoining"
-						run_muscle.maxiters   = 1
-						thisVarHidesTheOutput = run_muscle()
-						if f_ind % 25 == 0: print "%s - Finished %dth file of %d in this round..." % (time.strftime("%H:%M:%S"), f_ind, len(shuffled_reads)/npf + 1)
 					f_ind += 1
 					outFasta = open("%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), "w")
 					currentSize = 0
@@ -248,13 +263,6 @@ def main():
 				for n in natives.values():
 					outFasta.write( ">%s\n%s\n" % (n.id, n.seq) )
 				outFasta.close()
-			
-				if not cluster:
-					run_muscle = MuscleCommandline( input="%s/NJ%05d.fa" % (prj_tree.lineage, f_ind), out="%s/NJ%05d.aln" % (prj_tree.lineage, f_ind) )
-					run_muscle.tree1      = "%s/NJ%05d.tree" % (prj_tree.lineage, f_ind)
-					run_muscle.cluster1   = "neighborjoining"
-					run_muscle.maxiters   = 1
-					thisVarHidesTheOutput = run_muscle()
 			else:
 				outFasta.close()
 				f_ind -= 1 #don't submit an empty file to the cluster
@@ -288,6 +296,26 @@ def main():
 				log.write("%s - Submitted current round to cluster\n" % time.strftime("%H:%M:%S"))
 				log.close()
 				break #exits "while not converged" loop
+
+			else:
+				#run locally
+				currentFile = 1
+				allThreads = []
+				while currentFile <= f_ind:
+					if threading.activeCount() <= numThreads:
+						muscle = muscleThread( currentFile, "%s/NJ%05d.fa" % (prj_tree.lineage, currentFile),
+								       "%s/NJ%05d.aln" % (prj_tree.lineage, currentFile),
+								       "%s/NJ%05d.tree" % (prj_tree.lineage, currentFile) )
+						print "Building NJ tree from %s/NJ%05d.fa" % (prj_tree.lineage, currentFile)
+						muscle.start()
+						allThreads.append(muscle)
+						currentFile += 1
+					else:
+						#queue is full, so take a break
+						time.sleep(60)
+				for t in allThreads:
+					t.join()
+
 
 		
 		# If we have converged, write final output
@@ -348,17 +376,17 @@ if __name__ == '__main__':
 
 	#check cluster parameter
 	cluster = False
-	npf = 250
+	default_npf = 250
 	flag = [x for x in ["c", "-c", "--c", "cluster", "-cluster", "--cluster"] if q(x)]
 	if len(flag)>0:
 		sys.argv.remove(flag[0])
 		cluster = True
-		npf = 1000
+		default_npf = 1000
 
 	#get the parameters from the command line
-	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", maxIters="maxIters")
-	defaults = dict(locus="H", library="", inFile=selectedFile, maxIters=15)
-	natFile, germlineV, locus, library, inFile, maxIters = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile", "maxIters")
+	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", maxIters="maxIters", npf="npf", threads="numThreads")
+	defaults = dict(locus="H", library="", inFile=selectedFile, maxIters=15, npf=default_npf, numThreads=1)
+	natFile, germlineV, locus, library, inFile, maxIters, npf, numThreads = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile", "maxIters", "npf", "numThreads")
 
 	if natFile is None or germlineV is None:
 		print __doc__

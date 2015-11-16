@@ -12,6 +12,7 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
 Usage: 1.2-blast-J.py -lib  path/to/j-library.fa
                       -dlib path/to/d-library.fa
 		      -clib path/to/c-library.fa
+		      -threads 1 -cluster
 		      -callFinal -h
 
     All parameters are optional. Invoke with -h or --help to print this
@@ -24,6 +25,11 @@ Usage: 1.2-blast-J.py -lib  path/to/j-library.fa
                      custom libraries.
     clib 	Optional fasta file containing CH1 gene sequences, for custom
                      libraries.
+    threads     Number of threads to use when running locally. Ignored if 
+                   -cluster is specified. Default = 1.
+    cluster     Flag to indicate that blast jobs should be submitted to the
+                   SGE cluster. Throws an error if presence of a cluster was
+		   not indicated during setup. Default = run locally.
     callFinal   Optional flag to call 1.3-finalize_assignments.py when done.
                      Default = False.
 
@@ -33,13 +39,14 @@ Modified by Chaim A Schramm 2014-03-25 to not swamp RAM when processing Illumina
     data.
 Edited and commented for publication by Chaim A Schramm on 2015-02-09.
 Edited to add queue monitoring by CAS 2015-08-03.
+Added local option with threading CAS 2015-11-13.
 
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
 
-import sys, os
+import sys, os, time
 
 #need this if called on cluster by checkClusterBlast.py
 find_SONAR_on_cluster = sys.argv[0].split("sonar/annotate")
@@ -108,55 +115,112 @@ def main():
 	handle.close()
 
 
-	# write pbs files and auto submit shell script
-	command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_J_OPTIONS, library, 
+	#run BLAST
+	if useCluster:
+
+		# write pbs files and auto submit shell script
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, library, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
-									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
-	pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
-	pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
-	pbs.close()
-	os.system("qsub -t 1-%d %s/jblast.sh"%(f_ind,prj_tree.jgene))
-
-        check = "%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
-        if callF:
-                check += " -after %s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
-        monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
-        monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
-        monitor.close()
-        os.system("qsub %s/jmonitor.sh"%prj_tree.jgene)
-
-
-
-	if os.path.isfile(const_lib):
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_J_OPTIONS, const_lib, 
-									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
-									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
-		pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
+		pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
+		pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
-		os.system("qsub -t 1-%d %s/cblast.sh"%(f_ind,prj_tree.jgene))
+		os.system("%s -t 1-%d %s/jblast.sh"%(qsub, f_ind,prj_tree.jgene))
 
-		check = "%s/utilities/checkClusterBlast.py -gene c -big %d -check %s/cmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
-		monitor = open("%s/cmonitor.sh"%prj_tree.jgene, 'w')
-		monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
-		monitor.close()
-		os.system("qsub %s/cmonitor.sh"%prj_tree.jgene)
+		check = "%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+		if callF:
+			check += " -after %s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
+			monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
+			monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
+			monitor.close()
+			os.system( "%s %s/jmonitor.sh"%(qsub,prj_tree.jgene) )
 
-
-	if os.path.isfile(dlib):
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, BLAST_J_OPTIONS, dlib, 
+		if os.path.isfile(const_lib):
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, const_lib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
-									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name)) )
-		pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
-		pbs.close()
-		os.system("qsub -t 1-%d %s/dblast.sh"%(f_ind,prj_tree.jgene))
+									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
+			pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
+			pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+			pbs.close()
+			os.system("%s -t 1-%d %s/cblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-                check = "%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/cmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
-                monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
-                monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
-                monitor.close()
-                os.system("qsub %s/dmonitor.sh"%prj_tree.jgene)
+			check = "%s/utilities/checkClusterBlast.py -gene c -big %d -check %s/cmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+			monitor = open("%s/cmonitor.sh"%prj_tree.jgene, 'w')
+			monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+			monitor.close()
+			os.system( "%s %s/cmonitor.sh"%(qsub,prj_tree.jgene) )
+
+		if os.path.isfile(dlib):
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, dlib, 
+									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
+									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
+			pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
+			pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+			pbs.close()
+			os.system("%s -t 1-%d %s/dblast.sh"%(qsub,f_ind,prj_tree.jgene))
+
+			check = "%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/cmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+			monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
+			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+			monitor.close()
+			os.system( "%s %s/dmonitor.sh"%(qsub,prj_tree.jgene) )
+
+	else:
+
+		#run locally
+		currentFile = 1
+		allThreads = []
+		while currentFile <= f_ind:
+			if threading.activeCount() <= numThreads:
+				blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
+						     library, "%s/%s_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), J_BLAST_WORD_SIZE)
+				print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, library)
+				blast.start()
+				allThreads.append(blast)
+				currentFile += 1
+			else:
+				#queue is full and these aren't fast jobs, so take a break
+				time.sleep(60)
+		for t in allThreads:
+			t.join()
+
+		if os.path.isfile(const_lib):
+			currentFile = 1
+			allThreads = []
+			while currentFile <= f_ind:
+				if threading.activeCount() <= numThreads:
+					blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
+							     const_lib, "%s/%s_C_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), J_BLAST_WORD_SIZE)
+					print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, const_lib)
+					blast.start()
+					allThreads.append(blast)
+					currentFile += 1
+				else:
+					#queue is full so take a break
+					time.sleep(60)
+			for t in allThreads:
+				t.join()
+
+		if os.path.isfile(dlib):
+			currentFile = 1
+			allThreads = []
+			while currentFile <= f_ind:
+				if threading.activeCount() <= numThreads:
+					blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
+							     dlib, "%s/%s_D_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), J_BLAST_WORD_SIZE)
+					print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, dlib)
+					blast.start()
+					allThreads.append(blast)
+					currentFile += 1
+				else:
+					#queue is full so take a break
+					time.sleep(60)
+			for t in allThreads:
+				t.join()
+
+		if callF:
+			os.system( "%s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER )
+
 
 
 
@@ -168,6 +232,14 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#check cluster usage
+	useCluster = False
+	if q("-cluster"):
+		sys.argv.remove("-cluster")
+		useCluster = True
+		if not clusterExists:
+			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
+
         #check if call 1.3
         callF = False
         if q("-callFinal"):
@@ -175,8 +247,8 @@ if __name__ == '__main__':
                 callF = True
 
 	#get parameters from input
-	dict_args = processParas(sys.argv, lib="library", dlib="dlib", clib="const_lib")
-	library, dlib, const_lib = getParasWithDefaults(dict_args, dict(library="", dlib="", const_lib=""), "library", "dlib", "const_lib")
+	dict_args = processParas(sys.argv, lib="library", dlib="dlib", clib="const_lib", threads = "numThreads")
+	library, dlib, const_lib, numThreads = getParasWithDefaults(dict_args, dict(library="", dlib="", const_lib="", numThreads=1), "library", "dlib", "const_lib", "numThreads")
 
 	
 	prj_tree        = ProjectFolders(os.getcwd())
