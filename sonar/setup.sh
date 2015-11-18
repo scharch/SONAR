@@ -171,7 +171,7 @@ my %ppath=();
 \$ppath{'clustalo'}=\"$clustalo\";# absolute path to clustalo
 \$ppath{'muscle'}=\"$muscle\";# absolute path to neighbor
 \$ppath{'beast'}=\"$beast\";# absolute path to beast
-\$ppath{'germ'}=\"$pipeDir\";# absolute path to germdb
+\$ppath{'sonar'}=\"$pipeDir\";# absolute path to SONAR
 sub ppath{
     my \$p=shift;	
 	if(\$ppath{\$p}){

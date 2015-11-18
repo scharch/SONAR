@@ -42,7 +42,7 @@ if(!$para{'-ap'}){
 	}
 	}
 if(!$para{'-g'}){
-	$para{'-g'}=ppath('germ')."/germDB/IgHV.fa";
+	$para{'-g'}=ppath('sonar')."/germDB/IgHV.fa";
 	if(-e $para{'-g'}){
 	  	print "using $para{'-g'} as germline file\n";
 	 }
