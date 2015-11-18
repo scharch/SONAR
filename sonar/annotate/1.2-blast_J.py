@@ -130,10 +130,10 @@ def main():
 		check = "%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
 		if callF:
 			check += " -after %s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
-			monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
-			monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
-			monitor.close()
-			os.system( "%s %s/jmonitor.sh"%(qsub,prj_tree.jgene) )
+		monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
+		monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
+		monitor.close()
+		os.system( "%s %s/jmonitor.sh"%(qsub,prj_tree.jgene) )
 
 		if os.path.isfile(const_lib):
 			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, const_lib, 
