@@ -479,7 +479,7 @@ sub add_column_to_statistic{
 		   	if($_=~/^[\d\w]/){
 		     my @li=split/\t/,$_;
 		     if($identity{$li[0]})	{
-		       print STo "$_\t$identity{$li[0]}\%\n";print "$_ $identity{$li[0]}\n";
+		       print STo "$_\t$identity{$li[0]}\%\n";#print "$_ $identity{$li[0]}\n";
 		     }
 		     else{
 		     	 print STo "$_\tNA\n";
