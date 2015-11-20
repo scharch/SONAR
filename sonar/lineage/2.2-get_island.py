@@ -20,7 +20,7 @@ Usage: 2.2-get_island.py -n native [-imin min_identity -imax max_indentity
     dmin	Minimum percent germline divergence. Default = 0.
     dmax	Maximum percent germline divergence. Default = 40.
     i		Custom input file with sequences to search. By default, uses
-                   pipeline output with "goodVJ" nucleotide sequences.
+                   pipeline output with "goodVJ_unique" nucleotide sequences.
 
 Created by Chaim A Schramm, 2012-10-04.
 Edited and commented for publication by Chaim A Schramm on 2015-04-20.
@@ -37,16 +37,16 @@ global inFile, native
 
 def main():
 	
-	if not os.path.isfile("%s/%s_id-div.tab" % (prj_tree.tables, prj_name)):
+	if not os.path.isfile("%s/%s_unique_id-div.tab" % (prj_tree.tables, prj_name)):
 		sys.exit("Please run 2.1-calulate_id-div.pl before running this script!")
 
-	reader 	= csv.reader(open("%s/%s_id-div.tab" % (prj_tree.tables, prj_name), "rU"), delimiter = sep)
+	reader 	= csv.reader(open("%s/%s_unique_id-div.tab" % (prj_tree.tables, prj_name), "rU"), delimiter = sep)
 	natives = reader.next()[2:]
 
 	try:
 		pos = natives.index(native)
 	except:
-		sys.exit("Can't find desired mAb in %s/%s_id-div.tab (options are %s)." % (prj_tree.tables, prj_name, ", ".join(natives)))
+		sys.exit("Can't find desired mAb in %s/%s_unique_id-div.tab (options are %s)." % (prj_tree.tables, prj_name, ", ".join(natives)))
 
 	# a dictionary for keeping track of those that survive the filter
 	island = []
