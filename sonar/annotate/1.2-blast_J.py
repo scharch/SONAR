@@ -13,6 +13,7 @@ Usage: 1.2-blast-J.py -lib  path/to/j-library.fa
                       -dlib path/to/d-library.fa
 		      -clib path/to/c-library.fa
 		      -threads 1 -cluster
+		      -noD -noC
 		      -callFinal -h
 
     All parameters are optional. Invoke with -h or --help to print this
@@ -30,6 +31,12 @@ Usage: 1.2-blast-J.py -lib  path/to/j-library.fa
     cluster     Flag to indicate that blast jobs should be submitted to the
                    SGE cluster. Throws an error if presence of a cluster was
 		   not indicated during setup. Default = run locally.
+    noD         Flag to indicate that no blast jobs should be submitted for a
+                   D gene library. Default = False (do D gene blast) unless a 
+		   light chain library is specified.
+    noC         Flag to indicate that no blast jobs should be submitted for a
+                   constant region  gene library. Default = False (do constant
+		   region blast) unless a light chain library is specified.
     callFinal   Optional flag to call 1.3-finalize_assignments.py when done.
                      Default = False.
 
@@ -246,6 +253,18 @@ if __name__ == '__main__':
                 sys.argv.remove("-callFinal")
                 callF = True
 
+        #check if blast D
+        blastD = True
+        if q("-noD"):
+                sys.argv.remove("-noD")
+                blastD = False
+
+        #check if blast C
+        blastC = True
+        if q("-noC"):
+                sys.argv.remove("-noC")
+                blastC = False
+
 	#get parameters from input
 	dict_args = processParas(sys.argv, lib="library", dlib="dlib", clib="const_lib", threads = "numThreads")
 	library, dlib, const_lib, numThreads = getParasWithDefaults(dict_args, dict(library="", dlib="", const_lib="", numThreads=1), "library", "dlib", "const_lib", "numThreads")
@@ -267,8 +286,8 @@ if __name__ == '__main__':
 			print "Can't find custom J gene library file!"
 			sys.exit(1)
 	if locus == "H":
-		if not os.path.isfile(dlib)     : dlib = DH_DB
-		if not os.path.isfile(const_lib): const_lib = CH_DB
+		if blastD and not os.path.isfile(dlib)     : dlib      = DH_DB
+		if blastC and not os.path.isfile(const_lib): const_lib = CH_DB
 
 	# save J/D/C library locations for next step
 	handle.write("%s\n" % library)
