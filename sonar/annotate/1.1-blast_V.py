@@ -11,12 +11,11 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       Distinctions between raw data files will not be maintained, although they
       can be reconstructed using the id table. The name of the current folder
       is assigned as the project name, which will be used to identify all
-      output files created. Resource requests for the cluster are calibrated to
-      groups of 50K sequences, so that number is hard-coded below.
+      output files created.
 
 Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
                       [-qual <0|1>] -lib path/to/library.fa -h -f
-		      [-threads 1 -cluster -callJ
+		      [-threads 1 -npf 50000 -cluster -callJ
 		       -jArgs "-lib path/to/custom/j-library.fa]
 
     All options are optional, see below for defaults.
@@ -35,6 +34,9 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
     f 	 	Forcing flag to overwrite existing working directories.
     threads     Number of threads to use when running locally. Ignored if 
                    -cluster is specified. Default = 1.
+    npf         Number of sequences in each split file. Resource requests for 
+                   the cluster are calibrated to groups of 50K sequences, and 
+		   cannot be changed. For local usage, Default = 50,000.
     cluster     Flag to indicate that blast jobs should be submitted to the
                    SGE cluster. Throws an error if presence of a cluster was
 		   not indicated during setup. Default = run locally.
@@ -98,7 +100,7 @@ def main():
 				qual.write(">%08d\n%s\n" % (total, " ".join(map(str, myqual.qual_list))))
 			'''
 
-			if total_good % 50000 == 0: 
+			if total_good % npf == 0: 
 				#close old output files, open new ones, and print progress message
 				fasta.close()
 				f_ind += 1
@@ -199,12 +201,14 @@ if __name__ == '__main__':
 		callJ = True
 
 	# get parameters from input
-	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", threads = "numThreads", jArgs="jArgs")
-	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="")
-	min_len, max_len, locus, use_qual, library, numThreads, jArgs= getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "numThreads", "jArgs")
+	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", threads = "numThreads", jArgs="jArgs", npf="npf")
+	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="", npf=50000)
+	min_len, max_len, locus, use_qual, library, numThreads, jArgs, npf= getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "numThreads", "jArgs", "npf")
 
 	if not jArgs == "":
 		callJ = True
+	if useCluster:
+		npf = 50000
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()
