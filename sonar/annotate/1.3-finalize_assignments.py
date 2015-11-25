@@ -270,7 +270,7 @@ def main():
 				myCgenes = "NA"
 				if c:
 					if entry.id in dict_cgerm_aln:
-						myCgenes = dict_cgerm_aln[entry.id].sid
+						myCgenes = ",".join( [dict_cgerm_aln[entry.id].sid] + dict_other_cgerms.get(entry.id,[]) )
 					else:
 						myCgenes = "not_found"
 				elif any( x in myV.sid for x in ["LV", "lambda", "Lambda", "LAMBDA"] ):

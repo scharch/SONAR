@@ -98,7 +98,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 							best_alignment.qstart = my_alignment.qstart
 
 						
-				elif my_alignment.score <= best_alignment.score - 3 and my_alignment.sid.split("*")[0] != best_alignment.sid.split("*")[0]:
+				elif my_alignment.score >= best_alignment.score - 3 and my_alignment.sid.split("*")[0] != best_alignment.sid.split("*")[0] and not any( my_alignment.sid.split("*")[0] == x.split("*")[0] for x in others ):
 					others.append(my_alignment.sid)
 
         #last line, repeat of what's in the loop
