@@ -6,17 +6,24 @@ from Bio.Blast.Applications import NcbiblastnCommandline
 
 
 class blastThread (threading.Thread):
-	def __init__(self, threadID, fasta, db, output, wordSize):
+	def __init__(self, threadID, fasta, db, output, wordSize, constant=False):
 		threading.Thread.__init__(self)
 		self.threadID = threadID
 		self.fasta    = fasta
 		self.db       = db
 		self.output   = output
 		self.wordSize = wordSize
+		self.constant = constant
 	def run(self):
-		cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
+		if constant:
+			cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
+					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=10, word_size=self.wordSize, perc_identity=100)
+		else:
+			cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
 					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
 					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=10, word_size=self.wordSize)
+
 		cline()
 
 

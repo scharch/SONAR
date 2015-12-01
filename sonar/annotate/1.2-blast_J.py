@@ -143,7 +143,7 @@ def main():
 		os.system( "%s %s/jmonitor.sh"%(qsub,prj_tree.jgene) )
 
 		if os.path.isfile(const_lib):
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, const_lib, 
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s -perc_identity 100" % ( "%03d", CMD_BLAST % (cluster_blast, const_lib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
@@ -197,7 +197,8 @@ def main():
 			while currentFile <= f_ind:
 				if threading.activeCount() <= numThreads:
 					blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
-							     const_lib, "%s/%s_C_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), J_BLAST_WORD_SIZE)
+							     const_lib, "%s/%s_C_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), 
+							     J_BLAST_WORD_SIZE, constant=True)
 					print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, const_lib)
 					blast.start()
 					allThreads.append(blast)
