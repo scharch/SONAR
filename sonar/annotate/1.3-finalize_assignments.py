@@ -236,13 +236,13 @@ def main():
 					j_frame = 3 - ( ( len(dict_j[myJ.sid].seq) - myJ.sstart - 1) % 3 ) #j genes start in different frames, so caluclate based on end
 					frame_shift = (v_len + myJ.qstart - 1) % 3
 					if (v_frame + frame_shift) % 3 != j_frame % 3:
-						indel = "yes"   #for gDNA we would probably want to distinguish between an out-of-frame recombination and sequencing in-dels in V or J
+						indel = "T"   #for gDNA we would probably want to distinguish between an out-of-frame recombination and sequencing in-dels in V or J
 						                #but that can be ambiguous and for cDNA we can assume that it's sll sequencing in-del anyway, even in CDR3.
 					else:
 						#use blast gaps to detect frame shift in-dels
 						#most of these have stop codons or other sequence problems, but we'll catch a few extra this way
 						if (abs(myV.send-myV.sstart)-(myV.qend-myV.qstart)) % 3 != 0 or ((myJ.send-myJ.sstart)-(myJ.qend-myJ.qstart)) % 3 != 0:
-							indel = "yes"
+							indel = "T"
 
 				#make sure cdr3 boundaries make sense
 				if (cdr3_end<=cdr3_start or cdr3_end>vdj_len or cdr3_start<0):
