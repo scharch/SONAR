@@ -14,7 +14,8 @@ This script looks for raw NGS data files in the "0-original" folder and parses
       output files created.
 
 Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
-                      [-qual <0|1>] -lib path/to/library.fa -h -f
+                      [-qual <0|1>] -fasta file1.fa [ -fasta file2.fa ... ]
+		       -lib path/to/library.fa -h -f
 		      [-threads 1 -npf 50000 -cluster -callJ
 		       -jArgs "-lib path/to/custom/j-library.fa]
 
@@ -29,6 +30,10 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
     qual 	CURRENTLY DEPRECATED!
                 0: noquals/use fasta only / 1: use qual information 
                    Default = 0.
+    fasta       File(s) containing the input reads to process. May be specified
+                   multiple times. Default = use all FASTA/FASTQ files (those
+		   with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
+		   .fastq) in the root project directory.
     lib  	Location of file containing custom library (e.g. for use with
                    non-human genes).
     f 	 	Forcing flag to overwrite existing working directories.
@@ -67,7 +72,7 @@ total, total_good, f_ind = 0, 0, 1
 
 def main():
 
-	global total, total_good, f_ind
+	global total, total_good, f_ind, fastaFiles
 		
 	# open initial output files
 	fasta 	=            open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
@@ -83,7 +88,8 @@ def main():
 
 
 	#iterate through sequences in all raw data files
-	for myseq, myqual, file_name in generate_read_fasta_folder(use_qual):
+	if len(fastaFiles)==0: fastaFiles = generate_read_fasta_folder(use_qual)
+	for myseq, myqual, file_name in fastaFiles:
 
 		total += 1
 		id_map.writerow([ "%08d"%total, file_name, myseq.seq_id, myseq.seq_len])
@@ -201,9 +207,9 @@ if __name__ == '__main__':
 		callJ = True
 
 	# get parameters from input
-	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", threads = "numThreads", jArgs="jArgs", npf="npf")
-	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="", npf=50000)
-	min_len, max_len, locus, use_qual, library, numThreads, jArgs, npf= getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "numThreads", "jArgs", "npf")
+	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", threads = "numThreads", jArgs="jArgs", npf="npf", fasta="fastaFiles")
+	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="", npf=50000, fastaFiles=[])
+	min_len, max_len, locus, use_qual, library, numThreads, jArgs, npf, fastaFiles = getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "numThreads", "jArgs", "npf", "fastaFiles")
 
 	if not jArgs == "":
 		callJ = True
