@@ -173,6 +173,16 @@ def processParas(para_list, **keywords):
 	kwgs 	= map(lambda x : keywords[x[1 :]], kwgs)
 	values 	= map(evalValues, values)
 
+	#check for multiple uses of the same keyword and covert those values into a list
+	for k in set(kwgs):
+		if kwgs.count(k) > 1:
+			idx     = [ i for i,x in enumerate(kwgs) if x==k ]
+			valList = [ values[i] for i in idx ]
+			values[idx.pop(0)] = valList #pop removes first occurence from idx list so we can only eliminate later occurences in next 2 lines
+			kwgs    = [ x for i,x in enumerate(kwgs)   if i not in idx ]
+			values  = [ x for i,x in enumerate(values) if i not in idx ]
+			
+
 	return dict(zip(kwgs,values))
 	
 
