@@ -15,7 +15,7 @@ class blastThread (threading.Thread):
 		self.wordSize = wordSize
 		self.constant = constant
 	def run(self):
-		if constant:
+		if self.constant:
 			cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
 					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
 					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=10, word_size=self.wordSize, perc_identity=100)
