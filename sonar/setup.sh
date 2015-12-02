@@ -13,7 +13,8 @@ General Prerequisites:
 \tMuscle v5
 
 Module 1 (annotation) additional prerequisites:
-\t**legacy** blast (will be updated to BLAST+ in final release)
+\tFASTX-Toolkit (for optional preprocessing)
+\tNCBI BLAST+
 
 Module 2 (lineage) additional prerequisites:
 \t(none)
@@ -36,6 +37,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 #these are the default values
     homeDir=$(cd ~; pwd)
     pipeDir=$(pwd)
+    fastxDir="~/bin"
     clustal="clustalo"
     usearch="usearch"
     muscle="muscle"
@@ -49,6 +51,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     then
 	read -e -p "Please enter the default root directory (default $homeDir): " var; homeDir=${var:-$homeDir}
 	read -e -p "Please enter the directory where SONAR is installed (default $pipeDir): " var; pipeDir=${var:-$pipeDir}
+	read -e -p "Please enter the directory where the FASTX-Toolkit is installed (default $fastxDir): " var; fastxDir=${var:-$fastxDir}
 	read -e -p "Please enter the path to ClustalO (default $clustal): " var; clustal=${var:-$clustal}
 	read -e -p "Please enter the path to Muscle (default $muscle): " var; muscle=${var:-$muscle}
 	read -e -p "Please enter the path to USearch (default $usearch): " var; usearch=${var:-$usearch}
@@ -58,6 +61,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     else
 	read -e -p "Please enter the default root directory: " -i $homeDir homeDir
 	read -e -p "Please enter the directory where SONAR is installed: " -i $pipeDir pipeDir
+	read -e -p "Please enter the directory where the FASTX-Toolkit is installed: " -i $fastxDir fastxDir
 	read -e -p "Please enter the path to ClustalO: " -i $clustal clustal
 	read -e -p "Please enter the path to Muscle: " -i $muscle muscle
 	read -e -p "Please enter the path to USearch: " -i $usearch usearch
@@ -70,6 +74,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     echo -e "\n\nYou have entered the following values:
 \tDefault root directory: $homeDir
 \tDirectory where SONAR is installed: $pipeDir
+\tDirectory where FASTX-Toolkit is installed: $fastxDir
 \tPath to ClustalO: $clustal
 \tPath to Muscle: $muscle
 \tPath to USearch: $usearch
@@ -172,6 +177,7 @@ my %ppath=();
 \$ppath{'muscle'}=\"$muscle\";# absolute path to neighbor
 \$ppath{'beast'}=\"$beast\";# absolute path to beast
 \$ppath{'sonar'}=\"$pipeDir\";# absolute path to SONAR
+\$ppath{'fastx'}=\"$fastxDir\";# absolute path to FASTX-Toolkit
 sub ppath{
     my \$p=shift;	
 	if(\$ppath{\$p}){
