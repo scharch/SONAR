@@ -1,7 +1,7 @@
-SOAnAR - Software for Ontogenic ANalysis of Antibody Repertoires
+SONAR - Software for Ontogenic aNalysis of Antibody Repertoires
 ===========
 
-Antibodyomics pipeline developed collaboratively by the Vaccine Research Center, NIH and Columbia University.
+Antibodyomics 2.0 pipeline developed collaboratively by the Vaccine Research Center, NIH and the Shapiro lab at Columbia University.
 
 
 More information coming. In the meantime, please see:
