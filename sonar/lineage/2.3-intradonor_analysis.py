@@ -85,15 +85,18 @@ Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
 """
 
 import time, sys, threading
-
-#assume that we haven't necessarily set the path variables on the cluster
-find_SONAR_on_cluster = sys.argv[0].split("sonar/lineage")
-sys.path.append(find_SONAR_on_cluster[0])
-
 from cStringIO import StringIO
 from sonar.lineage import *
 from Bio import Phylo
 from Bio.Align.Applications import MuscleCommandline
+
+try:
+	from sonar.lineage import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/lineage")
+	sys.path.append(find_SONAR[0])
+	from sonar.lineage import *
+
 
 
 class muscleThread (threading.Thread):

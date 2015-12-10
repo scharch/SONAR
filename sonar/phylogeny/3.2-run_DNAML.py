@@ -44,9 +44,16 @@ Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
 
 """
 
-from sonar import *
+import sys
 from Bio import AlignIO
 from Bio.Align.Applications import MuscleCommandline
+
+try:
+	from sonar.phylogeny import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/phylogeny")
+	sys.path.append(find_SONAR[0])
+	from sonar.phylogeny import *
 
 
 

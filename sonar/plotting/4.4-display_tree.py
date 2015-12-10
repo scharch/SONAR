@@ -116,11 +116,16 @@ Copyright (c) 2013-2015 Columbia University and Vaccine Research Center, Nationa
 
 
 import sys, os, re, colorsys
-from sonar import *
 from ete2 import *
 from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush
 import string, random
 
+try:
+	from sonar.plotting import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/plotting")
+	sys.path.append(find_SONAR[0])
+	from sonar.plotting import *
 
 
 def parseNatives(infile):

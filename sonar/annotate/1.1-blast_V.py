@@ -62,8 +62,15 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 import os
-from sonar.annotate import *
 import time
+
+try:
+	from sonar.annotate import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/annotate")
+	sys.path.append(find_SONAR[0])
+	from sonar.annotate import *
+
 
 
 # global variables

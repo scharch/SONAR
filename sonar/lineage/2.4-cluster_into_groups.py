@@ -39,8 +39,14 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 """
 
-from collections import *
-from sonar.lineage import *
+import sys
+
+try:
+	from sonar.lineage import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/lineage")
+	sys.path.append(find_SONAR[0])
+	from sonar.lineage import *
 
 
 def main():

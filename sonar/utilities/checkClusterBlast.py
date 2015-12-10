@@ -32,9 +32,13 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys
-find_SONAR_on_cluster = sys.argv[0].split("sonar/utilities")
-sys.path.append(find_SONAR_on_cluster[0])
-from sonar import *
+try:
+	from sonar import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/utilities")
+	sys.path.append(find_SONAR[0])
+	from sonar import *
+
 
 
 

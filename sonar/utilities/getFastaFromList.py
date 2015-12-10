@@ -20,7 +20,14 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 
 """
 
-from sonar import *
+import sys
+try:
+	from sonar import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/utilities")
+	sys.path.append(find_SONAR[0])
+	from sonar import *
+
 
 def main():
 
