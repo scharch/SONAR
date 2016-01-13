@@ -13,7 +13,7 @@ This script monitors the SGE array jobs submitted by scripts 1.1 and 1.2 of the
 Intended for internal use within SONAR only...
 
 Usage: checkClusterBlast.py -gene <v|j|d|c> -big 100 -check check.sh
-                            [ -after "next_step.py -args ..." ]
+                            [ -after "next_step.py -args ..." -rehold otherJID]
 
     Invoke with -h or --help to print this documentation.
 
@@ -23,8 +23,11 @@ Usage: checkClusterBlast.py -gene <v|j|d|c> -big 100 -check check.sh
                     to monitor further rounds.
     after	Optional script (with all arguments) to be called after all
                     BLAST jobs have completed successfully.
+    rehold	Optional pending jobname on which to renew a hold, if this 
+                    current job needs to be resubmitted
 
 Created by Chaim A Schramm on 2015-07-30.
+Added rehold option CAS 2016-01-13.
 
 Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -32,6 +35,7 @@ Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys
+import subprocess
 try:
 	from sonar import *
 except ImportError:
@@ -65,7 +69,20 @@ def main():
             subprocess.call(nextCmd.split(" "))
         print "All %s blast jobs finished successfully" % gene #goes to log file when called by monitor script
     else:
-        subprocess.call(["qsub", myName])
+        p = subprocess.Popen(["qsub", myName],stdout=subprocess.PIPE)
+	output, err = p.communicate()
+	print err
+	print output
+	jobName = output.split('"')[1]
+	if holdName != "":
+		#This does not currently work on the C2B2 HPC due to permissions/administrative settings haven't
+		#         been able to find a work-around, though, so leaving it here in case it works for others.
+		#Without this, if some c/d blast jobs fail, the jmonitor calling 1.3 won't wait for the resubmitted
+		#         jobs to finish, which could then cause an infinite-resubmission loop after 1.3 deletes
+		#         the fasta files needed to run c/d blast.
+		#In practice, though, this whole que-monitor structure seems to be overkill/unnecesarry now that I've
+		#         updated a lot of other code.
+		subprocess.call(["qalter", "-hold_jid", jobName, holdName])
 
 
 
@@ -78,8 +95,8 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	# get parameters from input
-	dict_args = processParas(sys.argv, gene="gene", big="maxInd", check="myName", after="nextCmd")
-	gene, maxInd, myName, nextCmd = getParasWithDefaults(dict_args, dict(nextCmd=""), "gene", "maxInd", "myName", "nextCmd")
+	dict_args = processParas(sys.argv, gene="gene", big="maxInd", check="myName", after="nextCmd", rehold='holdName')
+	gene, maxInd, myName, nextCmd, holdName = getParasWithDefaults(dict_args, dict(nextCmd="", holdName=""), "gene", "maxInd", "myName", "nextCmd", "holdName")
 
         if not gene in ["v","j","c","d"]:
             print "gene %s not recognized. options are v d j c" % gene
