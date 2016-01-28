@@ -99,8 +99,9 @@ use File::Basename;
 use POSIX;
 
 use List::Util qw/max min/;
-use PPvars qw(ppath);
 use Bio::SeqIO;
+use FindBin;
+use lib "$FindBin::Bin/../PPvars" qw(ppath);
 
 
 if ($#ARGV < 0) { pod2usage(1); }

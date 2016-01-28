@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 # performing usearch for sequences
 use strict;
-use PPvars qw(ppath);
+use FindBin;
+use lib "$FindBin::Bin/../PPvars" qw(ppath);
 #########checking parameters#######
 my $usage="
 Usage:

@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
 use strict;
 use threads;
-use PPvars qw(ppath);
+use FindBin;
+use lib "$FindBin::Bin/../PPvars" qw(ppath);
 
 my $usage="Usage: 
 This script is used to calculate sequence identity between germline V, antibody gene and reads or between antibody CDR3 and read CDR3.

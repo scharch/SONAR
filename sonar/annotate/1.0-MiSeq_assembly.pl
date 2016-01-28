@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 #    barcode file should be in the format: name\tsequence\n
 use strict;
-use PPvars qw(ppath);
+use FindBin;
+use lib "$FindBin::Bin/../PPvars" qw(ppath);
 
 #########checking parameters#######
 if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl 
