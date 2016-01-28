@@ -15,7 +15,7 @@ Usage: getFastaFromList.py -l list.txt -f seqs.fa -o output.fa
     o           Fasta file in which to save extracted sequences
 
 Created by Chaim A Schramm on 2015-04-27.
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """

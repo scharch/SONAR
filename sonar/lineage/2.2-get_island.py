@@ -25,7 +25,7 @@ Usage: 2.2-get_island.py -n native [-imin min_identity -imax max_indentity
 Created by Chaim A Schramm, 2012-10-04.
 Edited and commented for publication by Chaim A Schramm on 2015-04-20.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """

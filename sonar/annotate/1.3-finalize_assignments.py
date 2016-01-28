@@ -16,7 +16,7 @@ Usage:  1.3-blast-finalize-assignments.py [ -h ]
 Created by Chaim A Schramm on 2013-07-05
 Edited and commented for publication by Chaim A Schramm on 2015-02-25.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """

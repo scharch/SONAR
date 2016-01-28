@@ -7,7 +7,7 @@ Core functions for the "ZAP" package,
 Created by Zhenhai Zhang on 2011-04-05 as mytools.py
 Edited and commented for publication by Chaim A Schramm on 2015-02-10.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 """
 

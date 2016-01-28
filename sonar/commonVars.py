@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-common_info.py
+commonVars.py
 
 Created by Zhenhai Zhang on 2011-04-06.
-Copyright (c) 2011 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Renamed by Chaim A Schramm on 2015-02-10.
+
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 """
 
 import sys, os, csv, shutil, re, glob, pickle, string, time, random, commands

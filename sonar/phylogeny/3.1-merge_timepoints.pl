@@ -34,7 +34,7 @@
  Created by Chaim A. Schramm 2015-06-12.
  Fixed algorithm and added some options 2015-07-22.
 
- Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut
@@ -48,7 +48,8 @@ use Cwd;
 use File::Basename;
 use Bio::SeqIO;
 use FindBin;
-use lib "$FindBin::Bin/../PPvars" qw(ppath);
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
 
 
 if ($#ARGV < 0) { pod2usage(1); }

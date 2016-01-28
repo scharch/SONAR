@@ -39,7 +39,7 @@ Usage: 3.2-runDNAML.py -n native.fa -v germline_V
 
 Created by Chaim A Schramm 2015-07-09.
 
-Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """

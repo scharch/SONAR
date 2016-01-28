@@ -2,7 +2,8 @@
 use strict;
 use threads;
 use FindBin;
-use lib "$FindBin::Bin/../PPvars" qw(ppath);
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
 
 my $usage="Usage: 
 This script is used to calculate sequence identity between germline V, antibody gene and reads or between antibody CDR3 and read CDR3.
@@ -26,7 +27,7 @@ Example:
 
 Created by Zizhang Sheng.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.	
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.	
  ";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "$usage"; }

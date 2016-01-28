@@ -2,7 +2,9 @@
 # performing usearch for sequences
 use strict;
 use FindBin;
-use lib "$FindBin::Bin/../PPvars" qw(ppath);
+use lib "$FindBin::Bin/../":
+use PPvars qw(ppath);
+
 #########checking parameters#######
 my $usage="
 Usage:
@@ -19,7 +21,7 @@ Example:
 
 Created by Zizhang Sheng.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
  ";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "Number of parameters are not right\n$usage";

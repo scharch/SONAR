@@ -53,7 +53,7 @@ Usage: 4.2-plot_histogram.R data.txt outfile.png
 
 Created by Chaim A Schramm 2015-11-19.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 ")

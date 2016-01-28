@@ -48,7 +48,7 @@ Edited and commented for publication by Chaim A Schramm on 2015-02-09.
 Edited to add queue monitoring by CAS 2015-08-03.
 Added local option with threading CAS 2015-11-13.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """

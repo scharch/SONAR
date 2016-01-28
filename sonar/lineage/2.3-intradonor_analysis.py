@@ -79,7 +79,7 @@ Modified to compress into a single script and many updates by
         Chaim A Schramm 2014-01-09.
 Edited and commented for publication by Chaim A Schramm on 2015-04-14.
 
-Copyright (c) 2011-2015 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """

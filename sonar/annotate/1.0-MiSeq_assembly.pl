@@ -2,7 +2,8 @@
 #    barcode file should be in the format: name\tsequence\n
 use strict;
 use FindBin;
-use lib "$FindBin::Bin/../PPvars" qw(ppath);
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
 
 #########checking parameters#######
 if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl 
@@ -14,6 +15,12 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-trimf number of nucleotides trimed off before assembly for forward mate, default:1
 	-trimr number of nucleotides trimed off before assmebly for reverse mate, default:1
 	-o output folder
+
+Created by Zizhang Sheng 2015-12-02.
+
+Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
+                         Institutes of Health, USA. All rights reserved.
+
 	";}
 my %para=@ARGV;
 if(!$para{'-f'}){die "no input f sequence file\n";}

@@ -109,7 +109,7 @@ Sample format of natives.csv:
 Created by Chaim A Schramm 2013-06-18
 Edited and commented for publication by Chaim A Schramm on 2015-11-04 --happy birthday, Lisa <3
 
-Copyright (c) 2013-2015 Columbia University and Vaccine Research Center, National
+Copyright (c) 2013-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """

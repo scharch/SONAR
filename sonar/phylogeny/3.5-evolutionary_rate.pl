@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
 use strict;
 use FindBin;
-use lib "$FindBin::Bin/../PPvars" qw(ppath);
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
 
 ################################################
 #This is a mater script that allow user to generate xml configuration files and perform MCMC simulation to estimate evolutionary rate. User has to install beast package first. The script accepts fasta format sequence file as input. Be aware that only temporal data with at least from two time points, are allowed to calculate evolutionary rate. All sequences in the dataset must be non-redundant. Please remove duplicate sequences before running the script. If there are duplicate sequences in the dataset, it's better keep the one with earlier time point. Currently, only GTR substitution model was incorporated but our tests showed the rate calculation is robust to substitution models. it's users' responsibility to check if the MCMC simulation converged using Tracer in Beast2 Package.
@@ -38,7 +39,7 @@ Example:
 
 Created by Zizhang Sheng.
 
-Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 	";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0||@ARGV==0){die "$usage"; }	
