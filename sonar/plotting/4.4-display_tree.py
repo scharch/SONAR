@@ -4,9 +4,10 @@
 4.6-plot_tree.py
 
 This script uses the ete2 module to display figure-quality phylogenetic 
-      "birthday" trees from longitudinal data.
+      "birthday" trees from longitudinal data. Drawing engine requires an X
+      server to run, use xvfb-run if needed.
 
-Usage: 4.6-plot_tree.py -t newick.txt -n natives.csv
+Usage: [xvfb-run] 4.6-plot_tree.py -t newick.txt -n natives.csv
                         [ -o tree.png -c collapse.txt -i intermediates.csv -f 1
 		          -r 300 -sc 1000 -sp 12 -h 4 -w 4 -path -noDots -noUCA -noV ]
 
@@ -113,7 +114,6 @@ Copyright (c) 2013-2016 Columbia University and Vaccine Research Center, Nationa
                                Institutes of Health, USA. All rights reserved.
 
 """
-
 
 import sys, os, re, colorsys
 from ete2 import *
@@ -388,6 +388,7 @@ def main():
 		ts.legend.add_face(text, column=1)
 
 	myTree.dist=0.05
+
 	myTree.render(outFile, dpi=res, tree_style=ts)
 
 ####################################
@@ -456,6 +457,11 @@ if __name__ == '__main__':
 	#check various flags
 	q = lambda x: x in sys.argv
 	
+	#print documentation?
+        if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
+                print __doc__
+                sys.exit(0)
+	
 	#hide dots at natives?
 	dots = True
 	if q("-noDots"):
@@ -480,6 +486,8 @@ if __name__ == '__main__':
 		sys.argv.remove("-noV")
 		vgene = False
 
+	if os.environ.get('DISPLAY') is None:
+		sys.exit("\nThe Qt4 drawing engine requires an active X server.\nPlease enable X forwarding or use xvfb-run.\n")
 
 	#parse remainder of options
 	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile",
