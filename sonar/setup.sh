@@ -43,7 +43,8 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     muscle="muscle"
     blast="blastn"
     dnaml="dnaml"
-    beast="/Applications/BEAST/bin/beast";
+    beast="/Applications/BEAST/bin/beast"
+    clusterExists="False"
 
 #Ask user for input
     echo ""
@@ -92,6 +93,8 @@ done
 read -e -p "Will you be using an HPC cluster [y/n]?" cluster
 if [ "$cluster" == "Y" ] || [ "$cluster" == "y" ]; then
     
+    clusterExists="True"
+
     while [ "$checked" != "Y" ] && [ "$checked" != "y" ]; do
 	#defaults
 	qsub="qsub"
@@ -148,7 +151,7 @@ clustal	       = \"$clustal\"
 blast_cmd      = \"$blast\"
 usearch        = \"$usearch\"
 
-clusterExists  = True
+clusterExists  = $clusterExists
 qsub           = \"$qsub\"
 cluster_muscle = \"$clustMuscle\"
 cluster_blast  = \"$clustBlast\"
