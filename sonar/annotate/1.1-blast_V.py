@@ -3,9 +3,9 @@
 """
 1.1-blast-V.py
 
-This script looks for raw NGS data files in the "0-original" folder and parses
-      them into manageable chunks for searching with BLAST on the cluster. Each
-      raw read that meets the length restrictions is assigned a unique 8 digit 
+This script looks for raw NGS data files in the current folder and parses them
+      into manageable chunks for searching with BLAST on the cluster. Each raw
+      read that meets the length restrictions is assigned a unique 8 digit
       serial number and submitted to the cluster for BLASTing against the 
       desired V gene germline library.
       Distinctions between raw data files will not be maintained, although they
