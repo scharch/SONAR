@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 """
-1.3-blast-finalize-assignments.py
+1.3-finalize_assignments.py
 
 This script parses the BLAST output from 1.1-blast-V_assignment.py and 
-      1.2-blast-J_assignment.py. Sequences with successful assignments are
+      1.2-blast_J.py. Sequences with successful assignments are
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-blast-finalize-assignments.py [ -h ]
+Usage:  1.3-finalize_assignments.py [ -h ]
 
     This script takes no input options.
     Invoke with -h or --help to print this documentation.
