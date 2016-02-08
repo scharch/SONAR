@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 =head 1 SUMMARY
 
@@ -64,6 +64,7 @@
 
 =cut
 
+use warnings;
 use strict;
 use diagnostics;
 use Pod::Usage;
