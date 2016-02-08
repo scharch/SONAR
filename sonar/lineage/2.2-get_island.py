@@ -30,7 +30,12 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 
 """
 
-from soaar import *
+try:
+        from sonar.lineage import *
+except ImportError:
+        find_SONAR = sys.argv[0].split("sonar/annotate")
+        sys.path.append(find_SONAR[0])
+        from sonar.lineage import *
 
 global inFile, native
 
