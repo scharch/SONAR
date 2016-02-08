@@ -95,8 +95,9 @@ def main():
 
 
 	#iterate through sequences in all raw data files
-	if len(fastaFiles)==0: fastaFiles = generate_read_fasta_folder(use_qual)
-	for myseq, myqual, file_name in fastaFiles:
+	if len(fastaFiles)==0: fastaFiles = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
+
+	for myseq, myqual, file_name in generate_read_fasta_folder(fastaFiles, use_qual):
 
 		total += 1
 		id_map.writerow([ "%08d"%total, file_name, myseq.seq_id, myseq.seq_len])
@@ -222,6 +223,10 @@ if __name__ == '__main__':
 		callJ = True
 	if useCluster:
 		npf = 50000
+
+	#hacky (because I really should reimplement commandline parameters with ArgParse)
+	if isinstance(fastaFiles, basestring):
+		fastaFiles = [fastaFiles]
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()

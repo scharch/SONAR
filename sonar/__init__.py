@@ -690,9 +690,7 @@ def generate_read_fasta(f):
 		yield entry
 
 
-def generate_read_fasta_folder(type=1):
-
-	fastas = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
+def generate_read_fasta_folder(fastas, type=1):
 
 	for fasta_file in fastas:
 
