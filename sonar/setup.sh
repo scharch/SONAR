@@ -35,7 +35,6 @@ Module 4 (plotting) additional prerequisites:
 while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 
 #these are the default values
-    homeDir=$(cd ~; pwd)
     pipeDir=$(pwd)
     fastxDir="~/bin"
     clustal="clustalo"
@@ -50,8 +49,6 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     echo ""
     if [[ ${BASH_VERSION[0]} < 4 ]]
     then
-	read -e -p "Please enter the default root directory (default $homeDir): " var; homeDir=${var:-$homeDir}
-	read -e -p "Please enter the directory where SONAR is installed (default $pipeDir): " var; pipeDir=${var:-$pipeDir}
 	read -e -p "Please enter the directory where the FASTX-Toolkit is installed (default $fastxDir): " var; fastxDir=${var:-$fastxDir}
 	read -e -p "Please enter the path to ClustalO (default $clustal): " var; clustal=${var:-$clustal}
 	read -e -p "Please enter the path to Muscle (default $muscle): " var; muscle=${var:-$muscle}
@@ -60,8 +57,6 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 	read -e -p "Please enter the path to DNAML (default $dnaml): " var; dnaml=${var:-$dnaml}
 	read -e -p "Please enter the path to BEAST (default $beast):" var; beast=${var:-$beast}
     else
-	read -e -p "Please enter the default root directory: " -i $homeDir homeDir
-	read -e -p "Please enter the directory where SONAR is installed: " -i $pipeDir pipeDir
 	read -e -p "Please enter the directory where the FASTX-Toolkit is installed: " -i $fastxDir fastxDir
 	read -e -p "Please enter the path to ClustalO: " -i $clustal clustal
 	read -e -p "Please enter the path to Muscle: " -i $muscle muscle
@@ -73,8 +68,6 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
 
     #verify inputs
     echo -e "\n\nYou have entered the following values:
-\tDefault root directory: $homeDir
-\tDirectory where SONAR is installed: $pipeDir
 \tDirectory where FASTX-Toolkit is installed: $fastxDir
 \tPath to ClustalO: $clustal
 \tPath to Muscle: $muscle
@@ -145,7 +138,6 @@ fi
 #create a file for the Python portion of the pipeline
 echo "
 
-HOME_FOLDER    = \"$homeDir\"
 SCRIPT_FOLDER  = \"$pipeDir\"
 clustal	       = \"$clustal\"
 blast_cmd      = \"$blast\"
@@ -195,4 +187,4 @@ sub ppath{
 
 
 1;
-" > PPVars.pm
+" > PPvars.pm
