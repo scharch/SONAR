@@ -155,10 +155,10 @@ main <- function(infile, outfile, title, bars, percent, xlab, ylab, xlim, ylim, 
 
     #logx is proxy for plot type, so check first
     if (logx) {
-       	   p <- p + geom_step(aes_string(colour=myGroupColumn), show_guide=showlegend) + 
+       	   p <- p + geom_step(aes_string(colour=myGroupColumn), show.legend=showlegend) + 
        	      	    scale_colour_manual( values=subset ) + scale_x_log10( )
     } else {
-	   p <- p + geom_bar(aes_string(fill=myGroupColumn), stat='identity', position=bars, show_guide=showlegend) + 
+	   p <- p + geom_bar(aes_string(fill=myGroupColumn), stat='identity', position=bars, show.legend=showlegend) + 
        	      	    scale_fill_manual( values=subset )
     }
         
