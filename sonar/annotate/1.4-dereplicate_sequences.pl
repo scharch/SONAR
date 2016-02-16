@@ -96,89 +96,110 @@ sub write_raw{
 
 ######################
 sub changename{#change sequence names back to the input sequence name
-  my ($input,$seive)=@_;
-  open HH,"$seive" or die "usearch file $seive not found\n";
-	my %state=();
-	my $statis_label=0;
-	my @stat_file=<./output/tables/*all_seq_stats.txt>;
-		my %id=();
-	my $id='';
-	my $mark=0;
-	my %size=0;
-	while(<HH>){
-		if($_=~/>([^\t \;]+)/){
-		   chomp;
-		   $id=$1;
-		   $id=~s/centroid\=//;
-		   $id{$id}=1;
-		   if($_=~/size\=([0-9]+)/){
-		   $size{$id}=$1;
-		   }
-		}
+    my ($input,$seive)=@_;
+    open HH,"$seive" or die "usearch file $seive not found\n";
+    my %state=();
+    my $unique_column=0;
+    my @stat_file=<./output/tables/*all_seq_stats.txt>;
+    my %id=();
+    my $id='';
+    my $mark=0;
+    my %size=0;
+    while(<HH>){
+	if($_=~/>([^\t \;]+)/){
+	    chomp;
+	    $id=$1;
+	    $id=~s/centroid\=//;
+	    $id{$id}=1;
+	    if($_=~/size\=([0-9]+)/){
+		$size{$id}=$1;
+	    }
 	}
-	close HH;
+    }
+    close HH;
+    
+    if(-e "$stat_file[0]"){#write statistic info to ./output/table/project_all_seq_stats.txt
+	&rm_r($stat_file[0]);
+	open STi,"$stat_file[0]";	
+	my $title=<STi>;
+	my @categories = split/\t+/,$title;
+	if($title!~/Unique\tsize/){	  
+	    $unique_column = scalar(@categories);
+	    chomp $title;
+	    $title.="\tUnique\tsize\n";
+	} else {
+	    #replace existing data based on new run / changed clustering criteria
+	    for my $c (0 .. $#categories) {
+		if ($categories[$c] =~ /Unique/) { 
+		    $unique_column = $c;
+		    last;
+		}
+	    }
+	}
+
+	open STo,">stats.txt";
+	print STo "$title";
 	
-	if(-e "$stat_file[0]"){#write statistic info to ./output/table/project_all_seq_stats.txt
-		&rm_r($stat_file[0]);
-	  open STi,"$stat_file[0]";	
-	  my $title=<STi>;
-	  if($title!~/Unique\tsize/){	  
-	  	$statis_label=1;
-	  open STo,">stats.txt";
-	  chomp $title;
-	  $title.="\tUnique\tsize\n";
-	  print STo "$title";
-	  
-	  while(<STi>){
-	  	if($_=~/^ID\t/||$_!~/[\d\w]/){next;}
-	  	chomp;
-	  	~s/[\r\n]//g;
-	  	my @l=split/\t+/,$_;
-	  	$state{$l[0]}=$_;
-	  }
-	 }
-	 
-	}
-	open YY,"$input" or die "Original seq file $input not found\n";
-	open ZZ,">tempusearch.fa";
-
-	while(<YY>){
-		if($_=~/>([^\t \;\n\r]+)/){
-			chomp;
-			my $k=$1;
-			$k=~s/centroid\=//;
-		   if($id{$k}==1){
-		   	  $mark=1;	
-		   	  print ZZ "$_ size=$size{$k}\n";
-		   	  
-		   }
-		 	 else{
-		 	    $mark=0;	
-		 	}
-		}
-		elsif($mark==1){
-		  print ZZ "$_";	
-		}
-	}	
-	close YY;
-	close ZZ;
-	if($statis_label==1){
-	   foreach(sort {$a<=>$b} %state){ 
-		   	  	if($id{$_}&&$state{$_}=~/[\d\w]/){print STo "$state{$_}\tT\t$size{$_}\n";}
-		   	  	elsif($state{$_}=~/[\d\w]/){print STo "$state{$_}\tNA\tNA\n";}
-		   	  }		
+	while(<STi>){
+	    if($_=~/^ID\t/||$_!~/[\d\w]/){next;}
+	    chomp;
+	    ~s/[\r\n]//g;
+	    my @l=split/\t+/,$_;
+	    $state{$l[0]}=[@l];
 	}
 
+    }
+    open YY,"$input" or die "Original seq file $input not found\n";
+    open ZZ,">tempusearch.fa";
+    
+    while(<YY>){
+	if($_=~/>([^\t \;\n\r]+)/){
+	    chomp;
+	    my $k=$1;
+	    $k=~s/centroid\=//;
+	    if($id{$k}==1){
+		$mark=1;	
+		print ZZ "$_ size=$size{$k}\n";
+		
+	    }
+	    else{
+		$mark=0;	
+	    }
+	}
+	elsif($mark==1){
+	    print ZZ "$_";	
+	}
+    }	
+    close YY;
+    close ZZ;
+
+    if($unique_column > 0) {
+	foreach(sort {$a<=>$b} keys(%state)){ 
+	    my $uniq = "NA";
+	    my $size = "NA";
+	    if ($id{$_}) {
+		$uniq = "T";
+		$size = $size{$_};
+	    }
+	    my @line = @{$state{$_}};
+	    $line[$unique_column] = $uniq;
+	    $line[$unique_column + 1] = $size;
+
+	    print STo join("\t",@line) . "\n";
+	}		
+    
 	close STi;
 	close STo;
-	if($statis_label==1){system("mv stats.txt $stat_file[0]");}
-	if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/){#move output files to standard pipeline folders
-		system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
-	}
-	else{
-	  system("mv tempusearch.fa $seive");
-  }
-  return \%id;
+	system("mv stats.txt $stat_file[0]");
+    }
+
+    if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/){#move output files to standard pipeline folders
+	system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
+    }
+    else{
+	system("mv tempusearch.fa $seive");
+    }
+    return \%id;
 }
 
 sub rm_r{#remove \r at line end
