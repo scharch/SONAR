@@ -461,40 +461,41 @@ sub add_column_to_statistic{
       	last;
     }	
     else{
-        	while(<HH>){
-        		chomp;
-        	    @l=split/\t/,$_;
-        	    $identity{$l[0]}=$l[1];	
-        	}
+	while(<HH>){
+	    chomp;
+	    @l=split/\t/,$_;
+	    $identity{$l[0]}=$l[1];	
+	}
     }
     close HH;
-	my @stats=<./output/tables/*all_seq_stats.txt>;
-	if(-e "$stats[0]"){print "$stats[0]##\n";
-		&rm_r($stats[0]);
-	   open ST,"$stats[0]";
-	   
-		 my $line=<ST>;
-		 if($line!~/V\_div/){
-		 	chomp $line;		 	
-     open STo,">temstat.txt";
-     print STo "$line\tV_div\n";
-		   while(<ST>){
-		   	chomp;
-		   	if($_=~/^[\d\w]/){
-		     my @li=split/\t/,$_;
-		     if($identity{$li[0]})	{
-		       print STo "$_\t$identity{$li[0]}\%\n";#print "$_ $identity{$li[0]}\n";
-		     }
-		     else{
-		     	 print STo "$_\tNA\n";
+    my @stats=<./output/tables/*all_seq_stats.txt>;
+    if(-e "$stats[0]"){
+	print "$stats[0]##\n";
+	&rm_r($stats[0]);
+	open ST,"$stats[0]";
+	
+	my $line=<ST>;
+	if($line!~/V\_div/){
+	    chomp $line;		 	
+	    open STo,">temstat.txt";
+	    print STo "$line\tV_div\n";
+	    while(<ST>){
+		chomp;
+		if($_=~/^[\d\w]/){
+		    my @li=split/\t/,$_;
+		    if($identity{$li[0]})	{
+			print STo "$_\t$identity{$li[0]}\%\n";#print "$_ $identity{$li[0]}\n";
 		    }
-		   }
-		  } 	
-		  close ST;
+		    else{
+			print STo "$_\tNA\n";
+		    }
+		}
+	    } 	
+	    close ST;
 	    close STo;
-		  system("mv temstat.txt $stats[0]"); 	
-		 }
+	    system("mv temstat.txt $stats[0]"); 	
 	}
-
+    }
+    
 }
 
