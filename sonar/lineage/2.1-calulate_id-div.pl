@@ -53,7 +53,9 @@ if(!$para{'-g'}){
 	 }
 	}
 if(!$para{'-p'}){$para{'-p'}='DNA';}
-if($para{'-a'}&& ! -e $para{'-a'}){warn "file $para{'-a'} doesn't exist. ):\n";}
+if($para{'-a'}) {
+    if ( ! -e $para{'-a'}){warn "file $para{'-a'} doesn't exist.\n";}
+} else { warn "No native sequence file specified; only divergence will be calculated...\n"; }
 if(!$para{'-f'}|| ! -e $para{'-f'}){
 	my @files=<./output/sequences/nucleotide/*goodVJ_unique.fa>;
 	if(-e "$files[0]"){
@@ -61,17 +63,17 @@ if(!$para{'-f'}|| ! -e $para{'-f'}){
 	   print "Using sequence file $files[0]\n";
 	 }
 	else{
-	    die "Sequence file $para{'-f'} doesn't exist. ):\n";
+	    die "Sequence file $para{'-f'} doesn't exist.\n";
    }
 	}
-#if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist. ):\n";}
+#if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist.\n";}
 my %germ_db=();
 
 ############Reading seqs####################
 &rm_r($para{'-g'});
 if($para{'-a'}){&rm_r($para{'-a'});}
 my ($germV,$germg)=&readfasta($para{'-g'});
-my ($anti,$antigerm)=&readfasta($para{'-a'});
+my ($anti,$antigerm)= $para{'a'} ? &readfasta($para{'-a'}) : ({},{});
 
 ###############Processing###################
 print "processing $para{'-f'}...\n";
@@ -243,7 +245,7 @@ sub readfasta{# read in sequences and germline assign info from fasta file
     my %seq=();
     my %seqgerm=();
     my $id='';
-    open HH,"$file" or warn "Sequence file $file not exist\n";
+    open HH,"$file" or warn "Sequence file $file does not exist\n";
     while(<HH>){
         chomp;
         if($_=~/>(.+)/){
