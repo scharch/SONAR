@@ -379,7 +379,7 @@ sub plot {
 
 
 sub mysort {
-    no warnings 'numeric'; #might need to add one for hash keys, too
+    no warnings qw(numeric uninitialized);
     my %specificOrder = ( 'orf'=>0, 'wrong_length'=>1, 'noV'=>2, 'noJ'=>3, 'noCDR3'=>4, 'indel'=>5, 'stop'=>6, 'good'=>7, 'unique'=>8, 'both'=>9 );
     $specificOrder{$a}<=>$specificOrder{$b} || $a<=>$b || $a cmp $b;
 }
