@@ -97,9 +97,9 @@ for (my $i=0; $i<=$#prefix; $i++) { $order{$prefix[$i]} = $i; }
 #setup directory structure
 my $prj_name = basename(getcwd);
 
-for my $dir ("output", "output/sequences", "output/sequences/nucleotide", 
+for my $dir ("output", "output/sequences", "output/sequences/nucleotide",
 	     "output/sequences/amino_acid", "output/tables", "output/logs",
-	     "output/rates", "work", "work/phylo") {
+	     "output/rates", "output/plots", "work", "work/phylo") {
     if ( ! -d $dir ) { mkdir $dir; }
 }
 
