@@ -46,7 +46,7 @@ class MySeq:
 	def __init__(self, seq_id, seq):
 		self.seq_id 	= seq_id					# sequence ID
 		try:
-			self.seq 	= seq.tostring()			# sequence in string format
+			self.seq 	= str(seq)			# sequence in string format
 		except:
 			self.seq	= seq	
 		self.seq_len 	= len(self.seq)				# sequence length
@@ -634,8 +634,8 @@ def load_heavy_fasta_V(f, l):
 	for entry in reader:
 		if entry.id in l:
 			# truncate V gene
-			has_wgxg, wgxg_start, wgxg_end = has_pat(entry.seq.tostring(), pat_nuc_wgxg)
-			has_cxrk, cxrk_start, cxrk_end = has_pat(entry.seq.tostring(), pat_nuc_cxrk)
+			has_wgxg, wgxg_start, wgxg_end = has_pat(str(entry.seq), pat_nuc_wgxg)
+			has_cxrk, cxrk_start, cxrk_end = has_pat(str(entry.seq), pat_nuc_cxrk)
 			entry.seq = entry.seq[ : cxrk_end]
 			
 			myseq = MySeq(entry.id, entry.seq)
@@ -734,7 +734,7 @@ def get_fasta_len_str(f):
 def str_reverse_complement(s):
 	"""reverse complement a sequence in string format """
 	
-	return Seq.Seq(s).reverse_complement().tostring()
+	return str(Seq.Seq(s).reverse_complement())
 	
 	
 
@@ -895,41 +895,6 @@ def curate_wgxg(s):
 	
 
 
-"""
-def check_protein_nucleotide_pair(nuc_file, pro_file):
-	
-	ind = 0
-	for my_nuc, my_aa in izip(generate_reads(nuc_file), generate_reads(pro_file)):
-		
-		# Identical ID
-		if my_nuc.seq_id != my_aa.seq_id:
-			print "Seqeunce are not in same order: nucleotide: %s; protein: %s" %(mynuc.seq_id, my_aa.seq_id)
-			sys.exit(0)
-		
-		# check length
-		if my_aa.seq_len * 3 - my_nuc.seq_len != 0:
-			print "%s: Protein len: %d; Nucleotide len: %d; don't corperate" %(my_aa.seq_id, my_aa.seq_len, my_nuc.seq_len)
-			sys.exit(0)
-			
-		else:
-			translation = Seq.Seq(my_nuc.seq).translate().tostring()
-			
-			if translation != my_aa.seq:
-				ind += 1
-				print ind, my_aa.seq_id
-				print "P: ", my_aa.seq
-				print "T: ", translation
-	
-
-"""
-
-			
-
-
-
-def fix_monopoly(s, r):
-	pass;
-
 
 def load_single_fasta(f, gid):
 	""" retrieve single gene info from fasta file """
@@ -1005,40 +970,6 @@ def load_native_in_dict2(is_light):
 	for ab in SeqIO.parse(open(dict_nat_db[is_light], "rU"), "fasta"):
 		result[ab.id] = ab
 	return result
-
-def load_monkey_heavy_in_dict():
-	result = dict()
-	for ab in SeqIO.parse(open(NAT_KCL_HEAVY, "rU"), "fasta"):
-		result[ab.id] = ab
-	return result
-
-def load_single_monkey_heavy_cdr3(nat_id):
-	if nat_id not in DICT_NAT_CDRH3:
-		print "There is no CDRH3 coordinate in DICT_NAT_CDRH3"
-		sys.exit(0)
-	start, end = DICT_NAT_CDRH3[nat_id]
-	dict_nat_heavy = load_monkey_heavy_in_dict()
-	if nat_id not in dict_nat_heavy:
-		print "The heavy chain sequencing is missing from the fasta file"
-		sys.exit(0)
-	CDRH3 = dict_nat_heavy[nat_id].seq.tostring()[start : end]
-	return CDRH3
-
-def load_light_in_dict():
-	result = dict()
-	for ab in SeqIO.parse(open(NAT_LIGHT, "rU"), "fasta"):
-		result[ab.id] = ab
-	return result
-
-def load_nat_cdr_coors():
-	infile, result = "%s/vrc_IgHV_CDRH3_region.txt" %NAT_DB_FOLDER, dict()
-	reader = csv.reader(open(infile, "rU"), delimiter = sep)
-	reader.next()
-	for row in reader:
-		abid, cdr_start, cdr_end = row[0], int(row[1]), int(row[4])
-		result[abid] = (cdr_start, cdr_end)
-	return result
-
 
 
 def get_subfolders(f):
@@ -1147,7 +1078,7 @@ def is_valid_native_aln(align_file):
 		alignment 	= AlignIO.read(align_file, "clustal")
 	except:				# implement for Titan server with BioPython 1.52
 		alignment 	= AlignIO.read(open(align_file, "rU"), "clustal")
-	read 	= alignment[0].seq.tostring()		# first sequence is test
+	read 	= str(alignment[0].seq)		# first sequence is test
 	total_deletion, ind = 0, 0
 	while True:
 		if read[ind] == "-":
@@ -1170,7 +1101,7 @@ def get_clustal_matches(align_file):
 		alignment 	= AlignIO.read(align_file, "clustal")
 	except:				# implement for Titan server with BioPython 1.52
 		alignment 	= AlignIO.read(open(align_file, "rU"), "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
+	seq1, seq2 	= str(alignment[0].seq), str(alignment[1].seq)
 	zip_seqs 	= zip(seq1, seq2)
 	zip_seqs	= [(x, y) for x, y in zip_seqs if x !="-" and y != "-"]		# remove insertions from either one
 	matches		= sum([x == y for x, y in zip_seqs])						# count total matches
@@ -1189,7 +1120,7 @@ def parse_pair_clustal(align_file, my_ref_len, get_coverage=0):
 		alignment 	= AlignIO.read(align_file, "clustal")
 	except:				# implement for Titan server with BioPython 1.52
 		alignment 	= AlignIO.read(open(align_file, "rU"), "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
+	seq1, seq2 	= str(alignment[0].seq), str(alignment[1].seq)
 	zip_seqs 	= zip(seq1, seq2)
 	zip_seqs	= [(x, y) for x, y in zip_seqs if x !="-" and y != "-"]		# remove insertions from either one
 	matches		= sum([x == y for x, y in zip_seqs])						# count total matches
@@ -1297,7 +1228,7 @@ def do_2seq_clustalw2_alignment(ref, tst, fa_file):
 
 def get_clustal_align_seq_score(aln_file):
 	alignment 	= AlignIO.read(aln_file, "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
+	seq1, seq2 	= str(alignment[0].seq), str(alignment[1].seq)
 	seqz = zip(seq1, seq2)
 	total_id = sum([ x == y for (x, y) in seqz])
 	percent = float(total_id) / len(seq1) * 100
@@ -1328,44 +1259,6 @@ def chaims_alignment_score(one, two):
 	
 	return score
 
-
-def retrieve_pair_aln_seqs(align_file):
-
-	alignment 	= AlignIO.read(align_file, "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
-	return seq1, seq2
-
-def retrieve_pair_aln_seqs2(align_file):
-
-	alignment 	= AlignIO.read(open(align_file, "rU"), "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
-	return seq1, seq2
-
-
-def parse_pair_clustal2(align_file, my_ref_len):
-	""" parse paired alignment file """
-	alignment 	= AlignIO.read(align_file, "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
-	seq1, seq2  = remove_ref_insertion(seq1, seq2)
-	zip_seqs 	= zip(seq1, seq2)
-	#zip_seqs	= [(x, y) for x, y in zip_seqs if x !="-" and y != "-"]		# remove insertions from either one
-	mismatches	= sum([x != y for x, y in zip_seqs])						# count total matches
-	divergence 	= round( float(mismatches) / my_ref_len * 100, 2 )
-	identity	= round(100 - divergence, 2)
-
-	return identity, divergence
-	
-def get_clustalw2_stat(align_file):
-	alignment 	= AlignIO.read(align_file, "clustal")
-	seq1, seq2 	= alignment[0].seq.tostring(), alignment[1].seq.tostring()
-	zip_seqs 	= zip(seq1, seq2)
-	org_len		= len(zip_seqs)
-	zip_seqs	= [(x, y) for x, y in zip_seqs if x !="-" and y != "-"]		# remove insertions from either one
-	mod_len		= len(zip_seqs)
-	indels		= org_len - mod_len
-	mismatches	= sum([x != y for x, y in zip_seqs])						# count total matches
-	
-	return indels, mismatches
 	
 def remove_ref_insertion_both_ends(r, t):
 	while r.startswith("-"):
