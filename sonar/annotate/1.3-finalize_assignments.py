@@ -352,7 +352,7 @@ def main():
 	handle.close()
 
 	#clean up!!
-	oldFiles = glob.glob("%s/*txt"%prj_tree.vgene) + glob.glob("%s/*fasta"%prj_tree.vgene) +  glob.glob("%s/*txt"%prj_tree.jgene) + glob.glob("%s/*fasta"%prj_tree.jgene)
+	oldFiles = glob.glob("%s/*txt"%prj_tree.vgene) + glob.glob("%s/*fasta"%prj_tree.vgene) +  glob.glob("%s/*txt"%prj_tree.jgene) + glob.glob("%s/*fasta"%prj_tree.jgene) + glob.glob("%s/id_lookup.txt"%prj_tree.internal)
 	if len(oldFiles) > 0:
 		[os.remove(f) for f in oldFiles]
 			

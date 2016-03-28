@@ -118,7 +118,7 @@ while (<IN>) {
 # also, lower confidence nucleotides are represented in lower case, so use /i
 
     } elsif ($_ =~ /^\s+(\S+)\s+([acgtyrwskmbdhvn\- ]+)/i) {
-	$nodes{$1}{'sequence'} .= $2;
+	$nodes{$1}{'sequence'} .= $2 if -defined($nodes{$1}); #the regex is a little broad, so screen out "sequences" that weren't in the tree
     }
 
 

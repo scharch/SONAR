@@ -73,7 +73,7 @@ my %germ_db=();
 &rm_r($para{'-g'});
 if($para{'-a'}){&rm_r($para{'-a'});}
 my ($germV,$germg)=&readfasta($para{'-g'});
-my ($anti,$antigerm)= $para{'a'} ? &readfasta($para{'-a'}) : ({},{});
+my ($anti,$antigerm)= $para{'-a'} ? &readfasta($para{'-a'}) : ({},{});
 
 ###############Processing###################
 print "processing $para{'-f'}...\n";
@@ -144,8 +144,9 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
                 $i++;     
              my @line=split/[ \t]+/,$_;
              $id=substr($line[0],1,);
-             $line[1]=~s/\,.+//g;
-             $readgerm{$id}=$line[1];
+             #$line[1]=~s/\,.+//g;
+             #$readgerm{$id}=$line[1];
+	       for my $field (@line) { if ($field=~/V_gene=/) { $readgerm{$id}=$field; } }
             $readgerm{$id}=~s/\-//g;
             $readgerm{$id}=~s/V\_gene\=//g;
             
