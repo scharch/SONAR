@@ -142,7 +142,7 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
              	  %readgerm=();	
             }
                 $i++;     
-             my @line=split/[ \t]+/,$_;
+             my @line=split/[ \t,]+/,$_;
              $id=substr($line[0],1,);
              #$line[1]=~s/\,.+//g;
              #$readgerm{$id}=$line[1];
@@ -496,7 +496,7 @@ sub add_column_to_statistic{
 	    close STo;
 	    system("mv temstat.txt $stats[0]"); 	
 	}
-    }
+    } else { print "\n\nCould not find master table in output/tables/ \n\t-cannot add germline divergence to the all_seq_stats table for use with 4.1_setup_plots.pl\n\n"; }
     
 }
 

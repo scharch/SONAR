@@ -8,7 +8,7 @@ This script selects sequences based on their positions in an identity-divergence
 
 Usage: 2.2-get_island.py -n native [-imin min_identity -imax max_indentity
                                     -dmin min_divergence -dmax max_divergence
-				    -i seqs.fa]
+				    -seq seqs.fa -div id-div.tab]
 
     Invoke with -h or --help to print this documentation.
 
@@ -19,8 +19,10 @@ Usage: 2.2-get_island.py -n native [-imin min_identity -imax max_indentity
                    Included for completeness. Default = 100.
     dmin	Minimum percent germline divergence. Default = 0.
     dmax	Maximum percent germline divergence. Default = 40.
-    i		Custom input file with sequences to search. By default, uses
+    seq		Custom input file with sequences to search. By default, uses
                    pipeline output with "goodVJ_unique" nucleotide sequences.
+    div		If a custom sequence file is used, please specify the location
+                   of the corresponding output from 2.1-calculate_id-div.pl.
 
 Created by Chaim A Schramm, 2012-10-04.
 Edited and commented for publication by Chaim A Schramm on 2015-04-20.
@@ -42,23 +44,26 @@ global inFile, native
 
 def main():
 	
-	if not os.path.isfile("%s/%s_unique_id-div.tab" % (prj_tree.tables, prj_name)):
+	if not os.path.isfile(divFile):
 		sys.exit("Please run 2.1-calulate_id-div.pl before running this script!")
 
-	reader 	= csv.reader(open("%s/%s_unique_id-div.tab" % (prj_tree.tables, prj_name), "rU"), delimiter = sep)
+	reader 	= csv.reader(open(divFile, "rU"), delimiter = sep)
 	natives = reader.next()[2:]
 
 	try:
 		pos = natives.index(native)
 	except:
-		sys.exit("Can't find desired mAb in %s/%s_unique_id-div.tab (options are %s)." % (prj_tree.tables, prj_name, ", ".join(natives)))
+		sys.exit("Can't find desired mAb in %s (options are %s)." % (divFile ", ".join(natives)))
 
 	# a dictionary for keeping track of those that survive the filter
 	island = []
 		
+	bad = 0
 	for row in reader:
 		if len(row) - 2 < len(natives):
 			pass;
+		elif row[1] == "NA" or row[2+pos] == "NA":
+			bad+=1
 		else:
 			read_id, divergence, identity = row[0], float(row[1]), float(row[2+pos])
 			if (divergence >= min_div and divergence <= max_div and identity >= min_iden and identity <= max_iden):
@@ -90,12 +95,16 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	if q("-seq") and not q("-div"):
+		print "Please specify location of output from 2.1-calculate_id-div.pl for custom sequence file!"
+		sys.exit(1)
+
 	prj_tree 	= ProjectFolders(os.getcwd())
 	prj_name 	= fullpath2last_folder(prj_tree.home)
 	
-	dict_args = processParas(sys.argv, n="native",imin="min_iden",imax="max_iden",dmin="min_div",dmax="max_div", i="inFile")
-	defaults = dict( native="",min_iden=85,max_iden=100,min_div=0,max_div=40,inFile="%s/%s_goodVJ.fa"%(prj_tree.nt, prj_name) )
-	native,min_iden,max_iden,min_div,max_div,inFile = getParasWithDefaults(dict_args, defaults, "native","min_iden","max_iden","min_div","max_div","inFile")
+	dict_args = processParas(sys.argv, n="native",imin="min_iden",imax="max_iden",dmin="min_div",dmax="max_div", seq="inFile", div="divFile")
+	defaults = dict( native="",min_iden=85,max_iden=100,min_div=0,max_div=40,inFile="%s/%s_goodVJ.fa"%(prj_tree.nt, prj_name),divFile="%s/%s_unique_id-div.tab" % (prj_tree.tables, prj_name) )
+	native,min_iden,max_iden,min_div,max_div,inFile,divFile = getParasWithDefaults(dict_args, defaults, "native","min_iden","max_iden","min_div","max_div","inFile", divFile)
 	
 	if native == "":
 		print "Please specify native mAb to use as identity referent.\n\n"
