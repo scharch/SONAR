@@ -63,9 +63,15 @@ if(!$para{'-f'}|| ! -e $para{'-f'}){
 	   print "Using sequence file $files[0]\n";
 	 }
 	else{
-	    die "Sequence file $para{'-f'} doesn't exist.\n";
-   }
+	    @files=<./output/sequences/nucleotide/*goodVJ.fa>;
+	    if(-e "$files[0]"){
+		$para{'-f'}=$files[0];	
+		print "Using sequence file $files[0]\n";
+	    }else{
+		die "Sequence file $para{'-f'} doesn't exist.\n";
+	    }
 	}
+}
 #if($para{'-g'}&& ! -e $para{'-g'}){die "file $para{'-g'} doesn't exist.\n";}
 my %germ_db=();
 
