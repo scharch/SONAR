@@ -29,9 +29,9 @@ if(!$para{'-o'}){$para{'-o'}='.';}
 if(!$para{'-ut'}){$para{'-ut'}=3;}
 if(!$para{'-maxee'}){$para{'-maxee'}=1;}
 if(!$para{'-usearch'}){$para{'-usearch'}=ppath('usearch');}
-if(!$para{'-fastx_quality_stats'}){$para{'-fastx_quality_stats'}=ppath('fastx_quality_stats');}
-if(!$para{'-fastq_quality_boxplot_graph.sh'}){$para{'-fastq_quality_boxplot_graph.sh'}=ppath('sonar')."/utilities/fastq_quality_boxplot_graph.sh";}
-if(!$para{'-fastx_trimmer'}){$para{'-fastx_trimmer'}=ppath('fastx_trimmer');}
+if(!$para{'-fastx_quality_stats'}){$para{'-fastx_quality_stats'}=ppath('fastx') . '/fastx_quality_stats';}
+if(!$para{'-fastq_quality_boxplot_graph.sh'}){$para{'-fastq_quality_boxplot_graph.sh'}=ppath('fastx')."/fastq_quality_boxplot_graph.sh";}
+if(!$para{'-fastx_trimmer'}){$para{'-fastx_trimmer'}=ppath('fastx').'/fastx_trimmer';}
 if(!$para{'-trimf'}){$para{'-trimf'}=1;}
 if(!$para{'-trimr'}){$para{'-trimr'}=1;}
 
