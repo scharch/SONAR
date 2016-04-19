@@ -1,0 +1,1 @@
+FROM scharch/sonar-base
