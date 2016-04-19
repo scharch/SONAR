@@ -1,1 +1,1 @@
-FROM scharch/sonar-base
+FROM scharch/sonar-base:latest
