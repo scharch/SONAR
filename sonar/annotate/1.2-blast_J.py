@@ -54,6 +54,8 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys, os, time
+from multiprocessing import Pool
+from functools import partial
 
 try:
 	from sonar.annotate import *
@@ -177,56 +179,25 @@ def main():
 	else:
 
 		#run locally
-		currentFile = 1
-		allThreads = []
-		while currentFile <= f_ind:
-			if threading.activeCount() <= numThreads:
-				blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
-						     library, "%s/%s_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), J_BLAST_WORD_SIZE)
-				print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, library)
-				blast.start()
-				allThreads.append(blast)
-				currentFile += 1
-			else:
-				#queue is full and these aren't fast jobs, so take a break
-				time.sleep(60)
-		for t in allThreads:
-			t.join()
+                partial_blast = partial( blastProcess, filebase="%s/%s_%%03d.fasta"%(prj_tree.jgene, prj_name), db=library, outbase="%s/%s_%%03d.txt"%(prj_tree.jgene, prj_name), wordSize=J_BLAST_WORD_SIZE, hits=3)
+                blast_pool = Pool(numThreads)
+                blast_pool.map(partial_blast, range(1,f_ind+1))
+                blast_pool.close()
+                blast_pool.join()
 
 		if os.path.isfile(const_lib):
-			currentFile = 1
-			allThreads = []
-			while currentFile <= f_ind:
-				if threading.activeCount() <= numThreads:
-					blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
-							     const_lib, "%s/%s_C_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), 
-							     J_BLAST_WORD_SIZE, constant=True)
-					print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, const_lib)
-					blast.start()
-					allThreads.append(blast)
-					currentFile += 1
-				else:
-					#queue is full so take a break
-					time.sleep(60)
-			for t in allThreads:
-				t.join()
+			partial_blast = partial( blastProcess, filebase="%s/%s_%%03d.fasta"%(prj_tree.jgene, prj_name), db=const_lib, outbase="%s/%s_C_%%03d.txt"%(prj_tree.jgene, prj_name), wordSize=J_BLAST_WORD_SIZE, hits=3, constant=True)
+			blast_pool = Pool(numThreads)
+			blast_pool.map(partial_blast, range(1,f_ind+1))
+			blast_pool.close()
+			blast_pool.join()
 
 		if os.path.isfile(dlib):
-			currentFile = 1
-			allThreads = []
-			while currentFile <= f_ind:
-				if threading.activeCount() <= numThreads:
-					blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (prj_tree.jgene, prj_name, currentFile),
-							     dlib, "%s/%s_D_%03d.txt" % (prj_tree.jgene, prj_name, currentFile), J_BLAST_WORD_SIZE)
-					print "Starting blast of %s/%s_%03d.fasta against %s..." % (prj_tree.jgene, prj_name, currentFile, dlib)
-					blast.start()
-					allThreads.append(blast)
-					currentFile += 1
-				else:
-					#queue is full so take a break
-					time.sleep(60)
-			for t in allThreads:
-				t.join()
+			partial_blast = partial( blastProcess, filebase="%s/%s_%%03d.fasta"%(prj_tree.jgene, prj_name), db=dlib, outbase="%s/%s_D_%%03d.txt"%(prj_tree.jgene, prj_name), wordSize=J_BLAST_WORD_SIZE)
+			blast_pool = Pool(numThreads)
+			blast_pool.map(partial_blast, range(1,f_ind+1))
+			blast_pool.close()
+			blast_pool.join()
 
 		if callF:
 			os.system( "%s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER )

@@ -41,7 +41,7 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
                    -cluster is specified. Default = 1.
     npf         Number of sequences in each split file. Resource requests for 
                    the cluster are calibrated to groups of 50K sequences, and 
-		   cannot be changed. For local usage, Default = 50,000.
+		   cannot be changed. For local usage, Default = 10,000.
     cluster     Flag to indicate that blast jobs should be submitted to the
                    SGE cluster. Throws an error if presence of a cluster was
 		   not indicated during setup. Default = run locally.
@@ -63,6 +63,8 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 import sys
 import os
 import time
+from multiprocessing import Pool
+from functools import partial
 
 try:
 	from sonar.annotate import *
@@ -164,21 +166,12 @@ def main():
 	else:
 
 		#run locally
-		currentFile = 1
-		allThreads = []
-		while currentFile <= f_ind:
-			if threading.activeCount() <= numThreads:
-				blast = blastThread( currentFile, "%s/%s_%03d.fasta" % (folder_tree.vgene, prj_name, currentFile),
-						     library, "%s/%s_%03d.txt" % (folder_tree.vgene, prj_name, currentFile), V_BLAST_WORD_SIZE)
-				print "Starting blast of %s/%s_%03d.fasta against %s..." % (folder_tree.vgene, prj_name, currentFile, library)
-				blast.start()
-				allThreads.append(blast)
-				currentFile += 1
-			else:
-				#queue is full and these aren't fast jobs, so take a break
-				time.sleep(60)
-		for t in allThreads:
-			t.join()
+		partial_blast = partial( blastProcess, filebase="%s/%s_%%03d.fasta"%(folder_tree.vgene, prj_name), db=library, outbase="%s/%s_%%03d.txt"%(folder_tree.vgene, prj_name), wordSize= V_BLAST_WORD_SIZE)
+		blast_pool = Pool(numThreads)
+		blast_pool.map(partial_blast, range(1,f_ind+1))
+		blast_pool.close()
+		blast_pool.join()
+
 		if callJ:
 			os.system( "%s/annotate/1.2-blast_J.py %s" % (SCRIPT_FOLDER, jArgs) )
 
@@ -216,7 +209,7 @@ if __name__ == '__main__':
 
 	# get parameters from input
 	dict_args = processParas(sys.argv, minl="min_len", maxl="max_len", locus="locus", qual="use_qual", lib="library", threads = "numThreads", jArgs="jArgs", npf="npf", fasta="fastaFiles")
-	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="", npf=50000, fastaFiles=[])
+	defaultParams = dict(min_len=300, max_len=600, use_qual=0, locus='H', library="", numThreads=1, jArgs="", npf=10000, fastaFiles=[])
 	min_len, max_len, locus, use_qual, library, numThreads, jArgs, npf, fastaFiles = getParasWithDefaults(dict_args, defaultParams, "min_len", "max_len", "locus", "use_qual", "library", "numThreads", "jArgs", "npf", "fastaFiles")
 
 	if not jArgs == "":

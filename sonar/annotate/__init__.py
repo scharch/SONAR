@@ -1,30 +1,26 @@
 
 from .. import *
-import threading
 from Bio.Blast.Applications import NcbiblastnCommandline
 
 
 
-class blastThread (threading.Thread):
-	def __init__(self, threadID, fasta, db, output, wordSize, constant=False):
-		threading.Thread.__init__(self)
-		self.threadID = threadID
-		self.fasta    = fasta
-		self.db       = db
-		self.output   = output
-		self.wordSize = wordSize
-		self.constant = constant
-	def run(self):
-		if self.constant:
-			cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
-					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
-					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=10, word_size=self.wordSize, perc_identity=100)
-		else:
-			cline = NcbiblastnCommandline(blast_cmd, query=self.fasta, db=self.db, out=self.output,
-					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
-					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=10, word_size=self.wordSize)
+def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=False):
 
-		cline()
+	fasta  = filebase % threadID
+	output = outbase  % threadID
+
+	print "Starting blast of %s against %s..." % (fasta, db)
+
+	if constant:
+		cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output
+					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize, perc_identity=100)
+	else:
+		cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output
+					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
+
+	cline()
 
 
 

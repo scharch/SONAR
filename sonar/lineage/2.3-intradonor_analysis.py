@@ -84,7 +84,9 @@ Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
 
 """
 
-import time, sys, threading
+import time, sys
+from multiprocessing import Pool
+from functools import partial
 from cStringIO import StringIO
 from sonar.lineage import *
 from Bio import Phylo
@@ -99,19 +101,19 @@ except ImportError:
 
 
 
-class muscleThread (threading.Thread):
-	def __init__(self, threadID, fasta, output, treeFile):
-		threading.Thread.__init__(self)
-		self.threadID = threadID
-		self.fasta    = fasta
-		self.output   = output
-		self.tree     = treeFile	
-	def run(self):
-		run_muscle = MuscleCommandline( input=self.fasta, out=self.output )
-		run_muscle.tree1      = self.tree
-		run_muscle.cluster1   = "neighborjoining"
-		run_muscle.maxiters   = 1
-		thisVarHidesTheOutput = run_muscle()
+def muscleProcess (threadID, filebase, outbase, treebase):
+
+	fasta    = filebase % threadID
+	output   = outbase  % threadID
+	treeFile = treebase % threadID
+
+	print "Building NJ tree from %s" % fasta
+
+	run_muscle = MuscleCommandline( input=fasta, out=output )
+	run_muscle.tree1      = treeFile
+	run_muscle.cluster1   = "neighborjoining"
+	run_muscle.maxiters   = 1
+	thisVarHidesTheOutput = run_muscle()
 
 
 
@@ -302,23 +304,13 @@ def main():
 
 			else:
 				#run locally
-				currentFile = 1
-				allThreads = []
-				while currentFile <= f_ind:
-					if threading.activeCount() <= numThreads:
-						muscle = muscleThread( currentFile, "%s/NJ%05d.fa" % (prj_tree.lineage, currentFile),
-								       "%s/NJ%05d.aln" % (prj_tree.lineage, currentFile),
-								       "%s/NJ%05d.tree" % (prj_tree.lineage, currentFile) )
-						print "Building NJ tree from %s/NJ%05d.fa" % (prj_tree.lineage, currentFile)
-						muscle.start()
-						allThreads.append(muscle)
-						currentFile += 1
-					else:
-						#queue is full, so take a break
-						time.sleep(60)
-				for t in allThreads:
-					t.join()
-
+				partial_muscle = partial( muscleProcess, filebase="%s/NJ%%05d.fa"%prj_tree.lineage, 
+							  outbase="%s/NJ%%05d.aln"%prj_tree.lineage, treebase="%s/NJ%%05d.tree"%prj_tree.lineage )
+				muscle_pool = Pool(numThreads)
+				muscle_pool.map(partial_blast, range(1,f_ind+1))
+				muscle_pool.close()
+				muscle_pool.join()
+				
 
 		
 		# If we have converged, write final output
