@@ -36,7 +36,7 @@ JHKL_DB	= "%s/germDB/IgHKLJ.fa" %SCRIPT_FOLDER
 
 DH_DB   = "%s/germDB/IgHD.fa"  %SCRIPT_FOLDER
 
-CH_DB	= "%s/germDB/IgHC_CH1_reduced.fa" %SCRIPT_FOLDER
+CH_DB	= "%s/germDB/IgHC_CH1.fa" %SCRIPT_FOLDER
 
 dict_vgerm_db = {
 	'H'   : VH_DB,
