@@ -16,9 +16,12 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-trimr number of nucleotides trimed off before assmebly for reverse mate, default:1
 	-o output folder
 
+Example:
+1.0-MiSeq_assembly.pl -usearch usearch -f forward_read.fastq.gz -r reverse_read.fastq.gz -o ./
+
 Created by Zizhang Sheng 2015-12-02.
 
-Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 	";}
@@ -42,8 +45,8 @@ my $score="\!\"\#\$\%\&\047\(\)\*\+\,\-\.\/0123456789\:\;\<\=\>\?\@ABCDEFGHI";#M
 	  	$score{chop $score}=$i;
 	  	$i--;
 	  }
-##################
-open HH,">statistics.txt";
+##########processing reads##############
+open SAT,">statistics.txt";
 
 #uncompress files
 if($para{'-f'}=~/.gz$/){
@@ -68,7 +71,7 @@ print "Analyzing sequencing quality\n";
 
 my $lines=`wc -l forward.fastq`;
 my @lines=split/[ \t]+/,$lines;
-print HH "Total Raw: ",int($lines[1]/4),"\n";
+print SAT "Total Raw: ",int($lines[1]/4),"\n";
 #&trim();
 #trimming low quality segments
 print "Trimming low quality segments\n";
@@ -79,7 +82,7 @@ system("mv revers1.fastq revers.fastq");
 &find_match_pair('forward.fastq','revers.fastq');
 my $lines=`wc -l forward.fastq`;
 my @lines=split/[ \t]+/,$lines;
-print HH "Total pre-merging quality control: ",int($lines[1]/4),"\n";
+print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
 
 #Pairing with usearch
 print "Pairing\n";
@@ -87,14 +90,15 @@ print "Pairing\n";
  	system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout $para{'-o'}_good.fna -fastq_maxee $para{'-maxee'} -eeout ");	
   $lines=`wc -l merged.fastq`;
   @lines=split/[ \t]+/,$lines;
-	print HH "Total merged: ",$lines[1]/4,"\n";
+	print SAT "Total merged: ",$lines[1]/4,"\n";
   $lines=`grep -c '>' $para{'-o'}_good.fna`;
   
-	print HH "Total good: ",$lines,"\n";
+	print SAT "Total good: ",$lines,"\n";
 	if(!-e $para{'-o'}){system("mkdir $para{'-o'}");}
 	system("mkdir ./$para{'-o'}/preprocessed");
 	system("mv statistics.txt forward_quality.txt revers_quality.txt $para{'-o'}_good.fna forward_quality.png revers_quality.png ./$para{'-o'}/preprocessed");
   system("mv merged.fastq ./$para{'-o'}/preprocessed");
+  close SAT;
 unlink <*fastq>;
 ##################
 sub rm_polymer{

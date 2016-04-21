@@ -11,11 +11,11 @@ Usage:
 This script performs two steps of clustering to remove sequences potentially containing sequencing errors. The first step finds duplicates, remove reads with coverage lower then cutoff which may contain sequencing errors, calculate read coverage for each cluster. The second step further cluster the filtered sequences using lower sequence identity cutoff. At the meantime, the second clustering will use reads with high coverage as centroids by assuming biological reads are coming from cDNA with many identical copies while reads containing sequencing errors has very low coverage. please install usearch v7 or higher verion. 
 
 options:
- \t-id\t percent sequence identity used for the second step of clustering, default:0.99
- \t-min1\tminimun sequencing coverage of a read to be kept in the first step of clustering, default:0
- \t-min2\tminimun sequencing coverage of a read to be kept in the seconde step of clustering, default:3
- \t-f\tsequence file in fasta format
- \t-t\tnumber of threads to run the script. Default:1
+	-id	 percent sequence identity used for the second step of clustering, default:0.99
+	-min1	minimun sequencing coverage of a read to be kept in the first step of clustering, default:0
+	-min2	minimun sequencing coverage of a read to be kept in the seconde step of clustering, default:3
+	-f	sequence file in fasta format
+	-t	number of threads to run the script. Default:1
 Example:
 1.4-dereplicate_sequences.pl -pu usearch -min1 2 -min2 3 -f ./test.fa -t 5
 
@@ -23,6 +23,7 @@ Created by Zizhang Sheng.
 
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
  ";
+ 
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "Number of parameters are not right\n$usage";
  }
@@ -84,20 +85,20 @@ sub usearch{#do the two steps of clustering
 #####################
 sub write_raw{
 	 my ($good,$output)=@_;
-	 open YY,">$output";
+	 open OT,">$output";
 	 foreach(sort keys %{$good}){
 	 	my $id=$_;
 	 	foreach(@{$good->{$id}}){
 	 	  print YY "$_\n";
 	  }
 	}
-	close YY;
+	close OT;
 }
 
 ######################
 sub changename{#change sequence names back to the input sequence name
     my ($input,$seive)=@_;
-    open HH,"$seive" or die "usearch file $seive not found\n";
+    open SEI,"$seive" or die "usearch file $seive not found\n";
     my %state=();
     my $unique_column=0;
     my @stat_file=<./output/tables/*all_seq_stats.txt>;
@@ -105,7 +106,7 @@ sub changename{#change sequence names back to the input sequence name
     my $id='';
     my $mark=0;
     my %size=0;
-    while(<HH>){
+    while(<SEI>){
 	if($_=~/>([^\t \;]+)/){
 	    chomp;
 	    $id=$1;
@@ -116,7 +117,7 @@ sub changename{#change sequence names back to the input sequence name
 	    }
 	}
     }
-    close HH;
+    close SEI;
     
     if(-e "$stat_file[0]"){#write statistic info to ./output/table/project_all_seq_stats.txt
 	&rm_r($stat_file[0]);
@@ -136,10 +137,9 @@ sub changename{#change sequence names back to the input sequence name
 		}
 	    }
 	}
-
 	open STo,">stats.txt";
 	print STo "$title";
-	
+
 	while(<STi>){
 	    if($_=~/^ID\t/||$_!~/[\d\w]/){next;}
 	    chomp;

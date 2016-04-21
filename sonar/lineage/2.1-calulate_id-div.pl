@@ -195,7 +195,7 @@ sub rm_r{#remove \r at line end
     close YY;
   system("mv rmtem.txt $file");	
 }
-###################
+###################################
 sub calculation{#main subrutine in each thread to do calculation
     my ($seq,$germ,$germV,$anti)=@_;
     my $identity='';
@@ -215,7 +215,7 @@ sub calculation{#main subrutine in each thread to do calculation
     #chomp($identity);
     return $identity,$coverage;
 }
-###################
+#################################
 sub paired_identity{#calculate sequence identity
     my($id,$seq,$germ,$anti)=@_;
     my @identity=();
@@ -246,7 +246,7 @@ sub paired_identity{#calculate sequence identity
     my $coverage=join "\t",@coverage;
     return $identity,$coverage;
 }
-###################
+#################################
 sub readfasta{# read in sequences and germline assign info from fasta file
     my $file=shift;
     my %seq=();
@@ -269,7 +269,7 @@ sub readfasta{# read in sequences and germline assign info from fasta file
     return \%seq,\%seqgerm;
 }
 
-###################
+#####################################
 sub aln{#pairwise sequence alignment using input program
     my @seq=@_;
     if($para{'-ap'} =~/muscle/i){

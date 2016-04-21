@@ -5,7 +5,7 @@ use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
 
 ################################################
-#This is a mater script that allow user to generate xml configuration files and perform MCMC simulation to estimate evolutionary rate. User has to install beast package first. The script accepts fasta format sequence file as input. Be aware that only temporal data with at least from two time points, are allowed to calculate evolutionary rate. All sequences in the dataset must be non-redundant. Please remove duplicate sequences before running the script. If there are duplicate sequences in the dataset, it's better keep the one with earlier time point. Currently, only GTR substitution model was incorporated but our tests showed the rate calculation is robust to substitution models. it's users' responsibility to check if the MCMC simulation converged using Tracer in Beast2 Package.
+#This is a mater script that allow user to generate xml configuration files and perform MCMC simulation to estimate evolutionary rate. The user has to install beast package first. The script accepts fasta format sequence file as input. Be aware that only temporal data from at least two time points, are allowed to calculate evolutionary rate. All sequences in the dataset must be non-redundant. Please remove duplicate sequences using 1.4-dereplicate_sequences.pl before running this script. If there are duplicate sequences in the dataset, it's better keep the one with earlier time point. Currently, only GTR substitution model was incorporated but our tests showed the rate calculation is robust to substitution models. It's the users' responsibility to check if the MCMC simulation converged using Tracer in Beast2 Package.
 ################################################
 
 my $usage="Usage:
@@ -82,12 +82,16 @@ if(!$para{'-CDR'}&&!$para{'-FW'}&&$para{'-CDRb'}){#find CDR seqences
 if($para{'-codon_pos'}){($rate_partitions{'pos12'},$rate_partitions{'pos3'})=&extract_codon_pos();}#find sequences for codon positions
 
 &write_xml();
-system("$para{'-beast'} $para{'-o'}.xml");
-&parsing_results("$para{'-o'}.log");
-if(-d "./output/rate/"){
-  system("mv $para{'-o'}.xml $para{'-o'}.xml.state $para{'-o'}.log $para{'-o'}.trees ./output/rate/");	
+if(-e "$para{'-beast'}"){
+   system("$para{'-beast'} $para{'-o'}.xml");
+   &parsing_results("$para{'-o'}.log");
+   if(-d "./output/rate/"){
+      system("mv $para{'-o'}.xml $para{'-o'}.xml.state $para{'-o'}.log $para{'-o'}.trees ./output/rate/");	
+    }
 }
-
+else{
+   print "No beast program found.\n";	
+}
 print $result;
 ############################
 sub extract_codon_pos{
