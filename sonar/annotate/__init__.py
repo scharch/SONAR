@@ -12,11 +12,11 @@ def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=Fa
 	print "Starting blast of %s against %s..." % (fasta, db)
 
 	if constant:
-		cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output
+		cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output,
 					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
 					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize, perc_identity=100)
 	else:
-		cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output
+		cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output,
 					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
 					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
 
