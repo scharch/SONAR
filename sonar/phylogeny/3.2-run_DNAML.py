@@ -3,35 +3,44 @@
 """
 3.2-runDNAML.py
 
-This script uses an iterative phylogenetic analysis to find sequences related
-      to a set of known antibodies. Preprocessed sequences (including optional
+This script calls DNAML to generate a maximum likelihood tree for a set
+      of sequences, outgroup-rooted on the germline V gene sequence. For
+      optimal results, sequences should be aligned manually (use the DNAML/
+      PHYLIP format) and specified with the -i parameter. However, the
+      script can also use MUSCLE to create an automated alignment to be
+      passed directly to DNAML. For automatic alignments, please use the
+      -v parameter to specify the assigned V gene, which will be added to
+      the alignment and used for rooting the tree.
 
-Usage: 3.2-runDNAML.py -n native.fa -v germline_V
-		       -i custom/input.phy
-                       [-locus <H|K|L> -lib path/to/library.fa -f -h]
 
+Usage: 3.2-runDNAML.py ( -i custom/input.phy | -v germline_V )
+                       [ -locus <H|K|L> -lib path/to/library.fa -n native.fa ]
+		       [ -f -h ]
 
     Invoke with -h or --help to print this documentation.
 
     Required parameters:
-    n		Fasta file containing the known sequences.
-    v		Assigned germline V gene of known antibodes, for use in 
-                   rooting the trees.
+    i		Manual alignment (in PHYLIP format) of the sequences to be 
+                   analayzed, with known antibody seqeunces and germline 
+		   (or other outgroup) sequence included. This is the 
+		   preferred option for running this program and should be
+		   used especially for inferring ancestral sequences.
+                   If -n and -v (see below) are supplied instead, sequences
+                   will be taken from output/sequences/ROOT-collected.fa and
+                   aligned automagically with MUSCLE.
 
         * OR *
 
-    i		Custom set of sequences to be analayzed, with natives and
-                   germline sequence included, all ALIGNED and IN PHYLIP 
-                   FORMAT. If -n and -v are supplied instead, sequences are
-                   taken from output/sequences/ROOT-collected.fa and aligned 
-                   automagically with MUSCLE. Manual alignment should be used
-                   if ancestral sequences will be inferred.
+    v		Assigned germline V gene of known antibodes, for use in 
+                   rooting the trees.
 
-    Optional parameters:	   
+    Optional parameters (only relevant when using the -v option):
     locus	H (default): use V heavy / K: use V kappa / L: use V lambda
                    Ignored if the -lib option is used to supply a custom
                    library
     lib		Optional custom germline library (eg Rhesus or Mouse).
+    n		Fasta file containing the known sequences.
+
 
     Optional flags:
     f		Force a restart of the analysis, even if there are files from
@@ -150,11 +159,6 @@ def main():
     with open("%s/%s.dnaml.out"%(prj_tree.logs,prj_name), "w") as outstuff:
         outstuff.write(fixedstuff)
         
-    #clean up
-    os.remove("infile")
-    os.remove("outfile")
-    os.remove("outtree")
-
 
 
 if __name__ == '__main__':
@@ -196,7 +200,11 @@ if __name__ == '__main__':
                 sys.exit(0)
             else:
                 #load native sequences
-                natives = load_fastas(natFile)
+		natives = dict()
+		if natFile is not None:
+			natives = load_fastas(natFile)
+		else: 
+			print "No native sequences specified; tree will only include NGS sequences."
 
                 #load germline sequence
                 if not os.path.isfile(library):
