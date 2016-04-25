@@ -53,7 +53,7 @@ def main():
 	try:
 		pos = natives.index(native)
 	except:
-		sys.exit("Can't find desired mAb in %s (options are %s)." % (divFile ", ".join(natives)))
+		sys.exit("Can't find desired mAb in %s (options are %s)." % (divFile, ", ".join(natives)))
 
 	# a dictionary for keeping track of those that survive the filter
 	island = []
