@@ -122,11 +122,14 @@ fi #with cluster specific questions
 
 
 #add SONAR to path?
-read -e -p "Would you like to permanently add SONAR to the path (by adding a line to .bashrc --doesn't work on MAC unless you also manually add 'source ~/.bashrc' to the .bash_profile file) [y/n]?" path
+read -e -p "Would you like to permanently add SONAR to the path (by adding a line to .bash_profile and .bashrc) [y/n]?" path
 if [ "$path" == "Y" ] || [ "$path" == "y" ]; then
+    echo "export PATH=$pipeDir/annotate:$pipeDir/lineage:$pipeDir/phylogeny:$pipeDir/plotting:$pipeDir/utilities:\$PATH" >> ~/.bash_profile
     echo "export PATH=$pipeDir/annotate:$pipeDir/lineage:$pipeDir/phylogeny:$pipeDir/plotting:$pipeDir/utilities:\$PATH" >> ~/.bashrc
+    echo "export PERL5LIB=$pipeDir:\$PERL5LIB" >> ~/.bash_profile
     echo "export PERL5LIB=$pipeDir:\$PERL5LIB" >> ~/.bashrc
     pypath=$(cd $pipeDir; cd ..; pwd)
+    echo "export PYTHONPATH=$pypath:\$PYTHONPATH" >> ~/.bash_profile
     echo "export PYTHONPATH=$pypath:\$PYTHONPATH" >> ~/.bashrc
 fi
 
