@@ -42,7 +42,6 @@ Created by Zizhang Sheng.
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
  ";
 my %scripts=(
-							'assign_VDJ','1',
 							'MiSeq_assembly','1.0-MiSeq_assembly.pl',
 							'blast_V','1.1-blast_V.py',
 							'blast_J','1.2-blast_J.py',
@@ -75,15 +74,16 @@ if($command=~/\-{1,2}(h|help)$/){die "$usage";}
 foreach(@ARGV){if($_=~/\-{1,2}(h|help)$/){&help($command);die "\n";}}
 if(!$scripts{$command}){die "No $command found. Check spelling\n";}
 
-
+&tasks($scripts{$command});
 #####################################
 sub help{
     my ($script)=@_;print "$scripts{$script}\n";
-    system("python ./utilities/$scripts{$script} -h"); 
+    system("$scripts{$script} -h"); 
   }
   
 sub tasks{
 	  my ($script)=@_;
+	  system("$script @ARGV");
 }
 
 
