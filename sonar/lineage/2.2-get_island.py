@@ -103,8 +103,8 @@ if __name__ == '__main__':
 	prj_name 	= fullpath2last_folder(prj_tree.home)
 	
 	dict_args = processParas(sys.argv, n="native",imin="min_iden",imax="max_iden",dmin="min_div",dmax="max_div", seq="inFile", div="divFile")
-	defaults = dict( native="",min_iden=85,max_iden=100,min_div=0,max_div=40,inFile="%s/%s_goodVJ.fa"%(prj_tree.nt, prj_name),divFile="%s/%s_unique_id-div.tab" % (prj_tree.tables, prj_name) )
-	native,min_iden,max_iden,min_div,max_div,inFile,divFile = getParasWithDefaults(dict_args, defaults, "native","min_iden","max_iden","min_div","max_div","inFile", divFile)
+	defaults = dict( native="",min_iden=85,max_iden=100,min_div=0,max_div=40,inFile="%s/%s_goodVJ.fa"%(prj_tree.nt, prj_name),divFile="%s/%s_goodVJ_unique_id-div.tab" % (prj_tree.tables, prj_name) )
+	native,min_iden,max_iden,min_div,max_div,inFile,divFile = getParasWithDefaults(dict_args, defaults, "native","min_iden","max_iden","min_div","max_div","inFile", "divFile")
 	
 	if native == "":
 		print "Please specify native mAb to use as identity referent.\n\n"

@@ -269,7 +269,8 @@ if ( ! is.null(refPointsData) ) {
 for ( time in seq_along(dataFileList) ) {
 
     	#main plot
-	bigdata   <- read.table( dataFileList[time], h=T )
+        #specify the "ID" column as "character" so that we don't have to worry about mismatches between strings and ints
+	bigdata   <- read.table( dataFileList[time], h=T, colClasses=c("ID"="character") )
 	smalldata <- bigdata
         if ( ! is.null(subsetFileList) ) {
             subset    <- scan(subsetFileList[time], what='character', quiet=T)
