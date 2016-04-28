@@ -11,15 +11,13 @@
 #     - show/hide color guide
 #
 # GENERAL FEATURES STILL NEEDED:
-#     - implement showNames
-#     - correct default handling of axis labels
-#     - row and column titles
 #     - what should default guide behavior be?
+#     - change default sizing based on guides and presence/absence of labels/titles
 #
 ########################
 
 
-"Usage: 4.3-plot_identity_divergence.R <idDivFile>... [ --plot <ids.list>... ] [ --sieve1 <ids.list>... --sieve2 <ids.list> ] [ --mab <abID>... ] [ --xaxis <label> --outdir </path> --output <output.pdf> --labels <dates.list> --reference <idDivFile> --showNames <0|1|2> --transpose]
+"Usage: 4.3-plot_identity_divergence.R <idDivFile>... [ --plot <ids.list>... ] [ --sieve1 <ids.list>... --sieve2 <ids.list>... ] [ --mab <abID>... ] [ --xaxis <vgene> --outdir </path> --output <output.pdf> --title <title> --labels <timecode>... --reference <idDivFile> --showNames <0|1|2> --transpose]
 
 Options:
   -h --help		   Show this documentation.
@@ -37,12 +35,14 @@ Options:
   --mab <abID>		   Identity referent to use on y-axis. Default is the first mAb
   			       in the first id-div.tab file. If multiple referents are
 			       specified, each will be shown in its own row of plots.
-  --xaxis <label>	   X-axis label is '% divergence from <label>'.
+  --xaxis <vgene>	   X-axis label is '% divergence from <label>'.
   	  		       [default: germline V]
   --outdir </path>	   Directory for saving output. [default: output/plots]
   --output <output.pdf>	   File name of output. [default: id-div.pdf]
-  --labels <dates.list>    List of labels for the longitudinal time points, one label
-  	   		       per line. Must match number and order of data files.
+  --title <title>          Title to display at the top of page. (MUST escape any spaces
+                               eg \"'Like this'\" or \"This\ is\ my\ title\"!!)
+  --labels <timecode>      Labels for the longitudinal time points. Must match number and
+  	   		       order of data files.
   --reference <idDivFile>  Data points to display on ALL plots, eg other members of the
   	      		       antibody lineage of interest.
   --showNames <0|1|2>	   Show text labels for native antibodies supplied with --reference.
@@ -67,10 +67,10 @@ Copyright (c) 2013-2016 Columbia University and Vaccine Research Center, Nationa
 # PLOTTING FUNCTION
 ####################################
 
-plot_all <- function (data, native,  heavy, plot_title=NULL, color=TRUE, guide=TRUE, xlabel=TRUE, ylabel=TRUE, contour=TRUE, conCol = 'black') {
+plot_all <- function (data, native, pretty, heavy, plot_title=NULL, color=TRUE, guide=TRUE, xlabel=TRUE, ylabel=TRUE, contour=TRUE, conCol = 'black') {
 
 	my_x<-paste("% divergence from", heavy)
-	my_y<-paste("% ID to", native)
+	my_y<-paste("% ID to", pretty)
 
 	if (color) {
 	   my_colors=rev(rainbow(15,end=4/6))
@@ -103,12 +103,77 @@ plot_all <- function (data, native,  heavy, plot_title=NULL, color=TRUE, guide=T
 
 	if ( contour ) 		     { p <- p + stat_contour(colour=conCol, size=.25, breaks=10*r) }
 	if ( ! is.null(plot_title) ) { p <- p + labs( title=plot_title ) }
-	if ( xlabel ) 		     { p <- p + labs( x=my_x ) }
-	if ( ylabel ) 		     { p <- p + labs( y=my_y ) }
+	if ( xlabel ) 		     { p <- p + labs( x=my_x ) } else { p <- p + labs( x="" ) }
+	if ( ylabel ) 		     { p <- p + labs( y=my_y ) } else { p <- p + labs( y="" ) }
 
 	p
 }
 
+
+
+####################################
+# LAYOUT FUNCTION
+####################################
+
+layoutGrid <- function( title, label, columns, rows, transpose ) {
+
+    #do the easy case first
+    if (!title && !label) {
+        if (transpose) { layout <- matrix(seq(columns*rows), columns, byrow=T) }
+        else { layout <- matrix(seq(columns*rows), rows) }
+
+    } else {
+        #some housekeeping to figure out relative sizes
+        hExp <- 1
+        vExp <- 1
+        if (title) { vExp <- 3 }
+        if (label) {
+            if (transpose) {
+                hExp <- 3
+            } else {
+                vExp <- 3
+            }
+        }
+
+        #figure out offset for counting graphs
+        #  since titles are placed in myplots list first
+        offset <- title + label #booleans eval'ed to 0 or 1
+        layout <- NULL
+        for (x in seq(0,columns-1)) {
+            current <- NULL
+            for (y in seq(rows)) {
+
+                #get the position of this plot in the multiplot list
+                num <- x*rows + y + offset
+
+                if (transpose) {
+                    current <- cbind( current, matrix(rep(num,hExp*vExp), vExp) )
+                } else {
+                    current <- rbind( current, matrix(rep(num,hExp*vExp), vExp) )
+                }
+
+            }
+            
+            if (transpose) { layout <- rbind(layout, current) }
+            else           { layout <- cbind(layout, current) }
+        }
+
+    }
+
+    #add time labels
+    if (label) {
+        plotNum <- 1 + title
+        if (transpose) { layout <- cbind( matrix( rep(plotNum, columns*vExp) ), layout ) }
+        else           { layout <- rbind( matrix( rep(plotNum, columns*hExp), nrow=1 ), layout ) }
+    }
+
+    if (title) {
+        if (transpose) { layout <- rbind( matrix( rep(1, rows*hExp+label), nrow=1 ), layout ) }
+        else           { layout <- rbind( matrix( rep(1, columns*hExp), nrow=1 ), layout ) }
+    }
+
+    layout
+}
 
 
 
@@ -170,53 +235,114 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 #         MAIN PROGRAM
 ##########################################################################################
 
-lds <- function(dataFileList, subsetFileList, firstSieveList, secondSieveList, natAbList, xLabel, outDir, outFile, timepointList, refPointsData, showNames, transpose) {
+lds <- function(dataFileList, subsetFileList, firstSieveList, secondSieveList, natAbList, xLabel, outDir, outFile, pageTitle, timepointList, refPointsData, showNames, transpose) {
 
 #initiate
 myplots=list()
+
+#page title
+if ( ! is.null(pageTitle) ) {
+    p <- ggplot(data.frame(x=1,y=1,text=pageTitle)) + geom_text(aes(x,y,label=text),size=15)+theme_void()
+    myplots[[length(myplots)+1]] <- p
+}
+
+#timepoint labels
+if ( ! is.null(timepointList) ) {
+
+   #generate a data frame to plot these from
+   x<-seq(0.5, length(timepointList)-.5)
+   y<-rep(1, length(timepointList))
+   d<-data.frame(x=x,y=y,label=timepointList)
+
+   p<-ggplot(d)+geom_text(aes(x,y,label=label),size=6)+theme_void()+scale_x_continuous(lim=c(0,length(timepointList)),expand=c(0,0))
+   if (transpose) { p<-ggplot(d)+geom_text(aes(x=y,y=x,label=label),size=6,angle=90)+theme_void()+scale_y_continuous(lim=c(0,length(timepointList)),expand=c(0,0)) }
+
+   myplots[[length(myplots)+1]] <- p
+}
+
 
 if ( ! is.null(refPointsData) ) {
    refData <- read.table( refPointsData, h=T )
 }
 
 #process each time point
-for ( time in seq(length(dataFileList)) ) {
+for ( time in seq_along(dataFileList) ) {
 
     	#main plot
 	bigdata   <- read.table( dataFileList[time], h=T )
 	smalldata <- bigdata
+        if ( ! is.null(subsetFileList) ) {
+            subset    <- scan(subsetFileList[time], what='character', quiet=T)
+            smalldata <- bigdata[which(bigdata$ID %in% subset),]
+        }
 
+
+        #get a default reference antibody if one was not provided
 	if ( is.null(natAbList) )  natAbList <- c( names(bigdata)[3] )
 
-	for (mab in natAbList) {
 
-	    if ( ! is.null(subsetFileList) ) {
-	       subset    <- scan(subsetFileList[time], what='character', quiet=T)
-	       smalldata <- bigdata[which(bigdata$ID %in% subset),]
+	#only show axis labels on edges
+	if (transpose) {
+	   if ( time == length(dataFileList) ) {
+	      showX = T
+	   } else {
+	      showX = F
+	   }
+	} else {
+	   if ( time == 1 ) {
+	      showY = T
+	   } else {
+	      showY = F
+	   }
+	}
+
+
+	for ( mab_num in seq_along(natAbList) ) {
+
+	    mab   <- natAbList[mab_num]
+            mab.R <- make.names(mab)
+
+            if (! mab.R %in% names(bigdata)) {
+                stop(paste0("Antibody ",mab," was not found in file ", dataFileList[time]))
+            }
+            
+            #only show axis labels on edges
+	    if (transpose) {
+	       if ( mab_num == 1 ) {
+	       	  showY = T
+	       } else {
+	       	  showY = F
+	       }   
+	    } else {
+	       if ( mab_num == length(natAbList) ) {
+	       	  showX = T
+	       } else {
+	       	  showX = F
+	       }
 	    }
 
 	    ####
 	    # ADD OPTIONS (plot color, contours, yes/no to axis labels, scale bar)
 	    ####
-	    p <- plot_all(smalldata, mab, xLabel)
+	    p <- plot_all(smalldata, mab.R, mab, xLabel, xlabel=showX, ylabel=showY)
 
 	    if ( ! is.null(firstSieveList) ) {
 	       subset <- scan(firstSieveList[time], what='character', quiet=T)
 	       s1data <- bigdata[which(bigdata$ID %in% subset),]
-	       p <- p + geom_point(data=s1data,aes_string(x="germ_div",y=mab,z=NA),colour='goldenrod', shape=16, size=.5)
+	       p <- p + geom_point(data=s1data,aes_string(x="germ_div",y=mab.R,z=NA),colour='goldenrod', shape=16, size=.5)
 	    }
 
 	    if ( ! is.null(secondSieveList) ) {
 	       subset <- scan(secondSieveList[time], what='character', quiet=T)
 	       s2data <- bigdata[which(bigdata$ID %in% subset),]
-	       p <- p + geom_point(data=s2data,aes_string(x="germ_div",y=mab,z=NA),colour='magenta', shape=16, size=.5)
+	       p <- p + geom_point(data=s2data,aes_string(x="germ_div",y=mab.R,z=NA),colour='magenta', shape=16, size=.5)
 	    }
 
 	    if ( ! is.null(refPointsData) ) {
-	       #####
-	       # NEED TO HANDLE SHOW_NAMES OPTION HERE
-	       #####
-	       p <- p + geom_point(data=refData,aes_string(x="germ_div",y=mab,z=NA),colour='black', shape=4, size=1)
+	       p <- p + geom_point(data=refData,aes_string(x="germ_div",y=mab.R,z=NA),colour='black', shape=4, size=1)
+	       if( showNames > 1 || (showNames == 1 &&  time == 1) ) {
+	       	   p <- p + geom_text(data=refData, aes_string(x="germ_div",y=mab.R,z=NA,label="ID"), size=2, colour='black', hjust=2, vjust=1)
+	       }
 	    }
 
 	    myplots[[length(myplots)+1]] <- p
@@ -226,20 +352,16 @@ for ( time in seq(length(dataFileList)) ) {
 } #next time point
 
 
-numCols <- length(dataFileList)
-numRows <- length(natAbList)
+#figure out how to arrange everything on the page
+myLayout <- layoutGrid( !is.null(pageTitle), !is.null(timepointList), length(dataFileList), length(natAbList), transpose )
 
-if ( transpose ) {
-   numCols <- length(natAbList)
-   numRows <- length(dataFileList)
-}
-
-height  <- 2*numRows
-width   <- 2.5*numCols
+#figure size (use the boolean transpose as 0 or 1 to get the correct dimensions)
+height  <- 2 * (transpose*length(dataFileList) + (!transpose)*length(natAbList))
+width   <- 2.5 * ((!transpose)*length(dataFileList) + transpose*length(natAbList))
 
 ggsave(
 	paste(outDir,outFile,sep="/"),
-	multiplot( plotlist=myplots, cols=numCols ),
+	multiplot( plotlist=myplots, layout=myLayout ),
 	dpi = 600,
 	height = height,
 	width = width
@@ -265,7 +387,7 @@ opts<-docopt(usage, strip=T, help=T)
 
 # check to make sure the files are there
 if (! all(file.exists(opts$idDivFile))) {
-  stop("Cannot find 1 or more input files...\n\n")
+    stop("Cannot find 1 or more input files...\n\n")
 }
 
 if (! is.null(opts$plot)) {
@@ -289,7 +411,11 @@ if (! is.null(opts$sieve2)) {
    }
 }
 
-if (! is.null(opts$reference) && ! file.exists(opts$reference)) { stop("Cannot find reference data file...\n\n") }
- 
+if (! is.null(opts$labels)) {
+   if ( length(opts$labels) != length(opts$idDivFile) ) { stop("Please make sure that the number of timepoint labels matches the number of input files and that they are in the same order\n\n") }
+}
 
-lds(opts$idDivFile, opts$plot, opts$sieve1, opts$sieve2, opts$mab, opts$xaxis, opts$outdir, opts$output, opts$labels, opts$reference, opts$showNames, opts$transpose)
+if (! is.null(opts$reference) && ! file.exists(opts$reference)) { stop("Cannot find reference data file...\n\n") }
+
+
+lds(opts$idDivFile, opts$plot, opts$sieve1, opts$sieve2, opts$mab, opts$xaxis, opts$outdir, opts$output, opts$title, opts$labels, opts$reference, opts$showNames, opts$transpose)
