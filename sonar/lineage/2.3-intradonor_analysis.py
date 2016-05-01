@@ -307,7 +307,7 @@ def main():
 				partial_muscle = partial( muscleProcess, filebase="%s/NJ%%05d.fa"%prj_tree.lineage, 
 							  outbase="%s/NJ%%05d.aln"%prj_tree.lineage, treebase="%s/NJ%%05d.tree"%prj_tree.lineage )
 				muscle_pool = Pool(numThreads)
-				muscle_pool.map(partial_blast, range(1,f_ind+1))
+				muscle_pool.map(partial_muscle, range(1,f_ind+1))
 				muscle_pool.close()
 				muscle_pool.join()
 				
