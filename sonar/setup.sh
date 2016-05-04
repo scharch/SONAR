@@ -42,7 +42,7 @@ while [ "$verified" != "Y" ] && [ "$verified" != "y" ]; do
     muscle="muscle"
     blast="blastn"
     dnaml="dnaml"
-    beast="/Applications/BEAST/bin/beast"
+    beast="beast"
     clusterExists="False"
 
 #Ask user for input
@@ -145,6 +145,7 @@ SCRIPT_FOLDER  = \"$pipeDir\"
 clustal	       = \"$clustal\"
 blast_cmd      = \"$blast\"
 usearch        = \"$usearch\"
+dnaml          = \"$dnaml\"
 
 clusterExists  = $clusterExists
 qsub           = \"$qsub\"
@@ -176,6 +177,7 @@ my %ppath=();
 \$ppath{'beast'}=\"$beast\";# absolute path to beast
 \$ppath{'sonar'}=\"$pipeDir\";# absolute path to SONAR
 \$ppath{'fastx'}=\"$fastxDir\";# absolute path to FASTX-Toolkit
+\$ppath{'dnaml'}=\"$dnaml\";# absolute path to DNAML
 sub ppath{
     my \$p=shift;	
 	if(\$ppath{\$p}){

@@ -8,7 +8,7 @@
        easy plotting with 4.2-generate_plots.R.
 
  Usage: 4.1-setup_plots.pl --statistic ntraw --subset orf
-                           [ --compare ../other_project1 (...) 
+                           [ --compare /path/to/other_project1 (...) 
                              --output output/plots/plot_of_ntraw_for_orf.png
                              --plotOpt "title=ProjectName" --plotOpt "h=3" (...)
                              --list readsToInclude.txt
@@ -49,8 +49,8 @@
                        type, eg nttrim to go with ntraw or div and blastdiv
                        (WARNING: no sanity checks, it'll put nttrim and div on the
                        same plot if you tell it to!); another subtype; or another 
-                       sequencing run (by path to project folder). Can be specified
-                       multiple times, but user discretion is key.
+                       sequencing run (by *ABSOLUTE* path to project folder). Can 
+                       be specified multiple times, but user discretion is key.
 
      --output    => File name for output plot. Filetype (png, pdf, etc) specified
                        automatically by extension. Default file name is 
@@ -150,7 +150,8 @@ print OUT join("\n",@lines)."\n";
 close OUT;
 
 #call 4.2 with appropriate options
-system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile " . join(" ",@plotOptions) );
+#add single quotes so spaces and parens are handled as expected
+system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile '" . join("' '",@plotOptions) ) . "'";
 
 
 sub chooseSubset {
