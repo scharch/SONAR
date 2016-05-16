@@ -8,13 +8,20 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-finalize_assignments.py [ -h ]
+Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" ]
 
-    This script takes no input options.
     Invoke with -h or --help to print this documentation.
+
+    Optional Parameters:
+
+    jmotif - Conserved nucleotide sequence indicating the start of FWR4 on
+                the J gene. Defaults to either TGGGG for heavy chains or
+		TT[C|T][G|A]G for light chains; set manually for species
+		which may have a different motif.
 
 Created by Chaim A Schramm on 2013-07-05
 Edited and commented for publication by Chaim A Schramm on 2015-02-25.
+Edited to add custom J motif option for other species by CAS 2016-05-16.
 
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -30,6 +37,7 @@ except ImportError:
 	sys.path.append(find_SONAR[0])
 	from sonar.annotate import *
 
+global jMotif
 
 def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_read,jgaps,read_sequence):
 	
@@ -78,9 +86,6 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		else:
 			cdr3_start = -1
 
-	jMotif = "TGGGG"
-	if "KV" in v_id or "LV" in v_id: #it's a light chain!
-		jMotif = "TT[C|T]GG"
 	jMatch = re.search(jMotif,jgene)
 
 	try:
@@ -375,6 +380,13 @@ if __name__ == '__main__':
 	locus = handle.readline().strip()
 	vlib  = handle.readline().strip()
 	jlib  = handle.readline().strip()
+
+	defaultParams = dict(jMotif = "TGGGG")
+	if "K" in locus or "L" in locus: #it's a light chain!
+		defaultParams['jMotif'] = "TT[C|T][G|A]G"
+
+	dict_args = processParas(sys.argv, jmotif="jmotif")
+	jMotif = getParasWithDefaults(dict_args, defaultParams, "jmotif")
 
 	dict_v    =  load_fastas(vlib)
 	dict_j    =  load_fastas(jlib)
