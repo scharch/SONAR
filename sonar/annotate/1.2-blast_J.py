@@ -155,7 +155,7 @@ def main():
 
 			check = "%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/dmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
-			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "2:00:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
 			os.system( "%s %s/dmonitor.sh"%(qsub,prj_tree.jgene) )
 

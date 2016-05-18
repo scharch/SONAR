@@ -159,7 +159,7 @@ def main():
 		if callJ:
 			check += " -after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, jArgs)
 			monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
-			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
+			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
 			monitor.close()
 			os.system( "%s %s/vmonitor.sh"%(qsub,folder_tree.vgene) )
 
