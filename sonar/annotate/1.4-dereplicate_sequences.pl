@@ -5,6 +5,7 @@ use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
 
+
 #########checking parameters#######
 my $usage="
 Usage:
@@ -69,7 +70,19 @@ sub usearch{#do the two steps of clustering
     $file_out=~s/\.fa.*//;	  	
     my %derep=();
 	  	my %final_good=();
-	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out\_unique.fa -sizeout -uc $file_out.cluster ");#first step on higher identity
+
+                #split files that are too big for 32-bit usearch (added by CAS 2016-05-18)
+                if (-s $file > 3_000_000_000) {
+		    system("$FindBin::Bin/../utilities/splitFastaForUSearch.py $file -o myDerepSplitter");
+		    for my $splitFile (glob "myDerepSplitter*fa") {
+			system("$para{'-pu'} -derep_fulllength $splitFile -threads $para{'-t'} -fastaout processed-$splitFile -sizeout ");
+			system("cat processed-$splitFile >> temp_derepped.fa");
+			system("rm $splitFile processed-$splitFile");
+		    }
+		    $file = "temp_derepped.fa";
+		} #done splitting, back to regular program
+
+	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out\_unique.fa -sizein -sizeout -uc $file_out.cluster ");#first step on higher identity
 	  	if(-z "$file_out\_unique.fa"){die "No duplicate sequence found in your input sample.\n";}
 	  	system("$para{'-pu'} -sortbysize $file_out\_unique.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
 	  	if(-z "$file_out.nonredundant.fa"){die "No duplicate sequence found in your input sample.\n";}
