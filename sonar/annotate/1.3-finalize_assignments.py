@@ -40,7 +40,7 @@ except ImportError:
 global jMotif
 
 def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_read,jgaps,read_sequence):
-	
+
 	'''
 	v_id = name of assigned V gene (eg IGHV1-2*02)
 	vgene = germline sequence of assigned V gene
@@ -381,9 +381,9 @@ if __name__ == '__main__':
 	vlib  = handle.readline().strip()
 	jlib  = handle.readline().strip()
 
-	defaultParams = dict(jMotif = "TGGGG")
+	defaultParams = dict(jmotif = "TGGGG")
 	if "K" in locus or "L" in locus: #it's a light chain!
-		defaultParams['jMotif'] = "TT[C|T][G|A]G"
+		defaultParams['jmotif'] = "TT[C|T][G|A]G"
 
 	dict_args = processParas(sys.argv, jmotif="jmotif")
 	jMotif = getParasWithDefaults(dict_args, defaultParams, "jmotif")
