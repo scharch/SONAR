@@ -12,7 +12,7 @@ Options:
 	  \tcontain a field saying it's germline V gene for somatic hypermutation calculation. Otherwise, no 
 	  \tsomatic hypermutation is calculated. fasta file output from pipeline is ok. For example, 
 	  \t'>00000089 V_gene=IGHV1-2*02'. Please seperate '00000089 and 'V_gene' with space or tab.
-	-g\tgermline V gene file, optional.Default: IgHV.fa in the program folder.
+	-g\tgermline V gene file, optional.Default: IgHKLV.fa in the program folder.
 	-a\tfasta file has the sequence of interested antibody. optional.
 	-t\tthreads, default:5
 	-npt\tnumber of sequences per thread. default:1000
@@ -44,7 +44,7 @@ if(!$para{'-ap'}){
 	}
 	}
 if(!$para{'-g'}){
-	$para{'-g'}=ppath('sonar')."/germDB/IgHV.fa";
+	$para{'-g'}=ppath('sonar')."/germDB/IgHKLV.fa";
 	if(-e $para{'-g'}){
 	  	print "using $para{'-g'} as germline file\n";
 	 }
