@@ -43,7 +43,7 @@ if(!$para{'-id'}){$para{'-id'}=0.99;}
 #########do calculation##########
 
 my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
-my $ids_unique=&changename($para{'-f'},$output);
+my $ids_unique=&changename($para{'-f'},$output);#
 my $file=$para{'-f'};
 $file=~s/goodVJ/goodCDR3/;
 if(-e "$file"){
@@ -158,7 +158,7 @@ sub changename{#change sequence names back to the input sequence name
 	    chomp;
 	    ~s/[\r\n]//g;
 	    my @l=split/\t+/,$_;
-	    $state{$l[0]}=[@l];
+	    $state{$l[0]}=$_;
 	}
 
     }
@@ -194,11 +194,11 @@ sub changename{#change sequence names back to the input sequence name
 		$uniq = "T";
 		$size = $size{$_};
 	    }
-	    my @line = @{$state{$_}};
-	    $line[$unique_column] = $uniq;
-	    $line[$unique_column + 1] = $size;
-
-	    print STo join("\t",@line) . "\n";
+	    #my @line = @{$state{$_}};
+	    #$line[$unique_column] = $uniq;
+	    #$line[$unique_column + 1] = $size;
+      print STo "$state{$_}\t$uniq\t$size\n";
+	    #print STo join("\t",@line) . "\n";
 	}		
     
 	close STi;
