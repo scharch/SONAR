@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 =head 1 SUMMARY
  
@@ -36,21 +36,24 @@
 =cut
 
 
-
+use warnings;
 use strict;
 use diagnostics;
 use Pod::Usage;
 use Getopt::Long;
 use Bio::TreeIO;
 use Bio::Tree::Node;
+use FindBin;
+use lib "$FindBin::Bin/../";
+use version qw/logCmdLine/;
 
-
+&logCmdLine($0,@ARGV);
 
 my ($data, $infile, $outfile, $ncol, $dcol, $native, $help) = ("", "", "", 0, 1, 1, 0);
 GetOptions("data=s"   => \$data,
 	   "input=s"  => \$infile,
 	   "output=s" => \$outfile,
-	   "lcol=i"   => \$lcol,
+	   "ncol=i"   => \$ncol,
 	   "dcol=i"   => \$dcol,
 	   "native!"  => \$native,
 	   "help!"    => \$help

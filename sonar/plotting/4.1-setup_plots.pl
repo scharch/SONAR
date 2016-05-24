@@ -151,7 +151,7 @@ close OUT;
 
 #call 4.2 with appropriate options
 #add single quotes so spaces and parens are handled as expected
-system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile '" . join("' '",@plotOptions) ) . "'";
+system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile '" . join("' '",@plotOptions) . "'" );
 
 
 sub chooseSubset {

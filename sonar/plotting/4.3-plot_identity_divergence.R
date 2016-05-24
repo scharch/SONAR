@@ -13,6 +13,9 @@
 # GENERAL FEATURES STILL NEEDED:
 #     - what should default guide behavior be?
 #     - change default sizing based on guides and presence/absence of labels/titles
+#     - fix title size (adjust based on num plots)
+#     - fix y-axis label in transpose mode
+#     - "catch" and supress this dumb: Error in UseMethod("grid.draw") : no applicable method for 'grid.draw' applied to an object of class "NULL"
 #
 ########################
 

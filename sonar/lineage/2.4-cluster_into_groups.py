@@ -40,6 +40,7 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys
+from collections import *
 
 try:
 	from sonar.lineage import *
@@ -146,6 +147,7 @@ def main():
             if ";" in read.id:
                 read.id = read.id[0,8] #this is for raw USearch output with size annotations
                                        #shouldn't be relevant in pipeline context
+	    if read.id not in clusterLookup: continue
             read.description += " lineage_num=%05d lineage_rep=%s lineage_size=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 
                                                                                        clusterLookup[read.id], centroidData[clusterLookup[read.id]]['size'] )
             SeqIO.write([read],handle,"fasta")

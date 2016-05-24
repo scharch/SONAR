@@ -32,6 +32,8 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 
 """
 
+import sys
+
 try:
         from sonar.lineage import *
 except ImportError:
