@@ -63,15 +63,21 @@ def main():
 
     #first, open the input file and parse into groups with same V/J
     vj_partition = dict()
+    cdr3_info = dict()
     seqSize = Counter()
     for sequence in SeqIO.parse(open("%s/%s_goodCDR3_unique.fa" % (prj_tree.nt, prj_name), "rU"), "fasta"):
         genes = re.search(gene_pat, sequence.description)
         if genes:
             key = genes.group(1) + "_" + genes.group(2)
-            if key in vj_partition:
-                vj_partition[key][sequence.id] = sequence
-            else:
-                vj_partition[key] = { sequence.id : sequence }
+            if key not in vj_partition:
+		temp = "%s/%s.fa"%(prj_tree.lineage, key) 
+                vj_partition[key] = { 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+	    SeqIO.write([sequence], vj_partition[key]['handle'], 'fasta')
+	    vj_partition[key]['count'] += 1
+	    vj_partition[key]['ids'].append(sequence.id)
+	    
+	    cdr3_info[sequence.id] = { 'cdr3_len' : len(sequence.seq)/3 - 2, 'cdr3_seq' : sequence.seq.translate() }
+
 	    #add sizes
 	    seqSize[sequence.id] = 1	
 	    check = re.search( " size=(\d+)", sequence.description)
@@ -83,11 +89,14 @@ def main():
     try:
         natives = load_fastas(natFile)
         for n, s in natives.items():
-            try:
-                vj_partition[nat_genes][n] = s
-            except KeyError:
-                vj_partition[nat_genes] = { n : s }
-	    seqSize[ n ] = 1
+		if nat_genes not in vj_partition:
+			temp = "%s/%s.fa"%(prj_tree.lineage, nat_genes)
+			vj_partition[nat_genes] = { 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+		SeqIO.write([ s ], vj_partition[nat_genes]['handle'], 'fasta')
+		vj_partition[nat_genes]['count'] += 1
+		vj_partition[nat_genes]['ids'].append( n )
+		cdr3_info[ n ] = { 'cdr3_len' : len(s.seq)/3 - 2, 'cdr3_seq' : s.seq.translate() }
+		seqSize[ n ] = 1
     except IOError:
         pass
 
@@ -96,22 +105,21 @@ def main():
     clusterSizes = Counter()
     for group in vj_partition:
 
+	#close the file handle
+        vj_partition[group]['handle'].close()
+
         #save a bit of time for obvious singletons
-        if len(vj_partition[group]) == 1:
-            single = vj_partition[group].values()[0]
+        if vj_partition[group]['count'] == 1:
+            single = vj_partition[group]['ids'][0]
             myGenes = group.split("_")
-            clusterLookup[ single.id ] = single.id
-            centroidData[ single.id ] = dict( vgene = myGenes[0], jgene = myGenes[1], cdr3_len = len(single.seq)/3 - 2, 
-                                                cdr3_seq = single.seq.translate(), nats=[] )
-	    clusterSizes[ single.id ] = seqSize[ single.id ]
+            clusterLookup[ single ] = single
+            centroidData[ single ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
+	    if single in natives: centroidData[single]['nats'] = [single]
+	    clusterSizes[ single ] = seqSize[ single ]
             continue
 
-        tempFile = open("%s/%s.fa"%(prj_tree.lineage, group), "w")
-        SeqIO.write(vj_partition[group].values(), tempFile, "fasta")
-        tempFile.close()
-
         #cluster with usearch
-        subprocess.call([usearch, "-cluster_fast", "%s/%s.fa"%(prj_tree.lineage, group), 
+        subprocess.call([usearch, "-cluster_fast", vj_partition[group]['file'], 
                          "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps),
                          "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
                          "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
@@ -119,23 +127,22 @@ def main():
 
         #now reconstruct pseudo-lineages
         myGenes = group.split("_")
-        uc = csv.reader( open("%s/%s.uc"%(prj_tree.lineage, group), "rU"), delimiter=sep )
-        for row in uc:
-            if row[0] == "S":
-                seq = vj_partition[group][row[8]]
-                centroidData[ row[8] ] = dict( vgene = myGenes[0], jgene = myGenes[1], cdr3_len = len(seq.seq)/3 - 2, 
-                                                cdr3_seq = seq.seq.translate(), nats=[] )
-                clusterLookup[ row[8] ] = row[8]
-		clusterSizes[ row[8] ] = seqSize[ row[8] ]
-                if row[8] in natives:
-                    centroidData[ row[8] ][ 'nats' ].append( row[8] )
-            elif row[0] == "H":
-                clusterLookup[ row[8] ] = row[9]
-		clusterSizes[ row[9] ] += seqSize[ row[8] ]
-                if row[8] in natives:
-                    centroidData[ row[9] ][ 'nats' ].append( row[8] )
-            else:
-                break #skip "C" lines
+	with open("%s/%s.uc"%(prj_tree.lineage, group), "rU") as handle:
+		uc = csv.reader( handle, delimiter=sep )
+		for row in uc:
+			if row[0] == "S":
+				centroidData[ row[8] ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
+			        clusterLookup[ row[8] ] = row[8]
+				clusterSizes[ row[8] ] = seqSize[ row[8] ]
+				if row[8] in natives:
+					centroidData[ row[8] ][ 'nats' ].append( row[8] )
+			elif row[0] == "H":
+				clusterLookup[ row[8] ] = row[9]
+				clusterSizes[ row[9] ] += seqSize[ row[8] ]
+				if row[8] in natives:
+					centroidData[ row[9] ][ 'nats' ].append( row[8] )
+			else:
+				break #skip "C" lines
         
 
     #now process all clusters and do tabular output
@@ -145,9 +152,8 @@ def main():
                        "cdr3_aa_seq", "size", "included_mAbs" ])
         for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
             centroidData[centroid]['rank'] = rank+1
-            tempDict = centroidData[centroid]
-            writer.writerow([ sprintf("%05d",rank+1), centroid, tempDict['vgene'], tempDict['jgene'], 
-                           tempDict['cdr3_len'], tempDict['cdr3_seq'], size, ",".join(tempDict['nats']) ])
+            writer.writerow([ "%05d"%(rank+1), centroid, centroidData[centroid]['vgene'], centroidData[centroid]['jgene'], 
+                              cdr3_info[centroid]['cdr3_len'], cdr3_info[centroid]['cdr3_seq'], size, ",".join(centroidData[centroid]['nats']) ])
 
     #do sequence output
     rep_seqs = []
