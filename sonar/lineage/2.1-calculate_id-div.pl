@@ -481,7 +481,8 @@ sub add_column_to_statistic{
     my @l=split/\t/,$l;
     my %identity=();
     if($l[1]!~/germ_div/){
-      	last;
+      	print "Unexpected header line $l, cannot add $identity_file to statistics file!\n";
+	return;
     }	
     else{
 	while(<HH>){

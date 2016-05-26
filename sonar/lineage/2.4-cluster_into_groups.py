@@ -76,7 +76,7 @@ def main():
 	    seqSize[sequence.id] = 1	
 	    check = re.search( " size=(\d+)", sequence.description)
 	    if check:
-		    seqSize[sequence.id] = check.group(1)
+		    seqSize[sequence.id] = int(check.group(1))
 
 
     natives = dict()
@@ -143,11 +143,10 @@ def main():
         writer = csv.writer(handle, delimiter=sep)
         writer.writerow([ "lineage_ID", "rep_seq_ID", "V_gene", "J_gene", "cdr3_len", 
                        "cdr3_aa_seq", "size", "included_mAbs" ])
-        for rank, [centroid, size] in enumerate(clusterSizes.most_common()):
+        for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
             centroidData[centroid]['rank'] = rank+1
-            centroidData[centroid]['size'] = size
             tempDict = centroidData[centroid]
-            writer.writerow([ rank+1, centroid, tempDict['vgene'], tempDict['jgene'], 
+            writer.writerow([ sprintf("%05d",rank+1), centroid, tempDict['vgene'], tempDict['jgene'], 
                            tempDict['cdr3_len'], tempDict['cdr3_seq'], size, ",".join(tempDict['nats']) ])
 
     #do sequence output
@@ -159,7 +158,7 @@ def main():
                                        #shouldn't be relevant in pipeline context
 	    if read.id not in clusterLookup: continue
             read.description += " lineage_num=%05d lineage_rep=%s lineage_size=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 
-                                                                                       clusterLookup[read.id], centroidData[clusterLookup[read.id]]['size'] )
+                                                                                       clusterLookup[read.id], clusterSizes[clusterLookup[read.id]] )
             SeqIO.write([read],handle,"fasta")
             if read.id in centroidData:
                 rep_seqs.append(read)
