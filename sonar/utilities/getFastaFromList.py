@@ -29,17 +29,30 @@ except ImportError:
 	from sonar import *
 
 
+def loadAndAnnotate(seqFile, saveDict):
+	good = 0
+	with open(seqFile, "rU") as seqs:
+		for s in SeqIO.parse(seqs, "fasta"):
+			if s.id not in saveDict:
+				continue
+			else:
+				good += 1
+				s.description = s.description + " " + saveDict[s.id]
+				yield s
+				if good % 100000 == 0:
+					print "Loaded %d so far..." % good
+
 def main():
 
     global listFile, inFile, outFile
     
     with open(listFile, "rU") as handle:
-        toSave = [ line.strip() for line in handle ]
-
-    seqs = load_seqs_in_dict(inFile, set(toSave))
+        #create a dictionary with the id as the key and the rest of the line as value
+        #  to be added to fasta def line
+	toSave = { k: v for k,v in [(line.strip().split()[0], " ".join(line.strip().split()[1:])) for line in handle if line.strip() != ""] }
 
     with open(outFile, "w") as output:
-        SeqIO.write(seqs.values(), output, "fasta")
+        SeqIO.write(loadAndAnnotate(inFile, toSave), output, "fasta")
 
 
 if __name__ == '__main__':
