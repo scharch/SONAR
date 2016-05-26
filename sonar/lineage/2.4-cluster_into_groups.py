@@ -63,6 +63,7 @@ def main():
 
     #first, open the input file and parse into groups with same V/J
     vj_partition = dict()
+    seqSize = Counter()
     for sequence in SeqIO.parse(open("%s/%s_goodCDR3_unique.fa" % (prj_tree.nt, prj_name), "rU"), "fasta"):
         genes = re.search(gene_pat, sequence.description)
         if genes:
@@ -71,6 +72,11 @@ def main():
                 vj_partition[key][sequence.id] = sequence
             else:
                 vj_partition[key] = { sequence.id : sequence }
+	    #add sizes
+	    seqSize[sequence.id] = 1	
+	    check = re.search( " size=(\d+)", sequence.description)
+	    if check:
+		    seqSize[sequence.id] = check.group(1)
 
 
     natives = dict()
@@ -81,11 +87,13 @@ def main():
                 vj_partition[nat_genes][n] = s
             except KeyError:
                 vj_partition[nat_genes] = { n : s }
+	    seqSize[ n ] = 1
     except IOError:
         pass
 
 
     #now go through and cluster each V/J grouping
+    clusterSizes = Counter()
     for group in vj_partition:
 
         #save a bit of time for obvious singletons
@@ -95,6 +103,7 @@ def main():
             clusterLookup[ single.id ] = single.id
             centroidData[ single.id ] = dict( vgene = myGenes[0], jgene = myGenes[1], cdr3_len = len(single.seq)/3 - 2, 
                                                 cdr3_seq = single.seq.translate(), nats=[] )
+	    clusterSizes[ single.id ] = seqSize[ single.id ]
             continue
 
         tempFile = open("%s/%s.fa"%(prj_tree.lineage, group), "w")
@@ -117,10 +126,12 @@ def main():
                 centroidData[ row[8] ] = dict( vgene = myGenes[0], jgene = myGenes[1], cdr3_len = len(seq.seq)/3 - 2, 
                                                 cdr3_seq = seq.seq.translate(), nats=[] )
                 clusterLookup[ row[8] ] = row[8]
+		clusterSizes[ row[8] ] = seqSize[ row[8] ]
                 if row[8] in natives:
                     centroidData[ row[8] ][ 'nats' ].append( row[8] )
             elif row[0] == "H":
                 clusterLookup[ row[8] ] = row[9]
+		clusterSizes[ row[9] ] += seqSize[ row[8] ]
                 if row[8] in natives:
                     centroidData[ row[9] ][ 'nats' ].append( row[8] )
             else:
@@ -132,8 +143,7 @@ def main():
         writer = csv.writer(handle, delimiter=sep)
         writer.writerow([ "lineage_ID", "rep_seq_ID", "V_gene", "J_gene", "cdr3_len", 
                        "cdr3_aa_seq", "size", "included_mAbs" ])
-        sizes = Counter( clusterLookup.values() )
-        for rank, [centroid, size] in enumerate(sizes.most_common()):
+        for rank, [centroid, size] in enumerate(clusterSizes.most_common()):
             centroidData[centroid]['rank'] = rank+1
             centroidData[centroid]['size'] = size
             tempDict = centroidData[centroid]
