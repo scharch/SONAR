@@ -72,10 +72,9 @@ def main():
             if key not in vj_partition:
 		temp = "%s/%s.fa"%(prj_tree.lineage, key) 
                 vj_partition[key] = { 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
-	    SeqIO.write([sequence], vj_partition[key]['handle'], 'fasta')
+
 	    vj_partition[key]['count'] += 1
 	    vj_partition[key]['ids'].append(sequence.id)
-	    
 	    cdr3_info[sequence.id] = { 'cdr3_len' : len(sequence.seq)/3 - 2, 'cdr3_seq' : sequence.seq.translate() }
 
 	    #add sizes
@@ -83,6 +82,12 @@ def main():
 	    check = re.search( " size=(\d+)", sequence.description)
 	    if check:
 		    seqSize[sequence.id] = int(check.group(1))
+	    #make available to usearch
+	    sequence.id += ";size=%d;" % seqSize[sequence.id] #do this even if there's no label
+	                                                      #so I don't need to divide the cases for usearch
+
+	    #and write
+	    SeqIO.write([sequence], vj_partition[key]['handle'], 'fasta')
 
 
     natives = dict()
@@ -92,11 +97,12 @@ def main():
 		if nat_genes not in vj_partition:
 			temp = "%s/%s.fa"%(prj_tree.lineage, nat_genes)
 			vj_partition[nat_genes] = { 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
-		SeqIO.write([ s ], vj_partition[nat_genes]['handle'], 'fasta')
+		seqSize[ n ] = 1
+		s.id += ";size=1;"
 		vj_partition[nat_genes]['count'] += 1
 		vj_partition[nat_genes]['ids'].append( n )
 		cdr3_info[ n ] = { 'cdr3_len' : len(s.seq)/3 - 2, 'cdr3_seq' : s.seq.translate() }
-		seqSize[ n ] = 1
+		SeqIO.write([ s ], vj_partition[nat_genes]['handle'], 'fasta')
     except IOError:
         pass
 
@@ -120,7 +126,7 @@ def main():
 
         #cluster with usearch
         subprocess.call([usearch, "-cluster_fast", vj_partition[group]['file'], 
-                         "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps),
+                         "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps), "-sizein",
                          "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
                          "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
                         stdout=log, stderr=subprocess.STDOUT)
@@ -130,17 +136,20 @@ def main():
 	with open("%s/%s.uc"%(prj_tree.lineage, group), "rU") as handle:
 		uc = csv.reader( handle, delimiter=sep )
 		for row in uc:
+			#first get rid of size annotations
+			hit  = re.sub(";size=\d+;","",row[8])
+			cent = re.sub(";size=\d+;","",row[9]) # just a * for S rows, use hit as cent
 			if row[0] == "S":
-				centroidData[ row[8] ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
-			        clusterLookup[ row[8] ] = row[8]
-				clusterSizes[ row[8] ] = seqSize[ row[8] ]
-				if row[8] in natives:
-					centroidData[ row[8] ][ 'nats' ].append( row[8] )
+				centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
+			        clusterLookup[ hit ] = hit
+				clusterSizes[ hit ] = seqSize[ hit ]
+				if hit in natives:
+					centroidData[ hit ][ 'nats' ].append( hit )
 			elif row[0] == "H":
-				clusterLookup[ row[8] ] = row[9]
-				clusterSizes[ row[9] ] += seqSize[ row[8] ]
-				if row[8] in natives:
-					centroidData[ row[9] ][ 'nats' ].append( row[8] )
+				clusterLookup[ hit ] = cent
+				clusterSizes[ cent ] += seqSize[ hit ]
+				if hit in natives:
+					centroidData[ cent ][ 'nats' ].append( hit )
 			else:
 				break #skip "C" lines
         
