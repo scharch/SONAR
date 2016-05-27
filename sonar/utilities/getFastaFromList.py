@@ -37,7 +37,7 @@ def loadAndAnnotate(seqFile, saveDict):
 				continue
 			else:
 				good += 1
-				s.description = s.description + " " + saveDict[s.id]
+				s.description = s.description + " " + saveDict.get(s.id, "")
 				yield s
 				if good % 100000 == 0:
 					print "Loaded %d so far..." % good
