@@ -20,7 +20,7 @@ Options:
 	-ap\t name of the program for sequence alignment. muscle or clustalo or mafft. required. Based on our 
 	   \texperience, muscle is ~2 fold faster than clustalo. Clustalo version of 1.2.0 or higher is required.
 	-pu\tpath to usearch program to remove duplicates in the read file. Optional.
-  -CDR3\tWhether calculating sequence identity between CDR3s
+  -CDR3\tWhether the calculation is for CDR3s, 0 or 1, Default:0
   
 Example:
 2.1-calculate_id-div.pl -f test.fa -g germline.fa -a antibody.fa -t 5 -npt 1000 -p DNA -ap muscle -pu usearch
@@ -150,11 +150,9 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
                 $i++;     
              my @line=split/[ \t,]+/,$_;
              $id=substr($line[0],1,);
-             #$line[1]=~s/\,.+//g;
-             #$readgerm{$id}=$line[1];
 	       for my $field (@line) { if ($field=~/V_gene=/) { $readgerm{$id}=$field; } }
-            $readgerm{$id}=~s/\-//g;
             $readgerm{$id}=~s/V\_gene\=//g;
+            $readgerm{$id}=~s/\,.+//g;
             
         }
         else{
@@ -258,8 +256,8 @@ sub readfasta{# read in sequences and germline assign info from fasta file
         if($_=~/>(.+)/){
             my @ll=split/[\t ]+/,$1;
             $id=$ll[0];
-            $ll[1]=~s/\-//g;
-            $id=~s/\-//g;
+            #$ll[1]=~s/\-//g;
+            #$id=~s/\-//g;
             $seqgerm{$id}=$ll[1];
         }
         else{
