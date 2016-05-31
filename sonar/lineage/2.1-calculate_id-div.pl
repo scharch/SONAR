@@ -230,6 +230,7 @@ sub paired_identity{#calculate sequence identity
     elsif($para{'-g'}&&!$germ){
     	push @coverage,'NA'; 
       push @identity,'NA';
+      warn "Could not find germline gene for $id\n";
     }
     
     if($anti){#calculate identity and coverage to given antibody sequence
