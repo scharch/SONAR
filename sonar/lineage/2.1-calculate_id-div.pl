@@ -335,11 +335,13 @@ sub clustalo{#sequence alignment using clustalo
 sub muscle{#sequence alignment using muscle
     my ($seq1,$seq2,$type)=@_;
     my %seq=();
+    my $option='-gapopen -1000';
+    if($type =~/protein/){$option='';}
     if($seq1=~/\*/||$seq2=~/\*/){print "$seq1\n$seq2\n";}
     if($seq1!~/[A-Za-z]/||$seq2!~/[A-Za-z]/){warn "$seq1\n$seq2\n no sequence for alignment\n";return '','';last;}
-    my @aln=`echo ">seq1\n$seq1\n>seq2\n$seq2\n"| $para{'-ap'} -seqtype $type -quiet -gapopen -1000`;
+    my @aln=`echo ">seq1\n$seq1\n>seq2\n$seq2\n"| $para{'-ap'} -seqtype $type -quiet $option`;
     my $id='';
-    while(!$aln[3]){@aln=`echo ">seq1\n$seq1\n>seq2\n$seq2\n"| $para{'-ap'} -seqtype $type -quiet -gapopen -1000`;}
+    while(!$aln[3]){@aln=`echo ">seq1\n$seq1\n>seq2\n$seq2\n"| $para{'-ap'} -seqtype $type -quiet $option`;}
     foreach(@aln){
         chomp;
         if($_=~/>(.+)/){
