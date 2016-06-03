@@ -37,7 +37,7 @@ if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
 $para{'-ap'}=ppath($para{'-ap'});
 $para{'-pu'}=ppath($para{'-pu'});
-if($$para{'-ignoregap'}){$para{'-ignoregap'}=0;}
+if(!$para{'-ignoregap'}){$para{'-ignoregap'}=0;}
 if(!$para{'-ap'}){
 	 if(ppath('muscle')){
 	   $para{'-ap'}=ppath('muscle');	
