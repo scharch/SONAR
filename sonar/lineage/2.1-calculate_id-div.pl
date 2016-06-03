@@ -21,6 +21,7 @@ Options:
 	   \texperience, muscle is ~2 fold faster than clustalo. Clustalo version of 1.2.0 or higher is required.
 	-pu\tpath to usearch program to remove duplicates in the read file. Optional.
   -CDR3\tWhether the calculation is for CDR3s, 0 or 1, Default:0
+  -ignoregap\t whether positions containing gap should be removed from idenity calculation, 0 or 1. Default: 0
   
 Example:
 2.1-calculate_id-div.pl -f test.fa -g germline.fa -a antibody.fa -t 5 -npt 1000 -p DNA -ap muscle -pu usearch
@@ -36,6 +37,7 @@ if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
 $para{'-ap'}=ppath($para{'-ap'});
 $para{'-pu'}=ppath($para{'-pu'});
+if($$para{'-ignoregap'}){$para{'-ignoregap'}=0;}
 if(!$para{'-ap'}){
 	 if(ppath('muscle')){
 	   $para{'-ap'}=ppath('muscle');	
@@ -357,6 +359,8 @@ sub identity{#include gaps
     my $score=0;
     my $leng=0;
     my $misc='';
+    my $leng_nogap=0;
+    my $score_nogap=0;
     if($type eq 'DNA'){$misc='N';}
     else{$misc='X';}
     my $start=0;#remove terminal gaps
@@ -376,13 +380,24 @@ sub identity{#include gaps
     $seq2=substr($seq2,$start,$end-$start);
     for(my $j=0;$j<length($seq1);$j++){
         if(substr($seq1,$j,1) ne $misc &&substr($seq2,$j,1) ne $misc){
-            $leng++;
+            $leng++;            
+            
             if(substr($seq1,$j,1) eq substr($seq2,$j,1)){
                 $score++;
+            }
+            if(substr($seq1,$j,1) ne '-' &&substr($seq2,$j,1) ne '-'){
+            	
+            	   $leng_nogap++;
+            	   if(substr($seq1,$j,1) eq substr($seq2,$j,1)){
+                							$score_nogap++;
+            		 }     	
             }
         }
     }
     $score=sprintf("%.2f",100*$score/$leng);
+    if($para{'-ignoregap'}){
+         $score=sprintf("%.2f",100*$score_nogap/$leng_nogap);
+    }
     if($score !~/[0-9]/){$score='NA';}
     return $score;
 }
