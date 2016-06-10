@@ -120,7 +120,7 @@ def main():
 	keys 	= sorted(dict_germ_count.keys())
 	writer.writerow(["gene", "count", "percent"])
 	for key in keys:
-		aline = [ key, dict_germ_count[key], "%4.2f" % (dict_germ_count[key] / float(good) * 100) ]
+		aline = [ key, dict_germ_count[key], "%4.2f" % (dict_germ_count[key] / float(total) * 100) ]
 		writer.writerow(aline)
 	handle.close()
 
