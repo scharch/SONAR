@@ -116,7 +116,7 @@ def main():
             try:
                 aln = AlignIO.read(handle, "phylip")
             except:
-                sys.exit("Please make sure custom input is aligned and in PHYLIP format")
+                sys.exit("Please make sure custom input is aligned and in PHYLIP format\n\t-try making sure all sequence IDs are 10 characters or less...")
 
     lookup = []
     for seq in aln:
