@@ -6,14 +6,16 @@ getListFromFasta.py
 This is a simple utility script for getting a list of the sequence identifiers
       from a large fasta file.
 
-Usage: getListFromFasta.py -f seqs.fa -o output.list
+Usage: getListFromFasta.py -f seqs.fa [ -o output.list ]
 
     Invoke with -h or --help to print this documentation.
 
-    f           Fasta file containing the sequences
-    o           Text file in which to save the list of sequences
+    f           Fasta file containing the sequences.
+    o           Text file in which to save the list of sequences.
+                   Prints to STDOUT if omitted.
 
 Created by Chaim A Schramm on 2015-04-27.
+Added printing to STDOUT on 2016-06-10.
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
@@ -31,8 +33,10 @@ except ImportError:
 def main():
 
     global inFile, outFile
-    with open(outFile, "w") as output:
-        [output.write("%s\n"%seq.id) for seq in generate_read_fasta(inFile)]
+    if outFile != "":
+	    sys.stdout = open(outFile, "w")
+    for seq in generate_read_fasta(inFile):
+	    print "%s"%seq.id
 
 
 if __name__ == '__main__':
@@ -46,7 +50,7 @@ if __name__ == '__main__':
 	# get parameters from input
 	dict_args = processParas(sys.argv, f="inFile", o="outFile")
         try:
-            inFile, outFile = getParas(dict_args, "inFile", "outFile")
+            inFile, outFile = getParasWithDefaults(dict_args, dict(outFile=""), "inFile", "outFile")
         except KeyError:
             print __doc__
             sys.exit(1)
