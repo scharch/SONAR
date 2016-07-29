@@ -126,7 +126,7 @@ def main():
 
         #cluster with usearch
         subprocess.call([usearch, "-cluster_fast", vj_partition[group]['file'], 
-                         "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps), "-sizein",
+                         "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps*3), "-sizein",
                          "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
                          "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
                         stdout=log, stderr=subprocess.STDOUT)
@@ -207,7 +207,7 @@ if __name__ == '__main__':
         
 
         nat_genes = natV + "_" + natJ
-        gene_pat = re.compile("([HKL]V\d-[^*]+).*([HKL]J\d)")
+        gene_pat = re.compile("V_gene=IG([HKL]V\d-[^*]+).*J_gene=IG([HKL]J\d)")
 
 
         prj_tree = ProjectFolders(os.getcwd())
