@@ -52,6 +52,8 @@ if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
 	print __doc__
 	sys.exit(0)
 
+#log command line
+logCmdLine(sys.argv)
 
 
 db = "%s/germDB/IgHKLV_cysTruncated.fa"%SCRIPT_FOLDER

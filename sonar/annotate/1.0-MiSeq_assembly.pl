@@ -4,6 +4,7 @@ use strict;
 use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 #########checking parameters#######
 if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl 
@@ -25,6 +26,9 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
                          Institutes of Health, USA. All rights reserved.
 
 	";}
+
+&logCmdLine($0,@ARGV);
+
 my %para=@ARGV;
 if(!$para{'-f'}){die "no input f sequence file\n";}
 if(!$para{'-r'}){die "no input r sequence file\n";}

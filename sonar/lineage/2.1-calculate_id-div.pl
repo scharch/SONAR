@@ -4,6 +4,7 @@ use threads;
 use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 my $usage="Usage: 
 This script is used to calculate sequence identity between germline V, antibody gene and reads or between antibody CDR3 and read CDR3.
@@ -32,6 +33,9 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
  ";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "$usage"; }
+
+&logCmdLine($0,@ARGV);
+
 my %para=@ARGV;
 if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}

@@ -41,12 +41,16 @@ use Statistics::Basic qw/stddev/;
 use List::Util qw/min max sum/;
 use POSIX qw/floor getcwd/;
 use File::Basename;
-
+use FindBin;
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 
 if ($#ARGV < 0) { pod2usage(1); }
 
 my $prj_name = basename(getcwd);
+my @saveArgs = @ARGV;
 my @targets;
 my ($dnaml, $numSteps, $stepDist, $output, $help) = ( "output/logs/$prj_name.dnaml.out", 0, 0, "", 0 );
 GetOptions("input=s"    => \$dnaml,
@@ -75,6 +79,9 @@ if ($output eq "") {
     if ($#targets == 0) { $output = "output/sequences/nucleotide/$targets[0]-intermediates.fa"; }
     else { $output = "output/sequences/nucleotide/" . join("-", @targets) . "_MRCA.fa"; }
 }    
+
+&logCmdLine($0,@saveArgs);
+
 open OUT, ">$output" or die "Can't write to $output: $!\n";
 
 

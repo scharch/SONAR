@@ -21,11 +21,78 @@ from math import log
 import glob
 import re
 import subprocess
+import atexit
 
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
 from commonVars import *
+
+
+########## COMMAND LOGGING ############
+global printLog
+printLog = False #this tells us whether or not to print log info on exit (skip if program was called with -h)
+
+
+#overload default error handling so we can log whether it was a successful exit or not
+# code taken from: https://stackoverflow.com/a/9741784
+class ExitHooks(object):
+    def __init__(self):
+        self.exit_code = None
+        self.exception = None
+
+    def hook(self):
+        self._orig_exit = sys.exit
+        sys.exit = self.exit
+        sys.excepthook = self.exc_handler
+
+    def exit(self, code=0):
+        self.exit_code = code
+        self._orig_exit(code)
+
+    def exc_handler(self, exc_type, exc, *args):
+        self.exception = exc
+
+hooks = ExitHooks()
+hooks.hook()
+
+
+def logCmdLine( command ):
+    
+    global printLog
+
+    if os.path.isdir( "%s/output/logs" % os.getcwd() ):
+
+        pathToSonar = os.path.realpath( os.path.dirname(command[0]) + "/../../.git" )
+        
+        p = subprocess.Popen(['git', '--git-dir=%s'%pathToSonar, 
+                              'describe', '--always','--dirty','--long','--tags'],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        VERSION = p.communicate()[0].strip()
+        
+        with open("%s/output/logs/command_history.log"%os.getcwd(), "a") as handle:
+            handle.write( "\n%s -- SONAR %s run with command:\n\t%s\n" % (time.strftime("%c"), VERSION, " ".join(command)) )
+            
+        printLog = True
+
+    else:
+        print "SONAR log directory not found; command line and output will not be saved"
+
+    
+def logExit():
+
+    global printLog
+    if printLog:
+        with open("%s/output/logs/command_history.log" % os.getcwd(), "a") as handle:
+            if hooks.exit_code is not None:
+                handle.write( "%s -- Program exited with error:\n\t%s" % (time.strftime("%c"),str(hooks.exit_code)) )
+            elif hooks.exception is not None:
+                handle.write( "%s -- Exception:\n\t%s" % (time.strftime("%c"),hooks.exception) )
+            else:
+                handle.write( "%s -- Program finished successfully\n" % time.strftime("%c") )
+                
+atexit.register(logExit)
+
 
 
 

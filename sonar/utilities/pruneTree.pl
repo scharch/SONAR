@@ -39,9 +39,14 @@ use Pod::Usage;
 use Getopt::Long;
 use Bio::TreeIO;
 use Bio::Tree::Node;
+use FindBin;
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 if ($#ARGV < 0) { pod2usage(1); }
 
+my @saveArgs = @ARGV;
 my ($infile, $outfile, $keep, $remove, $annotate, $help) = ("", "", "", "", "", 0);
 GetOptions("input=s"    => \$infile,
            "output=s"   => \$outfile,
@@ -54,6 +59,9 @@ GetOptions("input=s"    => \$infile,
 if ($help || ! -e($infile) || (! -e($keep) && ! -e($remove))) { pod2usage(1); }
 if ($keep && $remove) { die "Only *ONE* of keep, remove may be specified!\n"; }
 if ($remove && $annotate) { die "The 'annotate' option may only be used when inputting a list of nodes to keep.\n"; }
+
+&logCmdLine($0,@saveArgs);
+
 
 =head2
 

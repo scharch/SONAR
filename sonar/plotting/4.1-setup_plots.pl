@@ -103,10 +103,12 @@ use Bio::SeqIO;
 use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 
 if ($#ARGV < 0) { pod2usage(1); }
 
+my @saveArgs = @ARGV;
 my @compare     = ( );
 my @plotOptions = ( );
 my ($type, $subset, $outFile, $listFile, $help) = ( "ntraw", "orf", "", "", 0 );
@@ -120,6 +122,8 @@ GetOptions("statistic=s" => \$type,
     );
 
 if ($help) { pod2usage(1); }
+
+&logCmdLine($0,@saveArgs);
 
 
 #set up some defaults

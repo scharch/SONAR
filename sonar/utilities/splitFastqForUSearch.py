@@ -68,8 +68,14 @@ def main():
 
 
 if __name__ == '__main__':
+
+    saveSysArg = []+sys.argv
+
     arguments = docopt(__doc__)
     arguments['--number'] = int(arguments['--number'])
+
+    #log command line
+    logCmdLine(saveSysArg)
 
     paired = False
     if arguments['<read2.fastq>'] is not None:

@@ -68,6 +68,9 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#log command line
+	logCmdLine(sys.argv)
+
 	# get parameters from input
 	dict_args = processParas(sys.argv, l="listFile", f="inFile", o="outFile")
         listFile, inFile, outFile = getParasWithDefaults(dict_args, dict(listFile="-"), "listFile", "inFile", "outFile")

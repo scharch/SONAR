@@ -174,7 +174,7 @@ main <- function(infile, outfile, title, bars, percent, xlab, ylab, xlim, ylim, 
 
 
     #and output
-    ggsave(outfile, p, height=h, width=w, units="in", dpi=dpi)
+    ggsave(outfile, p, height=h, width=w, units="in", dpi=d)
 	
 }
 
@@ -187,7 +187,13 @@ library(ggplot2)
 library(grid)
 library(docopt)
 
-input = commandArgs(T)
+cmd.line = commandArgs()
+
+file.arg.name <- "--file="
+script.name <- sub(file.arg.name, "", cmd.line[grep(file.arg.name, cmd.line)])
+script.basename <- dirname(script.name)
+
+source(file.path(script.basename, "..", "logging.R"))
 
 opts<-docopt(usage, strip=T, help=T)
 
@@ -214,5 +220,13 @@ if( is.null(opts$ylab) ) {
 }
 
 
-main(opts$data.text, opts$outfile.png, opts$title, opts$bars, opts$percent, opts$xlab, opts$ylab, opts$xlim, opts$ylim, opts$logx, opts$logy, opts$mids, opts$magnify, opts$showlegend, opts$legendpos, opts$height, opts$width, opts$dpi)
+
+if (dir.exists("output/logs")) {
+    saveCommandLine( cmd.line )
+    options("error"=my.error.fun)
+} else { print("SONAR log directory not found; command line and output will not be saved") }
+
+main(opts$data.txt, opts$outfile.png, opts$title, opts$bars, opts$percent, opts$xlab, opts$ylab, opts$xlim, opts$ylim, opts$logx, opts$logy, opts$mids, opts$magnify, opts$showlegend, opts$legendpos, opts$height, opts$width, opts$dpi)
+
+if (dir.exists("output/logs")) { logSuccess() }
 

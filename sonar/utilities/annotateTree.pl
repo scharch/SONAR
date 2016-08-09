@@ -45,10 +45,10 @@ use Bio::TreeIO;
 use Bio::Tree::Node;
 use FindBin;
 use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
 use version qw/logCmdLine/;
 
-&logCmdLine($0,@ARGV);
-
+my @saveArgs = @ARGV;
 my ($data, $infile, $outfile, $ncol, $dcol, $native, $help) = ("", "", "", 0, 1, 1, 0);
 GetOptions("data=s"   => \$data,
 	   "input=s"  => \$infile,
@@ -63,6 +63,7 @@ GetOptions("data=s"   => \$data,
 if ($help || ! -e($data) || ! -e($infile) || $ncol<0 || $dcol<0) { pod2usage(1); }
 
 
+&logCmdLine($0,@saveArgs);
 
 
 =head2

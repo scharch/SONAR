@@ -51,10 +51,12 @@ use Bio::SeqIO;
 use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 
 if ($#ARGV < 0) { pod2usage(1); }
 
+my @saveArgs = @ARGV;
 my @seqFiles   = ( );
 my @prefix     = ( );
 my ($t, $min, $clustFast, $force, $help) = ( 100, 1, 0, 0, 0 );
@@ -70,6 +72,9 @@ GetOptions("seqs=s{1,}" => \@seqFiles,
 if ($help) { pod2usage(1); }
 if ( $t < 100 && ! $clustFast ) { die("Must specify use of the cluster_fast command to use a custom id threshold.\n"); }
 my $threshold = $t/100;
+
+&logCmdLine($0,@saveArgs);
+
 
 #check to make sure inputs match
 if ($#prefix >= 0) {

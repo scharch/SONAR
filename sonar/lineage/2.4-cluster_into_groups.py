@@ -193,6 +193,9 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#log command line
+	logCmdLine(sys.argv)
+
 	# get parameters from input
 	dict_args = processParas(sys.argv, id="idLevel", gaps="maxgaps", n="natFile", v="natV", j="natJ")
 	idLevel, maxgaps, natFile, natV, natJ = getParasWithDefaults(dict_args, dict(idLevel=90, maxgaps=0, natFile="", natV="", natJ=""),

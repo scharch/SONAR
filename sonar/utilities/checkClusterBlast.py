@@ -94,6 +94,9 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#log command line
+	logCmdLine(sys.argv)
+
 	# get parameters from input
 	dict_args = processParas(sys.argv, gene="gene", big="maxInd", check="myName", after="nextCmd", rehold='holdName')
 	gene, maxInd, myName, nextCmd, holdName = getParasWithDefaults(dict_args, dict(nextCmd="", holdName=""), "gene", "maxInd", "myName", "nextCmd", "holdName")

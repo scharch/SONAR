@@ -32,9 +32,14 @@ use Bio::Tree::Node;
 use Bio::Tree::TreeFunctionsI;
 use diagnostics;
 use List::Util qw(min sum);
+use FindBin;
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 
 if ($#ARGV<2 || $ARGV[0] =~ /-h/) { pod2usage(1); }
+&logCmdLine($0,@ARGV);
 
 
 #load input tree

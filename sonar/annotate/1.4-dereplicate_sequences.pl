@@ -4,6 +4,7 @@ use strict;
 use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 
 #########checking parameters#######
@@ -28,6 +29,9 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "Number of parameters are not right\n$usage";
  }
+
+&logCmdLine($0,@ARGV);
+
 my %para=@ARGV;
 if(!$para{'-min1'}){$para{'-min1'}=0;}
 if(!$para{'-min2'}){$para{'-min2'}=3;}

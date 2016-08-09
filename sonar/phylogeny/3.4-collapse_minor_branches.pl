@@ -78,12 +78,17 @@ use Bio::Tools::Run::Alignment::Muscle;
 use Bio::Align::PairwiseStatistics;
 use Bio::TreeIO;
 use List::Util qw(min sum);
+use FindBin;
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 if ($#ARGV<0) { pod2usage(1); }
 
 my $prj_name = basename(getcwd);
 
 #set defaults
+my @saveArgs = @ARGV;
 my $natFile   = "";
 my $treeFile  = "output/$prj_name.tree";
 my $seqFile   = "output/sequences/amino_acid/$prj_name-CDR3.fa";
@@ -109,6 +114,9 @@ GetOptions("tree=s"     => \$treeFile,
 
 
 if ( $help || ! -e($treeFile) || ! -e($seqFile) ) { pod2usage(1); }
+
+&logCmdLine($0,@saveArgs);
+
 
 #invert labels
 my %labelOrder;

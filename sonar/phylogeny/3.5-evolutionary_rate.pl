@@ -3,9 +3,10 @@ use strict;
 use FindBin;
 use lib "$FindBin::Bin/../";
 use PPvars qw(ppath);
+use version qw/logCmdLine/;
 
 ################################################
-#This is a mater script that allow user to generate xml configuration files and perform MCMC simulation to estimate evolutionary rate. The user has to install beast package first. The script accepts fasta format sequence file as input. Be aware that only temporal data from at least two time points, are allowed to calculate evolutionary rate. All sequences in the dataset must be non-redundant. Please remove duplicate sequences using 1.4-dereplicate_sequences.pl before running this script. If there are duplicate sequences in the dataset, it's better keep the one with earlier time point. Currently, only GTR substitution model was incorporated but our tests showed the rate calculation is robust to substitution models. It's the users' responsibility to check if the MCMC simulation converged using Tracer in Beast2 Package.
+#This is a master script that allows the user to generate xml configuration files and perform MCMC simulation to estimate evolutionary rate. The user has to install beast package first. The script accepts fasta format sequence file as input. Be aware that only temporal data from at least two time points, are allowed to calculate evolutionary rate. All sequences in the dataset must be non-redundant. Please remove duplicate sequences using 1.4-dereplicate_sequences.pl before running this script. If there are duplicate sequences in the dataset, it's better keep the one with earlier time point. Currently, only GTR substitution model was incorporated but our tests showed the rate calculation is robust to substitution models. It's the users' responsibility to check if the MCMC simulation converged using Tracer in Beast2 Package.
 ################################################
 
 my $usage="Usage:
@@ -43,6 +44,9 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
 	";
 foreach(@ARGV){if($_=~/[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0||@ARGV==0){die "$usage"; }	
+
+&logCmdLine($0,@ARGV);
+
 my %para=@ARGV;
 if(!$para{'-f'}){die "No input sequence file\n";}
 $para{'-beast'}=ppath('beast');

@@ -97,6 +97,9 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#log command line
+	logCmdLine(sys.argv)
+
 	if q("-seq") and not q("-div"):
 		print "Please specify location of output from 2.1-calculate_id-div.pl for custom sequence file!"
 		sys.exit(1)

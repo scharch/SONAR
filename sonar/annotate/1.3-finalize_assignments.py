@@ -371,6 +371,8 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
+	#log command line
+	logCmdLine(sys.argv)
 
 	prj_tree  = ProjectFolders(os.getcwd())
 	prj_name  = fullpath2last_folder(prj_tree.home)

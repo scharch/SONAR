@@ -213,7 +213,7 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   }
 
  if (numPlots==1) {
-    print(plots[[1]])
+    return(plots[[1]])
 
   } else {
     # Set up the page
@@ -385,9 +385,15 @@ library(ggplot2)
 library(grid)
 library(MASS)
 
+cmd.line <- commandArgs()
+
+file.arg.name <- "--file="
+script.name <- sub(file.arg.name, "", cmd.line[grep(file.arg.name, cmd.line)])
+script.basename <- dirname(script.name)
+
+source(file.path(script.basename, "..", "logging.R"))
 
 opts<-docopt(usage, strip=T, help=T)
-
 
 # check to make sure the files are there
 if (! all(file.exists(opts$idDivFile))) {
@@ -422,4 +428,11 @@ if (! is.null(opts$labels)) {
 if (! is.null(opts$reference) && ! file.exists(opts$reference)) { stop("Cannot find reference data file...\n\n") }
 
 
+if (dir.exists("output/logs")) { 
+    saveCommandLine( cmd.line )
+    options("error"=my.error.fun)
+} else { print("SONAR log directory not found; command line and output will not be saved") }
+
 lds(opts$idDivFile, opts$plot, opts$sieve1, opts$sieve2, opts$mab, opts$xaxis, opts$outdir, opts$output, opts$title, opts$labels, opts$reference, opts$showNames, opts$transpose)
+
+if (dir.exists("output/logs")) { logSuccess() }
