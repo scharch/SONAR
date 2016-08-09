@@ -63,10 +63,8 @@ def logCmdLine( command ):
 
     if os.path.isdir( "%s/output/logs" % os.getcwd() ):
 
-        pathToSonar = os.path.realpath( os.path.dirname(command[0]) + "/../../.git" )
-        
-        p = subprocess.Popen(['git', '--git-dir=%s'%pathToSonar, 
-                              'describe', '--always','--dirty','--long','--tags'],
+        p = subprocess.Popen(['git', '-C', os.path.dirname(command[0]), 
+                              'describe', '--always','--dirty','--tags'],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         VERSION = p.communicate()[0].strip()
         

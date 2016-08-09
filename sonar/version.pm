@@ -28,7 +28,7 @@ sub logCmdLine() {
 
     my $command = shift;
     foreach(@_) { $command .= /\s/ ? " \'$_\'" : " $_"; }
-    my $VERSION = `git --git-dir=$FindBin::Bin/../../.git describe --always --dirty --long --tags`;
+    my $VERSION = `git -C $FindBin::Bin describe --always --dirty --tags`;
     chomp $VERSION;
 
     if (-d "output/logs") {
