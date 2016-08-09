@@ -1,63 +1,54 @@
 #!/usr/bin/env Rscript
 
-
-usage <-function() {
-cat("
-4.2-plot_histogram.R
+"4.2-plot_histogram.R
 
 This is a generic script for plotting nice histograms. Expected usage
       is to be called directly by 4.1-setup_plots.pl, which parses out
       specific desired data from annotation of the repertoire and 
       reformats it to be compatible with this script.
 
-Usage: 4.2-plot_histogram.R data.txt outfile.png
-       			    [ title=title bars=dodge percent=T xlab=category 
-			      ylab=percent xlim=c(0,100) ylim=c(0,100)
-       			      logx=F logy=F mids=F magnify=1 showlegend=T
-			      legendpos=right h=height w=width d=dpi ]
+Usage: 4.2-plot_histogram.R <data.txt> <outfile.png> [ --title <'My Title'> --bars <dodge> --percent <TRUE> --xlab <category> --ylab <percent> --xlim <'c(0,100)'> --ylim <'c(0,100)'> --logx <FALSE> --logy <FALSE> --mids <FALSE> --magnify <1> --showlegend <TRUE> --legendpos <right> --height <4> -w <6> -d <150> ]
 
-    Invoke with -h or --help to print this documentation.
-
-    data.txt      Tab-delimited file with data to be plotted. Expects 3
-    		        unlabled columns: group, x, y
-    outfile.png	  Where to save the image. Filetype will be parsed
-    		  	automatically from the extension.
-    title	  Display title of plot. Default = none.
-    bars	  Display bars for multiple groups side-by-side ('dodge')
-    		  	or stacked ('stack'). Default = dodge.
-    percent	  Boolean indicating whether the y axis should be plotted
-    		  	as percent of total for each group or raw counts.
-			Default = T.
-    xlab	  Display label for x axis. Default = 'category'.
-    ylab	  Display label for y axis. Default = 'percent' or 'number'
-    		  	depending on the value of the percent flag.
-    xlim          Display limits for x axis, specified as an R list.
-    		  	Default = chosen automatically.
-    ylim          Display limits for y axis, specified as an R list.
-    		  	Default = chosen automatically.
-    logx          Boolean indicating if the x axis should be log-scaled. If
-    		  	true, plot type is switched from bar to step.
-			Default = F.
-    logy          Boolean indicating if the y axis should be log-scaled.
-			Default = F.
-    mids          Boolean indicating if position of bars should be shifted
-    		  	so that they are centered on the midpoint of the
-			bins instead of the lower bound. Default = F.
-    magnify       Magnification factor for labels and titles. Default = 1.
-    showlegend    Boolean indicating whether legend should be displayed.
-    		  	Default = T.
-    legendpos     Position for placement of legend. Default = 'right'.
-    h             Desired height of final plot, in inches. Default = 4.
-    w		  Desired width of final plot, in inches. Default = 6.
-    dpi 	  Desired resolution of output image. Default = 150.
+Options:
+    -h --help              Show this documentation.
+    <data.txt>             Tab-delimited file with data to be plotted. Expects 3
+    		               unlabled columns: group, x, y
+    <outfile.png>	   Where to save the image. Filetype will be parsed
+    		  	       automatically from the extension.
+    --title <'My Title'>   Display title of plot. [default: ].
+    --bars <'dodge'>	   Display bars for multiple groups side-by-side ('dodge')
+    		  	       or stacked ('stack'). [default: dodge].
+    -p T, --percent TRUE   Boolean indicating whether the y axis should be plotted
+    		  	       as percent of total for each group or raw counts.
+			       [default: TRUE].
+    --xlab <category>	   Display label for x axis. [default: category].
+    --ylab <percent>	   Display label for y axis. Default is either 'percent' or
+    		  	       'number', depending on the value of the percent flag.
+    --xlim <c(0,100)>      Display limits for x axis, specified as an R list [default: NULL].
+    --ylim <c(0,100)>      Display limits for y axis, specified as an R list [default: NULL].
+    --logx FALSE           Boolean indicating if the x axis should be log-scaled. If
+    		  	       true, plot type is switched from bar to step.
+			       [default: FALSE].
+    --logy FALSE           Boolean indicating if the y axis should be log-scaled.
+			       [default: FALSE].
+    --mids FALSE           Boolean indicating if position of bars should be shifted
+    		  	       so that they are centered on the midpoint of the
+			       bins instead of the lower bound [default: FALSE].
+    -m 1, --magnify 1      Magnification factor for labels and titles. [default: 1].
+    --showlegend TRUE      Boolean indicating whether legend should be displayed.
+			       [default: FALSE].
+    --legendpos <right>    Position for placement of legend. [default: right].
+    --height 4             Desired height of final plot, in inches. [default: 4].
+    -w 6, --width 6	   Desired width of final plot, in inches. [default: 6].
+    -d 150, --dpi 150 	   Desired resolution of output image. [default: 150].
 
 Created by Chaim A Schramm 2015-11-19.
+Edited to switch to docopt 2016-08-09 by CAS.
 
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
-")
-}
+" -> usage
 
 
 
@@ -125,8 +116,6 @@ main <- function(infile, outfile, title, bars, percent, xlab, ylab, xlim, ylim, 
 		total = sum( data$V3[data$V1 == g], na.rm=T )
 		data$V3[ data$V1==g ] <- data$V3[data$V1==g] * 100 / total
 	 }
-    } else if (ylab == "percent") {
-      	      	 ylab <- "number"
     }
 
 
@@ -196,57 +185,34 @@ main <- function(infile, outfile, title, bars, percent, xlab, ylab, xlim, ylim, 
 
 library(ggplot2)
 library(grid)
+library(docopt)
 
-#args are:
-#  data.txt outfile.png 
-#  [ title=title bars=dodge percent=T xlab=category ylab=percent 
-#    xlim=c(0,100) ylim=c(0,100) logx=F logy=F mids=F magnify=1
-#    showlegend=T legendpos="top" h=height w=width d=dpi ]
 input = commandArgs(T)
 
-#check for parameters
-if(length(input)<2){
-  stop(usage())
-}
+opts<-docopt(usage, strip=T, help=T)
 
 #now check to make sure the data file is there
-if (! file.exists(input[1])) {
+if (! file.exists(opts$data.txt)) {
   stop("Please check and make sure data file exists!\n\n")
 }
 
 
-#set defaults and process optional parameters
-infile     <- input[1]
-outfile    <- input[2]
-title      <- ""
-bars       <- "dodge"
-percent    <- T
-xlab       <- "category"
-ylab       <- "percent"
-xlim       <- NULL
-ylim       <- NULL
-logx       <- F
-logy       <- F
-mids       <- F
-magnify    <- 1
-showlegend <- T
-legendpos  <- "right"
-h          <- 4
-w          <- 6
-dpi        <- 150
-
-for (i in seq(3,length(input))) { assign(sub("=.*$", "", input[i]), sub("^[^=]*=", "", input[i])) }
-
 #check input type for numerics and booleans
-magnify    <- as.numeric(magnify)
-h          <- as.numeric(h)
-w          <- as.numeric(w)
-dpi        <- as.numeric(dpi)
-percent    <- as.logical(percent)
-logx       <- as.logical(logx)
-logy       <- as.logical(logy)
-mids       <- as.logical(mids)
-showlegend <- as.logical(showlegend)
+opts$magnify    <- as.numeric(opts$magnify)
+opts$height     <- as.numeric(opts$height)
+opts$width      <- as.numeric(opts$width)
+opts$dpi        <- as.numeric(opts$dpi)
+opts$percent    <- as.logical(opts$percent)
+opts$logx       <- as.logical(opts$logx)
+opts$logy       <- as.logical(opts$logy)
+opts$mids       <- as.logical(opts$mids)
+opts$showlegend <- as.logical(opts$showlegend)
 
-main(infile, outfile, title, bars, percent, xlab, ylab, xlim, ylim, logx, logy, mids, magnify, showlegend, legendpos, h, w, d)
+if( is.null(opts$ylab) ) {
+    if( opts$percent ) { opts$ylab <- "percent" }
+    else               { opts$ylab <- "number"  }
+}
+
+
+main(opts$data.text, opts$outfile.png, opts$title, opts$bars, opts$percent, opts$xlab, opts$ylab, opts$xlim, opts$ylim, opts$logx, opts$logy, opts$mids, opts$magnify, opts$showlegend, opts$legendpos, opts$height, opts$width, opts$dpi)
 
