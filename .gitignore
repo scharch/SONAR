@@ -1,4 +1,5 @@
 *.pyc
 *~
-PPVars.pm
+PPvars.pm
 paths.py
+local/
