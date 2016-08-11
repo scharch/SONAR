@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
 """
-4.6-plot_tree.py
+4.4-plot_tree.py
 
 This script uses the ete2 module to display figure-quality phylogenetic 
       "birthday" trees from longitudinal data. Drawing engine requires an X
       server to run, use xvfb-run if needed.
 
-Usage: [xvfb-run] 4.6-plot_tree.py -t newick.txt -n natives.csv
-                        [ -o tree.png -c collapse.txt -i intermediates.csv -f 1
-		          -r 300 -sc 1000 -sp 12 -h 4 -w 4 -path -noDots -noUCA -noV ]
+Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
+                        [ -o tree.png -c collapse.txt -i intermediates.csv
+		          -f 1 -r 300 -sc 1000 -sp 12 -h 4 -w 4
+			  -showAll -path -noDots -noUCA -noV -noGuide ]
 
     Invoke with -h or --help to print this documentation.
 
@@ -84,6 +85,7 @@ Usage: [xvfb-run] 4.6-plot_tree.py -t newick.txt -n natives.csv
 			 a guideline to estimate the desired scale parameter
 			 (-sc), so the result will not be exact. Mutually
 			 exclusive with -sc. Default = not set (use -sc).
+    showAll   -    Flag indicating that labels should be displayed for all leaves.
     path      -    Flag indicating that the evolutionary pathway(s) from root to
                          the native antibody/ies should be highlighted with a
 			 thicker line (does not change any colors). Default = No.
@@ -94,6 +96,7 @@ Usage: [xvfb-run] 4.6-plot_tree.py -t newick.txt -n natives.csv
                          labeled as "UCA". Default = "UCA" label is shown.
     noV       -    Flag indicating that the germline V sequence should not be 
                          labeled. Default = germline V is labeled.
+    noGuide   -    Flag indicating that color guide should be hidden.
 
 
 
@@ -109,6 +112,7 @@ Sample format of natives.csv:
 
 Created by Chaim A Schramm 2013-06-18
 Edited and commented for publication by Chaim A Schramm on 2015-11-04 --happy birthday, Lisa <3
+Edited to add showAll and noGuide options 2016-08-11 by CAS
 
 Copyright (c) 2013-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -225,11 +229,15 @@ def layout(node):
 			ns['fgcolor'] = '#000000'
 
 		#label germline outgroup, if desired
-		if vgene and re.match("(IG|VH|VK|VL)", node.name):
-			ns['hz_line_color']='#FFFFFF'
+		elif vgene and re.match("(IG|VH|VK|VL)", node.name):
 			tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-right')
 			ns['fgcolor'] = '#000000'
+
+                #label all leaves, if desired
+                elif allLabels and node.is_leaf():
+                        tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
+                        faces.add_face_to_node(tf, node, 0, position='branch-right')
 
 		#label intermediates, if desired
 		if node.isIntermediate:
@@ -321,7 +329,7 @@ def main():
 
 	#for everything else, read off its timepoint
 	for leaf in myTree.iter_leaves():
-		if leaf.isNat or re.match("(IG|VH)", leaf.name):
+		if leaf.isNat or re.match("(IG|VH|VK|VL)", leaf.name):
 			# these nodes are not expected to fit the standard time-labeling scheme
 			continue 
 		leaf.timepoint = re.match(timeRegex,leaf.name).group()
@@ -349,6 +357,7 @@ def main():
 
 	if width is not None:
 		pixelW = (width - 1.75) * res #.5 for margin, .5 for color key, .5 for native labels (may not be necessary), .25 for branch behind UCA
+		if hideLegend: pixelW = (width - 1.25)
 		scale = pixelW / myTree.get_farthest_leaf()[1]
 	elif scale is None:
 		scale = 1000 #seems like a decent default
@@ -372,20 +381,21 @@ def main():
 	ts.margin_top             = res/4
 
 	#make color guide
-	for time in range( len(timepoints) ):
-		color = makeRainbow(time, len(timepoints))
-		bar = RectFace(res/4,res/24,color,color)
-		bar.margin_top    = res/24
-		bar.margin_bottom = res/24
-		bar.margin_right  = res/24
-		bar.margin_left   = res/24
-		ts.legend.add_face(bar, column=0)
-		text = TextFace(timepoints[time],ftype="Arial",fsize=fontSize*0.75,fgcolor="#000000")
-		text.hz_align     = 0
-		text.vt_align     = 1
-		text.margin_left  = res/24
-		text.margin_right = res/24
-		ts.legend.add_face(text, column=1)
+	if not hideLegend:
+		for time in range( len(timepoints) ):
+			color = makeRainbow(time, len(timepoints))
+			bar = RectFace(res/4,res/24,color,color)
+			bar.margin_top    = res/24
+			bar.margin_bottom = res/24
+			bar.margin_right  = res/24
+			bar.margin_left   = res/24
+			ts.legend.add_face(bar, column=0)
+			text = TextFace(timepoints[time],ftype="Arial",fsize=fontSize*0.75,fgcolor="#000000")
+			text.hz_align     = 0
+			text.vt_align     = 1
+			text.margin_left  = res/24
+			text.margin_right = res/24
+			ts.legend.add_face(text, column=1)
 
 	myTree.dist=0.05
 
@@ -465,6 +475,12 @@ if __name__ == '__main__':
                 print __doc__
                 sys.exit(0)
 	
+        #show labels for all leaves?
+        allLabels = False
+        if q("-showAll"):
+                sys.argv.remove("-showAll")
+                allLabels = True
+
 	#hide dots at natives?
 	dots = True
 	if q("-noDots"):
@@ -488,6 +504,13 @@ if __name__ == '__main__':
 	if q("-noV"):
 		sys.argv.remove("-noV")
 		vgene = False
+
+        #don't show color guide?
+        hideLegend = False
+        if q("-noGuide"):
+                sys.argv.remove("-noGuide")
+                hideLegend = True
+
 
 	if os.environ.get('DISPLAY') is None:
 		sys.exit("\nThe Qt4 drawing engine requires an active X server.\nPlease enable X forwarding or use xvfb-run.\n")
