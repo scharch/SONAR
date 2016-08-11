@@ -114,9 +114,9 @@ def main():
             aln = AlignIO.read(handle, "fasta")
         else: 
             try:
-                aln = AlignIO.read(handle, "phylip")
+                aln = AlignIO.read(handle, "phylip-relaxed")
             except:
-                sys.exit("Please make sure custom input is aligned and in PHYLIP format\n\t-try making sure all sequence IDs are 10 characters or less...")
+                sys.exit("Please make sure custom input is aligned and in PHYLIP format...")
 
     lookup = []
     for seq in aln:
@@ -141,9 +141,11 @@ def main():
 
 
     # change to work directory so DNAML finds "infile" and puts the output where we expect
+    origWD = os.getcwd()
     os.chdir(prj_tree.phylo)
     with open("%s/dnaml.in"%prj_tree.phylo, "rU") as pipe:
         subprocess.call([DNAML], stdin=pipe)
+    os.chdir(origWD)
 
     #revert names in tree
     with open("%s/outtree"%prj_tree.phylo, "rU") as intree:

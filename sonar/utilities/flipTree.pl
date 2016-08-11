@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 =head 1 SUMMARY
  
@@ -25,6 +25,7 @@
                           Institutes of Health, USA. All rights reserved.
 =cut
 
+use warnings;
 use strict;
 use Pod::Usage;
 use Bio::TreeIO;
