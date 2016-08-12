@@ -186,8 +186,8 @@ if __name__ == '__main__':
 		print __doc__
 		sys.exit(0)
 
-	#log command line
-	logCmdLine(sys.argv)
+	#save command line
+	cmdLine = sys.argv
 
 
 	#check forcing parameter
@@ -229,6 +229,9 @@ if __name__ == '__main__':
 	prj_folder  = os.getcwd()
 	folder_tree = create_folders( prj_folder, force=force )
 	prj_name    = prj_folder[prj_folder.rindex("/") + 1 :]
+
+	#log command line
+	logCmdLine(sys.argv)	
 
 	#load library
 	if locus in dict_vgerm_db.keys():

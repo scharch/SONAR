@@ -39,7 +39,7 @@ use PPvars qw(ppath);
 use version qw/logCmdLine/;
 
 
-if ($#ARGV<2 || $ARGV[0] =~ /-h/) { pod2usage(1); }
+if ($#ARGV<1 || $ARGV[0] =~ /-h/) { pod2usage(1); }
 &logCmdLine($0,@ARGV);
 
 
