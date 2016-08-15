@@ -239,6 +239,10 @@ if ($#targets > 0) {
     my $minStDev = 9999;
 
     #it's n-1 because starting (target) and ending (uca) points are fixed
+    if ($numSteps > $#diffCounts) { 
+	$numSteps = $#diffCounts;
+	warn( "Only $numSteps unique intermediates found on path to $targets[0]\n" );
+    }
     my $iter = combinations( [2 .. $#diffCounts], $numSteps-1 );
     while (my $combo = $iter->next) {
 	#add the endpoints back in
