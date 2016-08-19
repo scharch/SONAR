@@ -34,7 +34,19 @@ Usage: 3.2-runDNAML.py ( -i custom/input.phy | -v germline_V )
     v		Assigned germline V gene of known antibodes, for use in 
                    rooting the trees.
 
+
+    Optional parameters (compatible with both -v and -i):
+
+    outtree     Where to save the output tree. Default: output/<project>.tree
+    outfile     Where to save DNAML output (text tree and inferred ancestors)
+                   Default: output/logs/<project>.dnaml.out
+
+
     Optional parameters (only relevant when using the -v option):
+
+    seqs        A fasta file containing the sequences from which the tree is
+                   to be built. Default:
+		   output/sequences/nucleotide/<project>-collected.fa
     locus	H (default): use V heavy / K: use V kappa / L: use V lambda
                    Ignored if the -lib option is used to supply a custom
                    library
@@ -43,10 +55,12 @@ Usage: 3.2-runDNAML.py ( -i custom/input.phy | -v germline_V )
 
 
     Optional flags:
+
     f		Force a restart of the analysis, even if there are files from
                    a previous run in the working directory.
 
 Created by Chaim A Schramm 2015-07-09.
+Added options for flexibility and more informative error messages by CAS 2016-08-19.
 
 Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -71,9 +85,9 @@ def revertName(match):
 
 def main():
 
-    global inFile, lookup
+    global inFile, lookup, workDir, outTreeFile, outFile, seqFile
 
-    oldFiles = glob.glob("%s/infile"%prj_tree.phylo) + glob.glob("%s/outtree"%prj_tree.phylo) + glob.glob("%s/outfile"%prj_tree.phylo)
+    oldFiles = glob.glob("%s/infile"%workDir) + glob.glob("%s/outtree"%workDir) + glob.glob("%s/outfile"%workDir)
     if len(oldFiles) > 0:
         if force:
             for f in oldFiles:
@@ -85,25 +99,22 @@ def main():
     if doAlign:
 
         #first create a working file to align and add the germline and natives
-        shutil.copyfile("%s/%s-collected.fa"%(prj_tree.nt, prj_name), "%s/%s_to_align.fa"%(prj_tree.phylo, prj_name))
-        handle = open( "%s/%s_to_align.fa"%(prj_tree.phylo, prj_name), "a" )
+        shutil.copyfile(seqFile, "%s/%s_to_align.fa"%(workDir, prj_name))
+        handle = open( "%s/%s_to_align.fa"%(workDir, prj_name), "a" )
         handle.write( ">%s\n%s\n" % (germ_seq.id, germ_seq.seq) )
         for n in natives.values():
             handle.write( ">%s\n%s\n" % (n.id, n.seq) )
         handle.close()
 
         #now run muscle
-        run_muscle            = MuscleCommandline( input="%s/%s_to_align.fa" % (prj_tree.phylo, prj_name), out="%s/%s_aligned.afa" % (prj_tree.phylo, prj_name) )
+        run_muscle            = MuscleCommandline( input="%s/%s_to_align.fa" % (workDir, prj_name), out="%s/%s_aligned.afa" % (prj_tree.phylo, prj_name) )
         run_muscle.maxiters   = 2
         run_muscle.diags      = True
         run_muscle.gapopen    = -5000.0 #code requires a float
         print run_muscle
         run_muscle()
-        #thisVarHidesTheOutput = run_muscle()
 
-        #change inFile variable so that remaining code is the same for both cases
-        #It's probably really bad form to handle this in this way
-        inFile = "%s/%s_aligned.afa" % (prj_tree.phylo, prj_name)
+        inFile = "%s/%s_aligned.afa" % (workDir, prj_name)
 
 
     #open the alignment to rename everything and find germline sequence
@@ -126,7 +137,7 @@ def main():
         seq.id = "%010d" % len( lookup )
 
 
-    with open("%s/infile" % prj_tree.phylo, "w") as output:
+    with open("%s/infile" % workDir, "w") as output:
         AlignIO.write(aln, output, "phylip")
 
 
@@ -135,32 +146,34 @@ def main():
     # O is outgroup root, followed by position of the germline in the alignment
     # 5 tells DNAML to do the ancestor inference
     # Y starts the run
-    with open("%s/dnaml.in"%prj_tree.phylo, "w") as handle:
+    with open("%s/dnaml.in"%workDir, "w") as handle:
         seed = random.randint(0,1e10) * 2 + 1 #seed must be odd
         handle.write("J\n%d\n3\nO\n%d\n5\nY\n" % (seed, germ_pos))
 
 
     # change to work directory so DNAML finds "infile" and puts the output where we expect
     origWD = os.getcwd()
-    os.chdir(prj_tree.phylo)
-    with open("%s/dnaml.in"%prj_tree.phylo, "rU") as pipe:
+    os.chdir(workDir)
+    with open("dnaml.in", "rU") as pipe:
         subprocess.call([DNAML], stdin=pipe)
     os.chdir(origWD)
 
     #revert names in tree
-    with open("%s/outtree"%prj_tree.phylo, "rU") as intree:
+    with open("%s/outtree"%workDir, "rU") as intree:
         mytree = intree.read()
     fixedtree = re.sub("\d{10}", revertName, mytree)
-    with open("%s/%s.tree"%(prj_tree.out,prj_name), "w") as outtree:
+    with open(outTreeFile, "w") as outtree:
         outtree.write(fixedtree)
 
     #revert names in out file
-    with open("%s/outfile"%prj_tree.phylo, "rU") as instuff:
+    with open("%s/outfile"%workDir, "rU") as instuff:
         mystuff = instuff.read()
     fixedstuff = re.sub("\d{10}", revertName, mystuff)
-    with open("%s/%s.dnaml.out"%(prj_tree.logs,prj_name), "w") as outstuff:
+    with open(outFile, "w") as outstuff:
         outstuff.write(fixedstuff)
         
+	
+    print "\nOutput in %s and %s\n" % (outTreeFile, outFile)
 
 
 if __name__ == '__main__':
@@ -188,21 +201,21 @@ if __name__ == '__main__':
 
 
 	#get the parameters from the command line
-	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile")
-	defaults = dict(locus="H", library="")
-	natFile, germlineV, locus, library, inFile = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile")
+	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", seqs="seqFile", outtree="outTreeFile", outfile="outFile")
+	defaults = dict(locus="H", library="", inFile=None, seqFile=None, outTreeFile=None, outFile=None)
+	natFile, germlineV, locus, library, inFile, seqFile, outTreeFile, outFile = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile", "seqFile", "outTreeFile", "outFile")
 
         doAlign = True
-	if natFile is None or germlineV is None:
+	if germlineV is None:
             if inFile is None:
                 print __doc__
-		sys.exit(0)
+		sys.exit("You must specify either -i or -v")
             else:
                 doAlign = False
         else:
             if inFile is not None:
                 print __doc__
-                sys.exit(0)
+                sys.exit("Options -i and -v are mutually exclusive")
             else:
                 #load native sequences
 		natives = dict()
@@ -216,16 +229,35 @@ if __name__ == '__main__':
                     if locus in dict_vgerm_db.keys():
 			library = dict_vgerm_db[locus]
                     else:
-			print "Can't find custom V gene library file!"
-			sys.exit(1)
+			sys.exit("Can't find custom V gene library file!")
 
                 germ_dict = load_fastas(library)
                 try:
                     germ_seq = germ_dict[germlineV]
                 except:
-                    print "Specified germline gene (%s) is not present in the %s library!\n" % (germlineV, library)
-                    sys.exit(1)
+                    sys.exit( "Specified germline gene (%s) is not present in the %s library!\n" % (germlineV, library) )
 		
+	workDir = prj_tree.phylo
+	if not os.path.isdir(workDir):
+		print "No work directory found, temporary files will be placed in current directory."
+		workDir = "."
+
+	if outTreeFile is None:
+		if os.path.isdir(prj_tree.out):
+			outTreeFile = "%s/%s.tree" % (prj_tree.out, prj_name)
+		else:
+			outTreeFile = "%s.tree" % prj_name
+
+	if outFile is None:
+		if os.path.isdir(prj_tree.logs):
+			outFile = "%s/%s.dnaml.out"%(prj_tree.logs,prj_name)
+		else:
+			outFile = "%s.dnaml.out" % prj_name
+
+	if doAlign and seqFile is None:
+		seqFile = "%s/%s-collected.fa" %( prj_tree.nt, prj_name)
+		if not os.path.isfile(seqFile):
+			sys.exit( "Can't find sequence file %s to build tree from." % seqFile )
 
 	main()
 
