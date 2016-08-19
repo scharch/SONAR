@@ -44,14 +44,16 @@ class ExitHooks(object):
     def hook(self):
         self._orig_exit = sys.exit
         sys.exit = self.exit
+        self._orig_except = sys.excepthook
         sys.excepthook = self.exc_handler
 
     def exit(self, code=0):
-        self.exit_code = code
+        self.exit_code = str(code)
         self._orig_exit(code)
 
-    def exc_handler(self, exc_type, exc, *args):
-        self.exception = exc
+    def exc_handler(self, exc_type, exc, tb):
+        self.exception = exc_type.__name__ + ": " + str(exc)
+        self._orig_except(exc_type, exc, tb)
 
 hooks = ExitHooks()
 hooks.hook()
@@ -62,6 +64,10 @@ def logCmdLine( command ):
     global printLog
 
     if os.path.isdir( "%s/output/logs" % os.getcwd() ):
+
+        for idx,arg in enumerate(command):
+            if re.search("\s", arg):
+                command[idx] = '"'+arg+'"'
 
         p = subprocess.Popen(['git', '-C', os.path.dirname(command[0]), 
                               'describe', '--always','--dirty','--tags'],
@@ -83,9 +89,11 @@ def logExit():
     if printLog:
         with open("%s/output/logs/command_history.log" % os.getcwd(), "a") as handle:
             if hooks.exit_code is not None:
-                handle.write( "%s -- Program exited with error:\n\t%s" % (time.strftime("%c"),str(hooks.exit_code)) )
+                formatted = re.sub( "\n", "\n\t", hooks.exit_code.strip(" \t\r\n") ) #remove white space and new lines on both ends; indent if multiple lines
+                handle.write( "%s -- Program exited with error:\n\t%s\n" % (time.strftime("%c"),formatted) )
             elif hooks.exception is not None:
-                handle.write( "%s -- Exception:\n\t%s" % (time.strftime("%c"),hooks.exception) )
+                formatted = re.sub( "\n", "\n\t", hooks.exception.strip(" \t\r\n") ) #remove white space and new lines on both ends; indent if multiple lines
+                handle.write( "%s -- Exception:\n\t%s\n" % (time.strftime("%c"),formatted) )
             else:
                 handle.write( "%s -- Program finished successfully\n" % time.strftime("%c") )
                 
@@ -237,7 +245,7 @@ def processParas(para_list, **keywords):
 	kwgs 	= map(lambda x : keywords[x[1 :]], kwgs)
 	values 	= map(evalValues, values)
 
-	#check for multiple uses of the same keyword and covert those values into a list
+	#check for multiple uses of the same keyword and convert those values into a list
 	for k in set(kwgs):
 		if kwgs.count(k) > 1:
 			idx     = [ i for i,x in enumerate(kwgs) if x==k ]
