@@ -9,6 +9,7 @@ This script uses the ete2 module to display figure-quality phylogenetic
 
 Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                         [ -o tree.png -c collapse.txt -i intermediates.csv
+			  -colors "#FF000 #00FF00 #0000FF"
 		          -f 1 -r 300 -sc 1000 -sp 12 -h 4 -w 4
 			  -showAll -path -noDots -noUCA -noV -noGuide ]
 
@@ -52,6 +53,10 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                          to highlight. First column is the node label in the
 			 newick file, optional second column gives a formatted
 			 label to display on the tree.
+    colors    -    Optional vector of colors (specified as a single, space-delimited
+                         string) to use for each time point. Defaults to choosing
+			 up to 30 equally-ish spaced colors, sorted by hue from red
+			 (early) to blue (late).
     f         -    Optional magnification factor for text labels. Default size is
                          approximately 0.1 inches high at the specified resolution.
 			 (Font face is hard-coded as Arial.) Default = 1.
@@ -133,6 +138,9 @@ except ImportError:
 
 
 def parseNatives(infile):
+	
+	global fullListOfColors
+	
 	nats = dict()
 	times = []
 
@@ -154,8 +162,8 @@ def parseNatives(infile):
 		if name != '':
 			nats[name] = dict( display=show, timepoint=date )
 
-	if len(times) > 30:
-		sys.exit( "Sorry, program is currently only configured to handle up to 30 time points.\n" )
+	if len(times) > len(fullListOfColors):
+		sys.exit( "Only %d colors specified. Please use the -colors options to input enough color selections for each of the %d time points detected.\n"%(len(fullListOfColors),len(times)) )
 
 	return nats, times
 
@@ -254,10 +262,9 @@ def layout(node):
 
 
 def makeRainbow(thisLevel, numLevels):
-	#colors generated stochastically via http://tools.medialab.sciences-po.fr/iwanthue/ and sorted for increasing hue
-	fullList = ["#BE4229", "#E74721", "#8C431C", "#CB6A27", "#E98C25", "#946E13", "#D0A620", "#8B8A22", "#A9B71D", "#555C10", "#839A21", "#82B531", "#4D8426", "#55C42A", "#34992A", "#2B6B2E", "#4FC456", "#33B66D", "#4296CB", "#5A8CE2", "#3E5988", "#656CE2", "#524EA0", "#8F83CC", "#A57CE4", "#8E46AD", "#C056EB", "#CA6BE4", "#7B4D87", "#D186D7"]
-	subset = [int( a * 30 / numLevels ) for a in range(numLevels)]
-	return fullList[subset[thisLevel]]
+	global fullListOfColors
+	subset = [int( a * len(fullListOfColors) / numLevels ) for a in range(numLevels)]
+	return fullListOfColors[subset[thisLevel]]
 
 
 def iLabel(node, *args, **kargs):
@@ -290,7 +297,7 @@ def iLabel(node, *args, **kargs):
 
 def main():
 
-	global spacing, scale, fontSize
+	global spacing, scale, fontSize, fullListOfColors
 	
 	#read in tree
 	myTree= Tree(treeFile, format=1)
@@ -516,11 +523,11 @@ if __name__ == '__main__':
 		sys.exit("\nThe Qt4 drawing engine requires an active X server.\nPlease enable X forwarding or use xvfb-run.\n")
 
 	#parse remainder of options
-	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile",
+	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile", colors="manualColors",
 				 c="collapseFile", sc="scale", sp="spacing", r="res", f="fontBig", w="width", h="height")
-	dict_defaults = dict( scale=None, spacing=None, res=300, fontBig=1, height=None, width=None, outFile="tree.png" )
-	treeFile, nativeFile, outFile, intFile, collapseFile, scale, spacing, res, fontBig, width, height = \
-	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "collapseFile", "scale", "spacing", "res", "fontBig", "width", "height" )
+	dict_defaults = dict( scale=None, spacing=None, res=300, fontBig=1, height=None, width=None, outFile="tree.png", manualColors=None )
+	treeFile, nativeFile, outFile, intFile, collapseFile, manualColors, scale, spacing, res, fontBig, width, height = \
+	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "collapseFile", "manualColors", "scale", "spacing", "res", "fontBig", "width", "height" )
 
 
 	#figure out image dimensions
@@ -528,12 +535,19 @@ if __name__ == '__main__':
 		sys.exit("Only one horizontal parameter (scale XOR width) may be specified\n");
 	if spacing is not None and height is not None:
 		sys.exit("Only one vertical parameter (spacing XOR height) may be specified\n");
-	if width is not None and width < 2:
-		sys.exit("Minimum figure width is 2 inches (includes margin and color guide)\n");
+	if width is not None and (width < 2 or (hideLegend and width < 1.5)):
+		sys.exit("Minimum figure width is 2 inches with color guide or 1.5 without\n");
 	
 
 	#convert font magnification to actual size
 	fontSize = fontBig * 20 * res/300
+
+
+	#colors generated stochastically via http://tools.medialab.sciences-po.fr/iwanthue/ and sorted for increasing hue
+	fullListOfColors = ["#BE4229", "#E74721", "#8C431C", "#CB6A27", "#E98C25", "#946E13", "#D0A620", "#8B8A22", "#A9B71D", "#555C10", "#839A21", "#82B531", "#4D8426", "#55C42A", "#34992A", "#2B6B2E", "#4FC456", "#33B66D", "#4296CB", "#5A8CE2", "#3E5988", "#656CE2", "#524EA0", "#8F83CC", "#A57CE4", "#8E46AD", "#C056EB", "#CA6BE4", "#7B4D87", "#D186D7"]
+
+	if manualColors is not None:
+		fullListOfColors = re.split("\s+",manualColors)
 
 
 	#load natives
@@ -544,6 +558,7 @@ if __name__ == '__main__':
 	# (function returns empty list if file is not specified)
 	intermediates = parseInternalNodes(intFile)
 	collapseList  = parseInternalNodes(collapseFile)
+
 
 
 	main()
