@@ -210,7 +210,7 @@ if __name__ == '__main__':
         
 
         nat_genes = natV + "_" + natJ
-        gene_pat = re.compile("V_gene=IG([HKL]V\d-[^*]+).*J_gene=IG([HKL]J\d)")
+        gene_pat = re.compile("V_gene=IG([HKL]V\d[^*]+).*J_gene=IG([HKL]J\d)")
 
 
         prj_tree = ProjectFolders(os.getcwd())
