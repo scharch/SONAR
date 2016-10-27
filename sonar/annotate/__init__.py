@@ -1,7 +1,7 @@
 
 from .. import *
 from Bio.Blast.Applications import NcbiblastnCommandline
-
+import traceback
 
 
 def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=False):
@@ -20,7 +20,10 @@ def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=Fa
 					      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
 					      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
 
-	cline()
+        try:
+	        cline()
+        except:
+               print traceback.format_exc()
 
 
 
