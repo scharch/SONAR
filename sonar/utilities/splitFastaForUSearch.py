@@ -25,6 +25,14 @@ Copyright (c) 2016 Columbia University Vaccine Research Center, National
 from docopt import docopt
 from Bio.SeqIO.FastaIO import SimpleFastaParser
 
+try:
+	from sonar import *
+except ImportError:
+	find_SONAR = sys.argv[0].split("sonar/utilities")
+	sys.path.append(find_SONAR[0])
+	from sonar import *
+
+        
 
 def main():
 
