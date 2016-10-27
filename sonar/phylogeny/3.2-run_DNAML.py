@@ -155,7 +155,7 @@ def main():
     origWD = os.getcwd()
     os.chdir(workDir)
     with open("dnaml.in", "rU") as pipe:
-        subprocess.call([DNAML], stdin=pipe)
+        subprocess.call([dnaml], stdin=pipe)
     os.chdir(origWD)
 
     #revert names in tree
