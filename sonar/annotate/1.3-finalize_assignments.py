@@ -87,9 +87,11 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 			cdr3_start = -1
 
 	jMatch = re.search(jMotif,jgene)
+        wfMotif = -1 #pass back to main program to check for out-of-frame junctions
 
 	try:
 		cdr3_end = vlength + j_start_on_read + (jMatch.start() - jstart) +3
+                WF_motif = jMatch.start()
 	except:
 		cdr3_end = -1 #if we didn't find the motif, we'll count it as a bad cdr3 without crashing
 
@@ -104,7 +106,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 			if abs(wgxg[-1].start() + 3 - cdr3_end) <= 3:
 				cdr3_end = wgxg[-1].start() + 3
 
-	return cdr3_start, cdr3_end
+	return cdr3_start, cdr3_end, WF_motif
 
 
 def main():
@@ -219,7 +221,7 @@ def main():
 					entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
-				cdr3_start,cdr3_end = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq)) #min and max statments take care of switching possible minus strand hit
+				cdr3_start,cdr3_end,WF_motif = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq)) #min and max statments take care of switching possible minus strand hit
 				cdr3_seq = entry.seq[ cdr3_start : cdr3_end ]
 
 				#push the sequence into frame for translation, if need be
@@ -239,8 +241,9 @@ def main():
 				if len(cdr3_seq) % 3 != 0:
 					indel = "T"
 				else: #even if cdr3 looks ok, might be indels in V and/or J
-					j_frame = 3 - ( ( len(dict_j[myJ.sid].seq) - myJ.sstart - 1) % 3 ) #j genes start in different frames, so caluclate based on end
+					j_frame = 3 - ( ( WF_motif - myJ.sstart ) % 3 ) #j genes start in different frames, so caluclate based on position of conserved W/F found by the cdr3 subroutine above
 					frame_shift = (v_len + myJ.qstart - 1) % 3
+
 					if (v_frame + frame_shift) % 3 != j_frame % 3:
 						indel = "T"   #for gDNA we would probably want to distinguish between an out-of-frame recombination and sequencing in-dels in V or J
 						                #but that can be ambiguous and for cDNA we can assume that it's sll sequencing in-del anyway, even in CDR3.
