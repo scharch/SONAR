@@ -137,7 +137,7 @@ class MyQual:
 class MyAlignment:
 	def __init__(self, row):
 		self.qid	= row[0].strip()		# query id
-		self.sid	= row[1].upper().strip()	# subject id
+		self.sid	= row[1].strip()		# subject id
 		self.identity 	= float(row[2])			# % identity
 		self.alignment 	= int(row[3])			# alignment length
 		self.mismatches = int(row[4]) 			# mismatches
@@ -168,7 +168,7 @@ class MyAlignment:
 class MyAlignmentVerbose:
 	def __init__(self, row):
 		self.query_id		= row[0]
-		self.sbjct_id		= row[1].upper()
+		self.sbjct_id		= row[1]
 		self.strand		= row[2]
 		self.evalue		= float(row[3])
 		self.score		= float(row[4])
