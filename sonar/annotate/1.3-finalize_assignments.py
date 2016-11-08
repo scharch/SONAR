@@ -87,7 +87,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 			cdr3_start = -1
 
 	jMatch = re.search(jMotif,jgene)
-        WF_Motif = -1 #pass back to main program to check for out-of-frame junctions
+        WF_motif = -1 #pass back to main program to check for out-of-frame junctions
 
 	try:
 		cdr3_end = vlength + j_start_on_read + (jMatch.start() - jstart) +3
