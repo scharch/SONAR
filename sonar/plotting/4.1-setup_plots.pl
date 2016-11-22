@@ -125,14 +125,20 @@ if ($help) { pod2usage(1); }
 
 &logCmdLine($0,@saveArgs);
 
+#change format of options array to be compatible with DocOpt
+# doing it this way instead of asking user to input --option value to avoid ambiguities parsing options for this script.
+for my $opt (@plotOptions) {
+    my @aa= split /=/,$opt;
+    $opt = "--$aa[0] $aa[1]";
+}
 
 #set up some defaults
 # put them at front of options array so they can be overriden if user specified alternates
 $outFile = "output/plots/plot_of_$type\_for_$subset.png" if $outFile eq "";
-unshift @plotOptions, "title=".basename( getcwd );
-unshift @plotOptions, ("logx=T","logy=T") if $type =~ /size/;
-unshift @plotOptions, "mids=T" if $type =~ /(raw|trim)/;
-unshift @plotOptions, "bars=stack" if $type =~ /(features|status)/;
+unshift @plotOptions, "--title ".basename( getcwd );
+unshift @plotOptions, ("--logx T","logy=T") if $type =~ /size/;
+unshift @plotOptions, "--mids T" if $type =~ /(raw|trim)/;
+unshift @plotOptions, "--bars stack" if $type =~ /(features|status)/;
 
 
 #array to store output
@@ -155,7 +161,7 @@ close OUT;
 
 #call 4.2 with appropriate options
 #add single quotes so spaces and parens are handled as expected
-system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile '" . join("' '",@plotOptions) . "'" );
+system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile " . join(" ",@plotOptions) );
 
 
 sub chooseSubset {
