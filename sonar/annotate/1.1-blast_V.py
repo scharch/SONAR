@@ -84,8 +84,9 @@ def main():
 	global total, total_good, f_ind, fastaFiles
 		
 	# open initial output files
-	fasta 	=            open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
-	id_map	= csv.writer(open("%s/id_lookup.txt"  %  folder_tree.internal,                 'w'), delimiter=sep)
+	fasta 	  = open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
+        id_handle = open("%s/id_lookup.txt"  %  folder_tree.internal,                 'w')
+	id_map	  = csv.writer(id_handle, delimiter=sep)
 
 
 	#if we decide to use quals for something, can add this block back in
@@ -132,6 +133,7 @@ def main():
 	print "TOTAL: %d processed, %d good" %(total, total_good)
 	
 	fasta.close()
+        id_handle.close()
 	'''
 	if use_qual>0:
 		qual.close()

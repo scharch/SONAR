@@ -67,13 +67,17 @@ except ImportError:
 
 def main():
 	
+        if not glob.glob("%s/%s_*.fasta" % (prj_tree.vgene, prj_name)):
+                sys.exit("No vBlast output found!\n")
+        
 	print "curating 5'end and strand...."
 
 	# cut nucleotide sequences from 5'end alignment to germline
 	total, good, f_ind = 0, 0, 1
 	dict_germ_count	= dict()
 	
-	writer = csv.writer(open("%s/%s_vgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
+        topHandle = open("%s/%s_vgerm_tophit.txt" %(prj_tree.tables, prj_name), "w")
+	writer    = csv.writer(topHandle, delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
 	
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
@@ -106,7 +110,8 @@ def main():
 
 
 	f_ind -= 1 #had to go 1 extra to break while loop, now reset to actual number of files
-
+        topHandle.close()
+        
 
 	#print log message
 	handle = open("%s/1.2.log" % prj_tree.logs, "w")

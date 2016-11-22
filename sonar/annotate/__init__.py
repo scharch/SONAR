@@ -64,7 +64,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 
 						
                                 #skips D genes that matched 5' J
-                                if my_alignment.qend > maxQEnd.get(my_alignment.qid, 999):
+                                if my_alignment.qend > maxQEnd.get(my_alignment.qid, 99999):
                                         old_id=""
                                         continue
 

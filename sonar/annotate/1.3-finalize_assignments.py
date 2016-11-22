@@ -73,7 +73,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		if cys.start() % 3 == 0:
 			cdr3_start = vlength - (vend - cys.start())
 			break
-
+                
 	# If BLAST has truncated the V gene alignment prior to reaching the conserved cysteine, but still found the J gene,
 	#   that likely indicates a large in-del, which must be accounted for, or the start position of CDR 3 will be wrong.
 	# The only easy/automatic tool we have is to look for the conserved CxR/K motif; if it's mutated (or we are looking
@@ -111,6 +111,9 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 
 def main():
 
+        if not glob.glob("%s/%s_*.fasta" % (prj_tree.jgene, prj_name)):
+                sys.exit("No jBlast output found!\n")
+        
 	print "curating junction and 3' end..."
 
 
@@ -388,7 +391,10 @@ if __name__ == '__main__':
 
 	defaultParams = dict(jmotif = "TGGGG")
 	if "K" in locus or "L" in locus: #it's a light chain!
-		defaultParams['jmotif'] = "TT[C|T][G|A]G"
+                if "H" in locus: #need both motifs
+                        defaultParams['jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
+                else:
+		        defaultParams['jmotif'] = "TT[C|T][G|A]G"
 
 	dict_args = processParas(sys.argv, jmotif="jmotif")
 	jMotif = getParasWithDefaults(dict_args, defaultParams, "jmotif")
