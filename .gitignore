@@ -3,3 +3,4 @@
 PPvars.pm
 paths.py
 local/
+*.#*
