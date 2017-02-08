@@ -136,9 +136,9 @@ def main():
 	with open("%s/%s.uc"%(prj_tree.lineage, group), "rU") as handle:
 		uc = csv.reader( handle, delimiter=sep )
 		for row in uc:
-			#first get rid of size annotations
-			hit  = re.sub(";size=\d+;","",row[8])
-			cent = re.sub(";size=\d+;","",row[9]) # just a * for S rows, use hit as cent
+			#first get rid of size annotations and fasta def line (which is included as of usearch9)
+			hit  = re.sub(";size=\d+;.*","",row[8])
+			cent = re.sub(";size=\d+;.*","",row[9]) # just a * for S rows, use hit as cent
 			if row[0] == "S":
 				centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
 			        clusterLookup[ hit ] = hit
