@@ -10,7 +10,7 @@ This script uses the ete2 module to display figure-quality phylogenetic
 Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                         [ -o tree.png -c collapse.txt -i intermediates.csv
 			  -colors "#FF000 #00FF00 #0000FF"
-		          -f 1 -r 300 -sc 1000 -sp 12 -h 4 -w 4
+		          -f 1 -r 300 -sc 1000 -sp 12 -he 4 -w 4
 			  -showAll -path -noDots -noUCA -noV -noGuide ]
 
     Invoke with -h or --help to print this documentation.
@@ -69,7 +69,7 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
     sp        -    Desired vertical spacing of adjacent tree brances, in pixels.
                          Mutually exclusive with -h. Default is scaled to 
 			 approximately 0.04 inches (12.5 pixels at 300 dpi).
-    h         -    Desired height (in inches) of the output image. Includes a 
+    he        -    Desired height (in inches) of the output image. Includes a 
                          quarter-inch margin around all borders. The program uses
 			 this value as a guideline to estimate the desired spacing
 			 parameter (-sp), so the result will not be exact. Because
