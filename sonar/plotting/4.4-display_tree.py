@@ -524,7 +524,7 @@ if __name__ == '__main__':
 
 	#parse remainder of options
 	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile", colors="manualColors",
-				 c="collapseFile", sc="scale", sp="spacing", r="res", f="fontBig", w="width", h="height")
+				 c="collapseFile", sc="scale", sp="spacing", r="res", f="fontBig", w="width", he="height")
 	dict_defaults = dict( scale=None, spacing=None, res=300, fontBig=1, height=None, width=None, outFile="tree.png", manualColors=None )
 	treeFile, nativeFile, outFile, intFile, collapseFile, manualColors, scale, spacing, res, fontBig, width, height = \
 	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "collapseFile", "manualColors", "scale", "spacing", "res", "fontBig", "width", "height" )
