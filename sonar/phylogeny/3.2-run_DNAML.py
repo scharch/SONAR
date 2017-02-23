@@ -148,7 +148,7 @@ def main():
     # Y starts the run
     with open("%s/dnaml.in"%workDir, "w") as handle:
         seed = random.randint(0,1e10) * 2 + 1 #seed must be odd
-        handle.write("J\n%d\n3\nO\n%d\n5\nY\n" % (seed, germ_pos))
+        handle.write("J\n%d\n5\nG\nO\n%d\n5\nY\n" % (seed, germ_pos))
 
 
     # change to work directory so DNAML finds "infile" and puts the output where we expect
