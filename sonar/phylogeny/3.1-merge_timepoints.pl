@@ -150,8 +150,10 @@ open UC, "work/phylo/uc" or die "Can't find output from USearch: $!. Please chec
 while (<UC>) {
     last if /^C/; #speed processing by skipping summary lines
 
-    my @a = split;
-    my ($time) = $a[8] =~ /^(.*)\-/; #greedy operators mean we don't have to worry about dashes in user-supplied prefixes
+    chomp;
+    my @a = split /\t/; #usearch9 now includes the full fasta def line, which may include spaces 
+    $a[8] =~ s/\S*\K.*//; #if there are spaces in the fasta def line, this dumps them, for compatibility with Bio::SeqIO below
+    my ($time) = $a[8] =~ /^([^;,]*)\-/; #greedy operators mean we don't have to worry about dashes in user-supplied prefixes (but don't go into fasta def line)
 
     if ($a[0] eq "S") {
 
@@ -165,6 +167,7 @@ while (<UC>) {
 
     } else {
 
+	$a[9] =~ s/\S*\K.*//; #if there are spaces in the fasta def line, this dumps them, for compatibility with Bio::SeqIO below
 	$cluster{$a[9]}{'seen'}{$time}++;
 	if ( $order{$time} < $cluster{$a[9]}{'first'} ) {
 	    $cluster{$a[9]}{'first'} = $order{$time};
