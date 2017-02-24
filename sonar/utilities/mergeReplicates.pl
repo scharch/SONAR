@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 =head 1 SUMMARY
 
@@ -18,12 +18,14 @@
 
  Created by Chaim A. Schramm 2015-06-12.
  Modified to current form by CA Schramm, 2015-07-21
+ Added to SONAR utilities 2017-02-24
 
- Copyright (c) 2011-2015 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut
 
+use warnings;
 use strict;
 use diagnostics;
 use Pod::Usage;
@@ -32,6 +34,12 @@ use Cwd;
 use File::Basename;
 use Bio::SeqIO;
 use Statistics::Basic qw(correlation);
+use FindBin;
+use lib "$FindBin::Bin/../";
+use PPvars qw(ppath);
+use version qw/logCmdLine/;
+
+my @saveArgs = @ARGV;
 
 
 if ($#ARGV < 0) { pod2usage(1); }
@@ -51,6 +59,9 @@ my $prj_name = basename(getcwd);
 if ( -e "$prj_name-merged.fa" && ! $force ) {
     die "Output already exists. Please use the -f(orce) option to re-intiate and overwrite.\n";
 }
+
+
+&logCmdLine($0,@saveArgs);
 
 
 #Read in selected seqs, rename, and write to temporary output
