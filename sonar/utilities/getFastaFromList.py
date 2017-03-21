@@ -6,17 +6,19 @@ getFastaFromList.py
 This is a simple utility script for efficiently extracting a subset of
       sequences from a large fasta file.
 
-Usage: getFastaFromList.py -f seqs.fa -o output.fa [ -l list.txt ]
+Usage: getFastaFromList.py -f seqs.fa [ -o output.fa -l list.txt ]
 
     Invoke with -h or --help to print this documentation.
 
     f           Fasta file containing the sequences to be subsetted.
-    o           Fasta file in which to save extracted sequences.
+    o           Fasta file in which to save extracted sequences. Prints to STDOUT
+                   if omitted.
     l           Text file containing list of sequence identifiers to extract.
                    Reads from STDIN if omitted.
 
 Created by Chaim A Schramm on 2015-04-27.
 Added streaming from STDIN on 2016-06-10.
+Added streaming to STDOUT on 2017-03-19.
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
@@ -56,8 +58,9 @@ def main():
 		    continue
 	    toSave[ fields[0] ] = " ".join( fields[1:] )
 
-    with open(outFile, "w") as output:
-        SeqIO.write(loadAndAnnotate(inFile, toSave), output, "fasta")
+    if outFile is not None:
+	    sys.stdout = open(outFile, "w")
+    SeqIO.write(loadAndAnnotate(inFile, toSave), sys.stdout, "fasta")
 
 
 if __name__ == '__main__':
