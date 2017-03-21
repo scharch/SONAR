@@ -11,7 +11,7 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                         [ -o tree.png -c collapse.txt -i intermediates.csv
 			  -colors "#FF000 #00FF00 #0000FF"
 		          -f 1 -r 300 -sc 1000 -sp 12 -he 4 -w 4
-			  -showAll -path -noDots -noUCA -noV -noGuide ]
+			  -left -showAll -path -noDots -noUCA -noV -noGuide ]
 
     Invoke with -h or --help to print this documentation.
 
@@ -90,6 +90,7 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
 			 a guideline to estimate the desired scale parameter
 			 (-sc), so the result will not be exact. Mutually
 			 exclusive with -sc. Default = not set (use -sc).
+    left      -    Flag indicating that tree should be displayed facing left.
     showAll   -    Flag indicating that labels should be displayed for all leaves.
     path      -    Flag indicating that the evolutionary pathway(s) from root to
                          the native antibody/ies should be highlighted with a
@@ -118,8 +119,9 @@ Sample format of natives.csv:
 Created by Chaim A Schramm 2013-06-18
 Edited and commented for publication by Chaim A Schramm on 2015-11-04 --happy birthday, Lisa <3
 Edited to add showAll and noGuide options 2016-08-11 by CAS
+Added left-facing option 2017-03-21 by CAS
 
-Copyright (c) 2013-2016 Columbia University and Vaccine Research Center, National
+Copyright (c) 2013-2017 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -387,6 +389,9 @@ def main():
 	ts.margin_bottom          = res/4
 	ts.margin_top             = res/4
 
+        if leftFace:
+                ts.orientation = 1
+                
 	#make color guide
 	if not hideLegend:
 		for time in range( len(timepoints) ):
@@ -482,6 +487,12 @@ if __name__ == '__main__':
                 print __doc__
                 sys.exit(0)
 	
+        #make tree facing left?
+        leftFace = False
+        if q("-left"):
+                sys.argv.remove("-left")
+                leftFace = True
+
         #show labels for all leaves?
         allLabels = False
         if q("-showAll"):
