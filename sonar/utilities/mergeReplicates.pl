@@ -83,9 +83,18 @@ for my $f (@seqFiles) {
     my %unique;
     my $usearch = Bio::SeqIO->new( -file=>"derep-$base" );
     while (my $seq = $usearch->next_seq) { 
-	$unique{$seq->id} = 1;
-	my ($size) = $seq->description =~ /;size=(\d+);/; #for old usearch it would have to be $seq->id
-	$sizes{"$prefix-".$seq->id} = $size;
+	my $seqID = $seq->id;
+	my $size  = 0;
+	if ($seqID =~ /;size=(\d+);/) {
+	    #usearch8
+	    $size = $1;
+	    $seqID =~ s/;.*//;
+	} else {
+	    #usearch9
+	    ($size) = $seq->description =~ /;size=(\d+);/;
+	}
+	$unique{$seqID} = 1;
+	$sizes{"$prefix-".$seqID} = $size;
     }
 
     my $in = Bio::SeqIO->new( -file=>$f ); #with usearch9, this is an unnecessary step

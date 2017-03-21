@@ -39,7 +39,7 @@ sub logCmdLine() {
 	
 	our $PRINT_LOGS = 1;
     } else {
-	print "SONAR log directory not found; command line and output will not be saved\n";
+	warn "SONAR log directory not found; command line and output will not be saved\n";
     }
 
 }
