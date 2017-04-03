@@ -16,6 +16,8 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-trimf number of nucleotides trimed off before assembly for forward mate, default:1
 	-trimr number of nucleotides trimed off before assmebly for reverse mate, default:1
 	-o output folder
+	-split split sequences to smaller files for processing with USEARCH v32bit,number per file. Default: 1,000,000 
+	-maxdiff the maximum of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
 
 Example:
 1.0-MiSeq_assembly.pl -usearch usearch -f forward_read.fastq.gz -r reverse_read.fastq.gz -o ./
@@ -41,6 +43,8 @@ if(!$para{'-fastq_quality_boxplot_graph.sh'}){$para{'-fastq_quality_boxplot_grap
 if(!$para{'-fastx_trimmer'}){$para{'-fastx_trimmer'}=ppath('fastx').'/fastx_trimmer';}
 if(!$para{'-trimf'}){$para{'-trimf'}=1;}
 if(!$para{'-trimr'}){$para{'-trimr'}=1;}
+if(!$para{'-maxdiff'}){$para{'-maxdiff'}=10;}
+if(!$para{'-split'}){$para{'-split'}=1000000;}
 
 my $score="\!\"\#\$\%\&\047\(\)\*\+\,\-\.\/0123456789\:\;\<\=\>\?\@ABCDEFGHI";#Miseq quality scores
 	  my %score=();
@@ -90,8 +94,24 @@ print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
 
 #Pairing with usearch
 print "Pairing\n";
- 	system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_truncqual $para{'-ut'} -fastqout merged.fastq");
- 	system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout $para{'-o'}_good.fna -fastq_maxee $para{'-maxee'} -fastq_eeout ");	
+   if(!$para{'-split'}){
+ 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq");
+ 		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout $para{'-o'}_good.fna -fastq_maxee $para{'-maxee'} -fastq_eeout ");
+ 	}	
+  else{
+     foreach(<forward_matched_*.fastq>){
+     	my $filer=$_;
+     	   $filer=~s/forward/revers/;
+     	my @li=split/[\.\_]/,$_;
+        system("usearch -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct 10  -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt");
+ 	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout $para{'-o'}_good_$li[2].fna -fastq_maxee 1");	
+    }
+    system("cat merge_report_*.txt >>merge_report.txt");
+    system("cat $para{'-o'}_good_*fna >>$para{'-o'}_good.fna");
+    system("cat merged_*.fastq >>merged.fastq");
+    unlink <merge_report_*.txt>,<$para{'-o'}_good_*fna>,<*match*.fastq>,<merged_*.fastq>;
+  }	
+  	
   $lines=`wc -l merged.fastq`;
   @lines=split/[ \t]+/,$lines;
 	print SAT "Total merged: ",$lines[1]/4,"\n";
@@ -189,7 +209,7 @@ sub trim_lowquality{
     }
 }
 ###################
-sub find_match_pair{
+sub find_match_pair1{
 	  my ($f,$r)=@_;
 	  my %f_reads=();
 	  my %r_reads=();
@@ -231,5 +251,115 @@ sub find_match_pair{
     }
     system("mv $r\_matched.fastq $r\.fastq");
     system("mv $f\_matched.fastq $f\.fastq");
+    #return "$r\_matched.fastq","$f\_matched.fastq";
+}
+#############
+sub find_match_pair{
+	  my ($f,$r)=@_;
+	  my %f_reads=();
+	  my %r_reads=();
+    my %r_name=();
+    my %shared=();
+	  open RR,"$r" or die "no filtred reverse reads\n";
+	  open FF,"$f" or die "no filtred forward reads\n";
+	  my $id='';
+	  my $linen=0;
+    while(<RR>){
+    	$linen++;
+    	if($linen%4==1){
+    		my @line=split/[\t \/]/,$_;
+    		$id=$line[0];
+    		$r_name{$id}=$_;
+    	}
+    	
+    }
+    close RR;
+    open RR,"$r" or die "no filtred reverse reads\n";
+    $r=~s/\.fastq//g;
+	  $f=~s/\.fastq//g;	
+	  if($para{'-split'}){
+      my $count=0;
+    	my $mark=0;
+    	$linen=0;
+    	 open RO,">$r\_matched_0.fastq";
+	  	 open FO,">$f\_matched_0.fastq";
+     while(<FF>){#output forward reads
+     	$linen++;
+       if($linen%4==1){
+       	if($count>=$para{'-split'}&&$count%$para{'-split'}==0){
+       		my $file=$count/$para{'-split'};
+       		print "processing $file forward file\n";
+       		close FO;
+	  			open FO,">$f\_matched_$file.fastq";
+       	  }
+       	  
+       	my @line=split/[ \t\/]/,$_;
+       	$id=$line[0];
+       	 if($r_name{$id}){
+       	   print FO "$_";
+       	   $mark=1;	
+       	   $count++;
+       	   $shared{$id}=1;
+       	  }
+       	  else{
+       	     $mark=0;	
+       	  }
+       }
+       elsif($mark==1){
+          print FO "$_";	
+      }	
+    }
+    $count=0;
+    $linen=0;
+     while(<RR>){#output reverse reads
+     	$linen++;
+       if($linen%4==1){
+       	if($count>=$para{'-split'}&&$count%$para{'-split'}==0){
+       		my $file=$count/$para{'-split'};
+       		print "processing $file reverse file\n";
+       		close RO;
+	  			open RO,">$r\_matched_$file.fastq";
+       	  }
+       	  
+       	my @line=split/[ \t\/]/,$_;
+       	$id=$line[0];
+       	 if($shared{$id}){
+       	   print RO "$_";
+       	   $mark=1;	
+       	   $count++;
+       	  }
+       	  else{
+       	     $mark=0;	
+       	  }
+       }
+       elsif($mark==1){
+          print RO "$_";	
+      }	
+    }     
+	  }
+	  else{
+    open RO,">$r\_matched.fastq";
+	  open FO,">$f\_matched.fastq";
+    	my $mark=0;
+     while(<FF>){
+       if($_=~/^\@(M|HISEQ)/){
+       	my @line=split/[ \t\/]/,$_;
+       	$id=$line[0];
+       	 if($r_reads{$id}){
+       	  print RO "$r_name{$id}$r_reads{$id}";
+       	  print FO "$_";
+       	  $mark=1;	
+       	  }
+       	  else{
+       	     $mark=0;	
+       	  }
+       }
+       elsif($mark==1){
+       print FO "$_";	
+      }	
+    }
+    system("mv $r\_matched.fastq $r\.fastq");
+    system("mv $f\_matched.fastq $f\.fastq");
+  }
     #return "$r\_matched.fastq","$f\_matched.fastq";
 }
