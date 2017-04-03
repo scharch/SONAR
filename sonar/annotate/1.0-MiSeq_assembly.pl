@@ -91,7 +91,7 @@ print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
 #Pairing with usearch
 print "Pairing\n";
  	system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_truncqual $para{'-ut'} -fastqout merged.fastq");
- 	system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout $para{'-o'}_good.fna -fastq_maxee $para{'-maxee'} -eeout ");	
+ 	system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout $para{'-o'}_good.fna -fastq_maxee $para{'-maxee'} -fastq_eeout ");	
   $lines=`wc -l merged.fastq`;
   @lines=split/[ \t]+/,$lines;
 	print SAT "Total merged: ",$lines[1]/4,"\n";
