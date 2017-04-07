@@ -10,22 +10,34 @@ Suggested workflow for generating GSSPs using SONAR
    ```
 1. Now that we have assigned V and J, we can cluster sequences into pseudolineages.
    ```
-   2.4-cluster_into_groups.py
+   $> 2.4-cluster_into_groups.py
    ```
 1. Repick the representative sequence from each lineage -- use the read which is closest to the consenus of the lineage. In the paper, we find that this step isn't needed for robust results. If you skip it, however, we recommend manually removing lineages with only one member sequence before proceeding.
-   `5.1-repick_lineage_representative.py
+   ```
+   $> 5.1-repick_lineage_representative.py
+   ```
 1. Now check for frameshifts compared to germline (especially important for 454 or PacBio data) and translate to amino acids. Remove sequences with no amino acid changes from germline.
    ```
-   checkForFrameshift.py output/sequences/nucleotide/<project>_consensusLineageRepresentatives.fa output/sequences/nucleotide/<project>_noFrameshifts.fa
-   quickTranslate.py output/sequences/nucleotide/<project>_noFrameshifts.fa output/sequences/amino_acid/<project>_noFrameshifts.fa
-   2.1-calculate_id-div.pl -f output/sequences/amino_acid/<project>_noFrameshifts.fa -p
-   awk '{ if ($2>0) { print } }' output/tables/<project>_noFrameshifts_id-div.tab > output/tables/mutatedSequences.list
-   getFastaFromList -f output/sequences/amino_acid/<project>_noFrameshifts.fa -l output/tables/mutatedSequences.list -o output/sequences/amino_acid/<project>_finalForProfiles.fa
+   $> checkForFrameshift.py output/sequences/nucleotide/<project>_consensusLineageRepresentatives.fa \
+                            output/sequences/nucleotide/<project>_noFrameshifts.fa
+   $> quickTranslate.py output/sequences/nucleotide/<project>_noFrameshifts.fa \
+                        output/sequences/amino_acid/<project>_noFrameshifts.fa
+   $> 2.1-calculate_id-div.pl -f output/sequences/amino_acid/<project>_noFrameshifts.fa -p
+   $> awk '{ if ($2>0) { print } }' output/tables/<project>_noFrameshifts_id-div.tab \
+            > output/tables/mutatedSequences.list
+   $> getFastaFromList -f output/sequences/amino_acid/<project>_noFrameshifts.fa \
+                       -l output/tables/mutatedSequences.list \
+                       -o output/sequences/amino_acid/<project>_finalForProfiles.fa
    ```
 1. Now we are ready to construct the GSSPs. We recommend using at least 300 sequences per GSSP for robust results, but sometimes use 100 for rarer V genes. Here we calculate profiles just using the standard IMGT database, however we strongly recommend using a personalized germline allele database constructed using [TIgGER](http://tigger.readthedocs.io/en/0.2.8/), [partis](https://github.com/psathyrella/partis), or [IgDiscover](https://bitbucket.org/igdiscover/igdiscover).
-   `5.2-make_profiles.py output/sequences/amino_acid/<project>_finalForProfiles.fa -o <project>_profiles.txt -n 300 -g /<path-to-sonar>/germDB/IgHKLV_cysTruncated.AA.fa -a -u
+   ```
+   $> 5.2-make_profiles.py output/sequences/amino_acid/<project>_finalForProfiles.fa -o <project>_profiles.txt -n 300 -g /<path-to-sonar>/germDB/IgHKLV_cysTruncated.AA.fa -a -u
+   ```
 1. We can generate logo plots of the GSSPs. (Many programs seem to have problems opening the resulting EPS files; [This site](http://convertepstojpg.com/) can be used to convert them to standard image formats.)
-   ` 4.5-create_GSSP_logo.pl <project>_profiles.txt output/plots/<project>-GSSPs
+   ```
+   $> 4.5-create_GSSP_logo.pl <project>_profiles.txt output/plots/<project>-GSSPs
+   ```
 1. Finally, we can compare GSSPs generated from multiple datasets. This generates a matrix of weighted average Jensen-Shannon divergences between each GSSP, which can be plotted using `cmdscale` in R. It also produces tables of the weighted average entropy of each GSSP and the rarity of every possible mutation in each GSSP.
-   `5.3-compare_profiles.py GSSP-comparisons <project1>_profiles.txt <project2>_profiles.txt <project3>_profiles.txt ...
-
+   ```
+   $> 5.3-compare_profiles.py GSSP-comparisons <project1>_profiles.txt <project2>_profiles.txt <project3>_profiles.txt ...
+   ```
