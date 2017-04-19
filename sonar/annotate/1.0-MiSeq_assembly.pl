@@ -17,7 +17,8 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-trimr number of nucleotides trimed off before assmebly for reverse mate, default:1
 	-o output folder
 	-split split sequences to smaller files for processing with USEARCH v32bit,number per file. Default: 1,000,000 
-	-maxdiff the maximum of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
+	-maxdiff the maximum number of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
+	-maxdiffpct the maximum percent of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
 
 Example:
 1.0-MiSeq_assembly.pl -usearch usearch -f forward_read.fastq.gz -r reverse_read.fastq.gz -o ./
@@ -44,6 +45,7 @@ if(!$para{'-fastx_trimmer'}){$para{'-fastx_trimmer'}=ppath('fastx').'/fastx_trim
 if(!$para{'-trimf'}){$para{'-trimf'}=1;}
 if(!$para{'-trimr'}){$para{'-trimr'}=1;}
 if(!$para{'-maxdiff'}){$para{'-maxdiff'}=10;}
+if(!$para{'-maxdiffpct'}){$para{'-maxdiffpct'}=10;}
 if(!$para{'-split'}){$para{'-split'}=1000000;}
 
 my $score="\!\"\#\$\%\&\047\(\)\*\+\,\-\.\/0123456789\:\;\<\=\>\?\@ABCDEFGHI";#Miseq quality scores
@@ -95,32 +97,31 @@ print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
 #Pairing with usearch
 print "Pairing\n";
    if(!$para{'-split'}){
- 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq");
- 		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout $para{'-o'}_good.fna -fastq_maxee $para{'-maxee'} -fastq_eeout ");
+ 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt");
+ 		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout good.fna -fastq_maxee $para{'-maxee'} -fastq_eeout ");
  	}	
   else{
      foreach(<forward_matched_*.fastq>){
      	my $filer=$_;
      	   $filer=~s/forward/revers/;
      	my @li=split/[\.\_]/,$_;
-        system("usearch -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct 10  -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt");
- 	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout $para{'-o'}_good_$li[2].fna -fastq_maxee 1");	
+        system("$para{'-usearch'} -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt");
+ 	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} -fastq_eeout");	
     }
     system("cat merge_report_*.txt >>merge_report.txt");
-    system("cat $para{'-o'}_good_*fna >>$para{'-o'}_good.fna");
+    system("cat good_*fna >>good.fna");
     system("cat merged_*.fastq >>merged.fastq");
-    unlink <merge_report_*.txt>,<$para{'-o'}_good_*fna>,<*match*.fastq>,<merged_*.fastq>;
-  }	
-  	
+    unlink <merge_report_*.txt>,<good_*fna>,<*match*.fastq>,<merged_*.fastq>;
+  }
   $lines=`wc -l merged.fastq`;
   @lines=split/[ \t]+/,$lines;
 	print SAT "Total merged: ",$lines[1]/4,"\n";
-  $lines=`grep -c '>' $para{'-o'}_good.fna`;
+  $lines=`grep -c '>' good.fna`;
   
 	print SAT "Total good: ",$lines,"\n";
 	if(!-e $para{'-o'}){system("mkdir $para{'-o'}");}
 	system("mkdir ./$para{'-o'}/preprocessed");
-	system("mv statistics.txt forward_quality.txt revers_quality.txt $para{'-o'}_good.fna forward_quality.png revers_quality.png ./$para{'-o'}/preprocessed");
+	system("mv statistics.txt forward_quality.txt revers_quality.txt good.fna forward_quality.png revers_quality.png ./$para{'-o'}/preprocessed");
   system("mv merged.fastq ./$para{'-o'}/preprocessed");
   close SAT;
 unlink <*fastq>;
