@@ -16,7 +16,7 @@ BEGIN {
 	                  my $message = shift;
 			  print "$message";
 			  open LOG, ">>output/logs/command_history.log";
-			  print LOG localtime . " -- DIED WITH ERROR:\n$message\n";
+			  print LOG localtime() . " -- DIED WITH ERROR:\n$message\n";
 			  close LOG;
 			  exit("179");
                          }
