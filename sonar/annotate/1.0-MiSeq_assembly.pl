@@ -98,7 +98,7 @@ print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
 print "Pairing\n";
    if(!$para{'-split'}){
  		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt");
- 		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout good.fna -fastq_maxee $para{'-maxee'} -fastq_eeout ");
+ 		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout good.fna -fastq_maxee $para{'-maxee'}");
  	}	
   else{
      foreach(<forward_matched_*.fastq>){
@@ -106,7 +106,7 @@ print "Pairing\n";
      	   $filer=~s/forward/revers/;
      	my @li=split/[\.\_]/,$_;
         system("$para{'-usearch'} -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt");
- 	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} -fastq_eeout");	
+ 	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} ");	
     }
     system("cat merge_report_*.txt >>merge_report.txt");
     system("cat good_*fna >>good.fna");
