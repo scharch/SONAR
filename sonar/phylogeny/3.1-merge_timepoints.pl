@@ -21,7 +21,9 @@
                      Must be in proper chronological order.
      --labels => Optional list of timepoint IDs to be used in relabeling
                      input sequences. Must be in proper chronological order.
-                     Defaults to "01-", "02-", etc.
+                     Defaults to "01", "02", etc and will be prepended with a
+                     dash separating it from the orginal sequence name. Dashes
+                     are not allowed in the labels themselves, to ease processing.
       -c      => Use USearch's cluster_fast command instead of derep_fulllength.
                      Allows fragments missing a few AA at either end to be
                      counted as the same as a full-length sequence.
@@ -33,6 +35,7 @@
 
  Created by Chaim A. Schramm 2015-06-12.
  Fixed algorithm and added some options 2015-07-22.
+ Changed label handling 2017-04-25.
 
  Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
@@ -73,9 +76,6 @@ if ($help) { pod2usage(1); }
 if ( $t < 100 && ! $clustFast ) { die("Must specify use of the cluster_fast command to use a custom id threshold.\n"); }
 my $threshold = $t/100;
 
-&logCmdLine($0,@saveArgs);
-
-
 #check to make sure inputs match
 if ($#prefix >= 0) {
     if ($#prefix != $#seqFiles) {
@@ -86,6 +86,10 @@ if ($#prefix >= 0) {
 	    print "\t$file\t$name\n";
 	}
 	die("Please make sure that the number of custom prefixes matches the number of sequence files!\n");
+    }
+    #check for reg-ex compatibility
+    for my $label (@prefix) {
+	if ($label =~ /-/) { die("Please do not use dash characters in time point labels"); }
     }
 } else { #no prefixes provided, use defaults
     for (my $i=0; $i<=$#seqFiles; $i++) {
@@ -111,6 +115,10 @@ for my $dir ("output", "output/sequences", "output/sequences/nucleotide",
 if ( -e "output/sequences/nucleotide/$prj_name-collected.fa" && ! $force ) {
     die "Output already exists. Please use the -f(orce) option to re-intiate and overwrite.\n";
 }
+
+
+#put this way down here so it's after the directory structure has been created
+&logCmdLine($0,@saveArgs);
 
 
 #Read in selected seqs, rename, and write to temporary output
@@ -153,7 +161,7 @@ while (<UC>) {
     chomp;
     my @a = split /\t/; #usearch9 now includes the full fasta def line, which may include spaces 
     $a[8] =~ s/\S*\K.*//; #if there are spaces in the fasta def line, this dumps them, for compatibility with Bio::SeqIO below
-    my ($time) = $a[8] =~ /^([^;,]*)\-/; #greedy operators mean we don't have to worry about dashes in user-supplied prefixes (but don't go into fasta def line)
+    my ($time) = $a[8] =~ /^(.+?)\-/; #non-greedy operator means we don't have to worry about dashes in original sequence id
 
     if ($a[0] eq "S") {
 
