@@ -80,7 +80,7 @@ def logCmdLine( command ):
         printLog = True
 
     else:
-        print "SONAR log directory not found; command line and output will not be saved"
+        print >> sys.stderr, "SONAR log directory not found; command line and output will not be saved"
 
     
 def logExit():
