@@ -9,16 +9,19 @@
        processed SOANAR pipeline output, but the algorithm will take any sequence
        files...
 
- Usage: mergeReplicates.pl --seqs rep1.fa --seqs rep2.fa ...
+ Usage: mergeReplicates.pl --min 1 --seqs rep1.fa --seqs rep2.fa ...
 
  Invoke with -h or --help to print this documentation.
 
  Parameters:
+     --min    => Minimum number of occurences in each replicate in order to keep
+                    a particular read. Default=1.
      --seqs   => list of files with selected sequences from each timepoint.
 
  Created by Chaim A. Schramm 2015-06-12.
  Modified to current form by CA Schramm, 2015-07-21
  Added to SONAR utilities 2017-02-24
+ Added min option 2017-04-23
 
  Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
@@ -46,8 +49,9 @@ if ($#ARGV < 0) { pod2usage(1); }
 
 my @seqFiles   = ( );
 my @prefix     = ( );
-my ($force, $help) = ( 0, 0 );
+my ($min, $force, $help) = ( 1, 0, 0 );
 GetOptions("seqs=s{1,}" => \@seqFiles,
+	   "min=i"      => \$min,
            "force!"     => \$force,
            "help!"      => \$help
     );
@@ -75,11 +79,11 @@ for my $f (@seqFiles) {
     my $prefix = (split(/[_]/, $base))[0];
     $correlated{$prefix} = [];
     
-    my $cmd = "usearch -derep_fulllength $f -fastaout derep-$base -sizein -sizeout";
+    my $cmd = "usearch -derep_fulllength $f -fastaout derep-$base -sizein -sizeout -minuniquesize $min";
     print "\n$cmd\n\n";
     system( $cmd );
 
-    #this is annoying; it's because usearch doesn't preserve fasta description lines
+    #this is annoying; it's because usearch <9 doesn't preserve fasta description lines
     my %unique;
     my $usearch = Bio::SeqIO->new( -file=>"derep-$base" );
     while (my $seq = $usearch->next_seq) { 

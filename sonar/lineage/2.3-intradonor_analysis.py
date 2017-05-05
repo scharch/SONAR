@@ -279,7 +279,7 @@ def main():
 				command = "NUM=`printf \"%%05d\" $SGE_TASK_ID`\n%s -in %s/NJ$NUM.fa -out %s/NJ$NUM.aln -cluster1 neighborjoining -maxiters 1 -tree1 %s/NJ$NUM.tree" % \
 				    (cluster_muscle, prj_tree.lineage, prj_tree.lineage, prj_tree.lineage)
 				pbs = open("%s/intradonor.sh" % prj_tree.lineage, 'w')
-				pbs.write( PBS_STRING%(f_ind, "%s-intradonor"%prj_name, "500M", "1:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.lineage, prj_tree.lineage)) )
+				pbs.write( PBS_STRING%("%s-intradonor"%prj_name, "500M", "1:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.lineage, prj_tree.lineage)) )
 				pbs.close()
 
 				# write a second PBS job to restart this script once muscle has finished
@@ -296,9 +296,9 @@ def main():
 						  (prj_name, prj_tree.lineage, prj_tree.lineage, SCRIPT_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
 				next_round.close()
 
-				os.system("qsub %s/intradonor.sh" % prj_tree.lineage)
-				os.system("qsub %s/nextround.sh"  % prj_tree.lineage)
-				log.write("%s - Submitted current round to cluster\n" % time.strftime("%H:%M:%S"))
+				os.system( "%s -t 1-%d %s/intradonor.sh" % (qsub, f_ind, prj_tree.lineage) )
+				os.system( "%s %s/nextround.sh"  % (qsub, prj_tree.lineage) )
+				log.write( "%s - Submitted current round to cluster\n" % time.strftime("%H:%M:%S") )
 				log.close()
 				break #exits "while not converged" loop
 
