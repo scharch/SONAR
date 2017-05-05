@@ -45,8 +45,9 @@ if(!$para{'-fastx_trimmer'}){$para{'-fastx_trimmer'}=ppath('fastx').'/fastx_trim
 if(!$para{'-trimf'}){$para{'-trimf'}=1;}
 if(!$para{'-trimr'}){$para{'-trimr'}=1;}
 if(!$para{'-maxdiff'}){$para{'-maxdiff'}=10;}
-if(!$para{'-maxdiffpct'}){$para{'-maxdiffpct'}=10;}
+if(!$para{'-maxdiffpct'}){$para{'-maxdiffpct'}=$para{'-maxdiff'};}
 if(!$para{'-split'}){$para{'-split'}=1000000;}
+if(-e "./merge_report.txt"){unlink "./merge_report.txt";}
 
 my $score="\!\"\#\$\%\&\047\(\)\*\+\,\-\.\/0123456789\:\;\<\=\>\?\@ABCDEFGHI";#Miseq quality scores
 	  my %score=();
