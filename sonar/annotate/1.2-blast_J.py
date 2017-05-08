@@ -259,6 +259,7 @@ if __name__ == '__main__':
 	#load saved locus information
 	handle = open( "%s/gene_locus.txt" % prj_tree.internal)
 	locus = handle.readline().strip()
+	handle.close()
 	handle = open( "%s/gene_locus.txt" % prj_tree.internal, 'a+')
 	# we'll keep custom libraries even for a default locus (maybe someone wants to use an updated set of D alleles?)
 	if not os.path.isfile(library):
