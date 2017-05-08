@@ -19,7 +19,7 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-split split sequences to smaller files for processing with USEARCH v32bit,number per file. Default: 1,000,000 
 	-maxdiff the maximum number of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
 	-maxdiffpct the maximum percent of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
-
+	-p remove reads appear only in the forward or reverse read file. Default: no such analysis
 Example:
 1.0-MiSeq_assembly.pl -usearch usearch -f forward_read.fastq.gz -r reverse_read.fastq.gz -o ./
 
@@ -90,7 +90,7 @@ system("$para{'-fastx_trimmer'}  -t $para{'-trimf'} -i forward.fastq -o forward1
 system("$para{'-fastx_trimmer'} -t $para{'-trimr'}  -i revers.fastq -o revers1.fastq");
 system("mv forward1.fastq forward.fastq");
 system("mv revers1.fastq revers.fastq");
-&find_match_pair('forward.fastq','revers.fastq');
+if($para{'-p'}){&find_match_pair('forward.fastq','revers.fastq');}
 my $lines=`wc -l forward.fastq`;
 my @lines=split/[ \t]+/,$lines;
 print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
