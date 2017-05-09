@@ -16,10 +16,13 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-trimf number of nucleotides trimed off before assembly for forward mate, default:1
 	-trimr number of nucleotides trimed off before assmebly for reverse mate, default:1
 	-o output folder
-	-split split sequences to smaller files for processing with USEARCH v32bit,number per file. Default: 1,000,000 
+	-split split sequences to smaller files for processing with USEARCH v32bit,number per file. Default: 0 
 	-maxdiff the maximum number of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
 	-maxdiffpct the maximum percent of mismatches allowed in the overlapping region between forward and reverse reads. Default: 10
 	-p remove reads appear only in the forward or reverse read file. Default: no such analysis
+	-threads default:20
+	-minl minimal length for the merged reads default:300
+	-maxl maximal length for the merged reads default:600
 Example:
 1.0-MiSeq_assembly.pl -usearch usearch -f forward_read.fastq.gz -r reverse_read.fastq.gz -o ./
 
@@ -46,7 +49,10 @@ if(!$para{'-trimf'}){$para{'-trimf'}=1;}
 if(!$para{'-trimr'}){$para{'-trimr'}=1;}
 if(!$para{'-maxdiff'}){$para{'-maxdiff'}=10;}
 if(!$para{'-maxdiffpct'}){$para{'-maxdiffpct'}=$para{'-maxdiff'};}
-if(!$para{'-split'}){$para{'-split'}=1000000;}
+if(!$para{'-threads'}){$para{'-threads'}=20;}
+if(!$para{'-minl'}){$para{'-minl'}=300;}
+if(!$para{'-maxl'}){$para{'-maxl'}=600;}
+#if(!$para{'-split'}){$para{'-split'}=1000000;}
 if(-e "./merge_report.txt"){unlink "./merge_report.txt";}
 
 my $score="\!\"\#\$\%\&\047\(\)\*\+\,\-\.\/0123456789\:\;\<\=\>\?\@ABCDEFGHI";#Miseq quality scores
@@ -98,19 +104,23 @@ print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
 #Pairing with usearch
 print "Pairing\n";
    if(!$para{'-split'}){
- 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt");
+ 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt -threads $para{'-threads'} -fastq_minmergelen 300  -fastq_maxmergelen $para{'-maxl'}");
  		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout good.fna -fastq_maxee $para{'-maxee'}");
+ 		system("$para{'-usearch'} -filter_phix good.fna -output filtered_reads.fna -threads $para{'-threads'} &>phix.txt");
+ 		system("mv filtered_reads.fna good.fna");
  	}	
   else{
      foreach(<forward_matched_*.fastq>){
      	my $filer=$_;
      	   $filer=~s/forward/revers/;
      	my @li=split/[\.\_]/,$_;
-        system("$para{'-usearch'} -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt");
+        system("$para{'-usearch'} -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt -threads $para{'-threads'} -fastq_minmergelen $para{'-minl'} -fastq_maxmergelen $para{'-maxl'} ");
  	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} ");	
     }
     system("cat merge_report_*.txt >>merge_report.txt");
     system("cat good_*fna >>good.fna");
+    system("$para{'-usearch'} -filter_phix good.fna -output filtered_reads.fna -threads $para{'-threads'} &>phix.txt");
+ 		system("mv filtered_reads.fna good.fna");
     system("cat merged_*.fastq >>merged.fastq");
     unlink <merge_report_*.txt>,<good_*fna>,<*match*.fastq>,<merged_*.fastq>;
   }
@@ -122,10 +132,10 @@ print "Pairing\n";
 	print SAT "Total good: ",$lines,"\n";
 	if(!-e $para{'-o'}){system("mkdir $para{'-o'}");}
 	system("mkdir ./$para{'-o'}/preprocessed");
-	system("mv statistics.txt forward_quality.txt revers_quality.txt good.fna forward_quality.png revers_quality.png ./$para{'-o'}/preprocessed");
+	system("mv statistics.txt forward_quality.txt revers_quality.txt good.fna forward_quality.png phix.txt revers_quality.png merge_report.txt ./$para{'-o'}/preprocessed");
   system("mv merged.fastq ./$para{'-o'}/preprocessed");
   close SAT;
-#unlink <*fastq>;
+unlink 'forward.fastq','revers.fastq';
 ##################
 sub rm_polymer{
     my $file=shift;
