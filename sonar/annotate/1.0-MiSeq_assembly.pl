@@ -125,7 +125,7 @@ print "Pairing\n";
 	system("mv statistics.txt forward_quality.txt revers_quality.txt good.fna forward_quality.png revers_quality.png ./$para{'-o'}/preprocessed");
   system("mv merged.fastq ./$para{'-o'}/preprocessed");
   close SAT;
-unlink <*fastq>;
+#unlink <*fastq>;
 ##################
 sub rm_polymer{
     my $file=shift;
