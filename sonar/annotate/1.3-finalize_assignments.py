@@ -8,7 +8,7 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" ]
+Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" -nterm truncate]
 
     Invoke with -h or --help to print this documentation.
 
@@ -18,10 +18,22 @@ Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" ]
                 the J gene. Defaults to either TGGGG for heavy chains or
 		TT[C|T][G|A]G for light chains; set manually for species
 		which may have a different motif.
+    nterm  - What to do if blast hit does not extend to the N terminus of the
+                germline V gene. Options are 
+                   'truncate' - trim to blast hit (default)
+                   'extend'   - change trim boundary to correspond to expected
+                                N terminus of germline or beginning of read if
+                                shorter (NOT recommended, typically results in
+                                bad sequences)
+                   'germline' - replace missing region with the germline V sequence
+                                (useful for FWR1 primers)
+                   'discard'  - only mark as 'good' sequences with full germline
+                                region
 
 Created by Chaim A Schramm on 2013-07-05
 Edited and commented for publication by Chaim A Schramm on 2015-02-25.
 Edited to add custom J motif option for other species by CAS 2016-05-16.
+Edited to add options to handle missing N terminal by CAS 2017-05-08.
 
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -138,6 +150,8 @@ def main():
 
 	raw_count, total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 0, 1
 	counts = {'good':0,'indel':0,'noCDR3':0,'stop':0}
+        if nterm=="discard":
+                counts["missingNterm"]=0
 
 	writer = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
@@ -193,10 +207,10 @@ def main():
 			elif not entry.id in dict_jgerm_aln:
 				noJ+=1
 				myV = dict_vgerm_aln[entry.id]
-				if (myV.strand == 'plus'):
-					entry.seq = entry.seq[ myV.qstart - 1 :  ]
+                                if (myV.strand == 'plus'):
+                                        entry.seq = entry.seq[ myV.qstart - 1 :  ]                                                      
 				else:
-					entry.seq = entry.seq[  : myV.qend ].reverse_complement()
+                                        entry.seq = entry.seq[  : myV.qend ].reverse_complement()
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
 				entry.description = "V_gene=%s status=noJ" % (myVgenes)
 				allV_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
@@ -211,6 +225,7 @@ def main():
 				found += 1
 				myV = dict_vgerm_aln[entry.id]
 				myJ = dict_jgerm_aln[entry.id]
+                                added5 = 0
 				indel = "F"
 				stop = "F"
 				cdr3 = True
@@ -219,16 +234,47 @@ def main():
 				v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
 				vdj_len = v_len + myJ.qend
 				if (myV.strand == 'plus'):
-					entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
-				else:
-					entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
+					if myV.sstart > 1:
+                                                if nterm == "extend":
+                                                        if myV.qstart >= myV.sstart:
+					                        entry.seq = entry.seq[ myV.qstart - myV.sstart : myV.qstart + vdj_len - 1 ]
+                                                                added5 = myV.sstart - 1
+                                                        else:
+					                        entry.seq = entry.seq[  : myV.qstart + vdj_len - 1 ]
+                                                                added5 = myV.qstart - 1
+                                                elif nterm == "germline":
+                                                        entry.seq = dict_v[myV.sid].seq[ 0 : myV.sstart-1 ] + entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+                                                        added5 = myV.sstart - 1
+                                                else:
+                                                      entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+
+                                        else: #blast found full V gene
+					        entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+
+				else: #minus strand
+                                        if myV.send > 1:
+                                                if nterm == "extend":
+                                                        if len(entry.seq)-myV.qend >= myV.send-1:
+					                        entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend+myV.send-1 ].reverse_complement()
+                                                                added5 = myV.send - 1
+                                                        else:
+                                                                added5 = len(entry.seq) - myV.qend
+					                        entry.seq = entry.seq[  myV.qend - vdj_len + 1 :  ].reverse_complement()
+                                                elif nterm == "germline":
+                                                        entry.seq = dict_v[myV.sid].seq[ 0 : myV.send-1 ] + entry.seq[  myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
+                                                        added5 = myV.send - 1
+                                                else:
+                                                        entry.seq = entry.seq[  myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
+
+                                        else: #blast found full V gene
+					        entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
-				cdr3_start,cdr3_end,WF_motif = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq)) #min and max statments take care of switching possible minus strand hit
-				cdr3_seq = entry.seq[ cdr3_start : cdr3_end ]
+				cdr3_start,cdr3_end,WF_motif = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq[ added5 :  ])) #min and max statments take care of switching possible minus strand hit
+				cdr3_seq = entry.seq[ added5+cdr3_start : added5+cdr3_end ]
 
 				#push the sequence into frame for translation, if need be
-				v_frame = min([myV.sstart, myV.send]) % 3
+				v_frame = ( min([myV.sstart, myV.send]) - added5 ) % 3
 				five_prime_add = (v_frame-1) % 3
 				entry.seq = 'N' * five_prime_add + entry.seq 
 
@@ -244,8 +290,8 @@ def main():
 				if len(cdr3_seq) % 3 != 0:
 					indel = "T"
 				else: #even if cdr3 looks ok, might be indels in V and/or J
-					j_frame = 3 - ( ( WF_motif - myJ.sstart ) % 3 ) #j genes start in different frames, so caluclate based on position of conserved W/F found by the cdr3 subroutine above
-					frame_shift = (v_len + myJ.qstart - 1) % 3
+					j_frame = 3 - ( ( WF_motif - myJ.sstart ) % 3 ) #j genes start in different frames, so calculate based on position of conserved W/F found by the cdr3 subroutine above
+					frame_shift = (v_len + myJ.qstart + added5 - 1) % 3
 
 					if (v_frame + frame_shift) % 3 != j_frame % 3:
 						indel = "T"   #for gDNA we would probably want to distinguish between an out-of-frame recombination and sequencing in-dels in V or J
@@ -267,6 +313,8 @@ def main():
 					status = "indel"
 				elif stop == "T":
 					status = "stop"
+                                elif nterm == "discard" and min(myV.sstart,myV.send) > 1:
+                                        status = "missingNterm"
 
 				#add germline assignments to fasta description and write to disk
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
@@ -389,16 +437,19 @@ if __name__ == '__main__':
 	vlib  = handle.readline().strip()
 	jlib  = handle.readline().strip()
 
-	defaultParams = dict(jmotif = "TGGGG")
+	defaultParams = dict(jmotif = "TGGGG", nterm = "truncate")
 	if "K" in locus or "L" in locus: #it's a light chain!
                 if "H" in locus: #need both motifs
                         defaultParams['jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
                 else:
 		        defaultParams['jmotif'] = "TT[C|T][G|A]G"
 
-	dict_args = processParas(sys.argv, jmotif="jmotif")
-	jMotif = getParasWithDefaults(dict_args, defaultParams, "jmotif")
+	dict_args = processParas(sys.argv, jmotif="jmotif", nterm="nterm")
+	jMotif, nterm = getParasWithDefaults(dict_args, defaultParams, "jmotif", "nterm")
 
+        if nterm not in ["truncate", "extend", "germline", "discard"]:
+                sys.exit("Parameter 'nterm' must be one of ('truncate', 'extend', 'germline')")
+        
 	dict_v    =  load_fastas(vlib)
 	dict_j    =  load_fastas(jlib)
 
