@@ -54,6 +54,8 @@ if(!$para{'-minl'}){$para{'-minl'}=300;}
 if(!$para{'-maxl'}){$para{'-maxl'}=600;}
 #if(!$para{'-split'}){$para{'-split'}=1000000;}
 if(-e "./merge_report.txt"){unlink "./merge_report.txt";}
+my $outputfolder='preprocessed';
+#my $outputfolder='0-original';
 
 my $score="\!\"\#\$\%\&\047\(\)\*\+\,\-\.\/0123456789\:\;\<\=\>\?\@ABCDEFGHI";#Miseq quality scores
 	  my %score=();
@@ -87,8 +89,8 @@ print "Analyzing sequencing quality\n";
 `$para{'-fastq_quality_boxplot_graph.sh'} -i revers_quality.txt -o revers_quality.png`;
 
 my $lines=`wc -l forward.fastq`;
-my @lines=split/[ \t]+/,$lines;
-print SAT "Total Raw: ",int($lines[1]/4),"\n";
+$lines=~/(\d+)/;
+print SAT "Total Raw: ",int($1/4),"\n";
 #&trim();
 #trimming low quality segments
 print "Trimming low quality segments\n";
@@ -98,8 +100,8 @@ system("mv forward1.fastq forward.fastq");
 system("mv revers1.fastq revers.fastq");
 if($para{'-p'}){&find_match_pair('forward.fastq','revers.fastq');}
 my $lines=`wc -l forward.fastq`;
-my @lines=split/[ \t]+/,$lines;
-print SAT "Total pre-merging quality control: ",int($lines[1]/4),"\n";
+$lines=~/(\d+)/;
+print SAT "Total pre-merging quality control: ",int($1/4),"\n";
 
 #Pairing with usearch
 print "Pairing\n";
@@ -125,15 +127,15 @@ print "Pairing\n";
     unlink <merge_report_*.txt>,<good_*fna>,<*match*.fastq>,<merged_*.fastq>;
   }
   $lines=`wc -l merged.fastq`;
-  @lines=split/[ \t]+/,$lines;
-	print SAT "Total merged: ",$lines[1]/4,"\n";
+  $lines=~/(\d+)/;
+	print SAT "Total merged: ",$1/4,"\n";
   $lines=`grep -c '>' good.fna`;
-  
 	print SAT "Total good: ",$lines,"\n";
+	
 	if(!-e $para{'-o'}){system("mkdir $para{'-o'}");}
-	system("mkdir ./$para{'-o'}/preprocessed");
-	system("mv statistics.txt forward_quality.txt revers_quality.txt good.fna forward_quality.png phix.txt revers_quality.png merge_report.txt ./$para{'-o'}/preprocessed");
-  system("mv merged.fastq ./$para{'-o'}/preprocessed");
+	system("mkdir ./$para{'-o'}/$outputfolder");
+	system("mv statistics.txt forward_quality.txt revers_quality.txt good.fna forward_quality.png phix.txt revers_quality.png merge_report.txt ./$para{'-o'}/$outputfolder");
+  system("mv merged.fastq ./$para{'-o'}/$outputfolder");
   close SAT;
 unlink 'forward.fastq','revers.fastq';
 ##################
