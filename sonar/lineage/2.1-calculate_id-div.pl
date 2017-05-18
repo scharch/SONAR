@@ -40,7 +40,7 @@ my %para=@ARGV;
 if(!$para{'-t'}){$para{'-t'}=5;}
 if(!$para{'-npt'}){$para{'-npt'}=1000;}
 $para{'-ap'}=ppath($para{'-ap'});
-$para{'-pu'}=ppath($para{'-pu'});
+$para{'-pu'}=ppath('usearch');
 if(!$para{'-ignoregap'}){$para{'-ignoregap'}=0;}
 if(!$para{'-ap'}){
 	 if(ppath('muscle')){
@@ -97,6 +97,7 @@ my $output_id=$changefile;
 my $output_cov='';
 if($para{'-CDR3'}){
   	$output_id.="_CDR3-id.tab";
+  	$para{'-g'}='';
 }
 else{
     $output_id.="_id-div.tab";
@@ -121,7 +122,7 @@ foreach(sort keys %{$anti}){
 print YY "\n";
 my $file_calculation=$para{'-f'};
 if($para{'-pu'}){#dereplicate
-  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout $changefile\_unique.fa -uc $changefile.cluster -sizeout > usearchlog.txt");
+  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout $changefile\_unique.fa -uc $changefile.cluster  > usearchlog.txt");
   $file_calculation="$changefile\_unique.fa";
 }
 open READs,"$file_calculation"or die "$file_calculation not found\n";#read sequences and assign to threads

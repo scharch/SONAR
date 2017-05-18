@@ -72,13 +72,13 @@ if($para{'-f'}=~/.gz$/){
 `gunzip -c $para{'-f'} >forward.fastq`;
 }
 else{
-	`mv $para{'-f'} forward.fastq`;
+	`cp $para{'-f'} forward.fastq`;
 }
 if($para{'-r'}=~/.gz$/){
 `gunzip -c $para{'-r'} >revers.fastq`;
 }
 else{
-	`mv $para{'-r'} revers.fastq`;
+	`cp $para{'-r'} revers.fastq`;
 }
 
 #plot quality
