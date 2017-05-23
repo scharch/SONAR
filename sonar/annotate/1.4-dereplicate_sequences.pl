@@ -18,6 +18,7 @@ options:
 	-min2	minimun sequencing coverage of a read to be kept in the seconde step of clustering, default:3
 	-f	sequence file in fasta format
 	-t	number of threads to run the script. Default:1
+	-s	whether to cluster CDR3, default: 1. Optional, 2 is only for using 1.4 for clustering seqeunces.
 Example:
 1.4-dereplicate_sequences.pl -pu usearch -min1 2 -min2 3 -f ./test.fa -t 5
 
@@ -42,6 +43,7 @@ if(!$para{'-f'}){
 	if(-e "$files[0]"){$para{'-f'}=$files[0];}
 	else{die "no input seq file\n";}
 }
+if(!$para{'-s'}){$para{'-s'}=1;}
 if(!$para{'-t'}){$para{'-t'}=1;}
 if(!$para{'-id'}){$para{'-id'}=0.99;}
 #########do calculation##########
@@ -50,18 +52,18 @@ my $output=&usearch($para{'-f'},$para{'-p'},$para{'-id'});
 my $ids_unique=&changename($para{'-f'},$output);#
 my $file=$para{'-f'};
 $file=~s/goodVJ/goodCDR3/;
-if(-e "$file"){
+if(-e "$file"&& $para{'-s'}==1){
     print "Finding nucleotide sequences of CDR3s of unique sequences......\n";	
     &read_fasta($file,$ids_unique);
 }
 $file=~s/nucleotide/amino_acid/;
-if(-e "$file"){
+if(-e "$file"&& $para{'-s'}==1){
     print "Finding amino acid sequences of CDR3s of unique sequences......\n";	
     &read_fasta($file,$ids_unique);
 }
 
 $file=~s/goodCDR3/goodVJ/;
-if(-e "$file"){
+if(-e "$file"&& $para{'-s'}==1){
     print "Finding amino acid sequences of unique sequences......\n";	
     &read_fasta($file,$ids_unique);
 }
