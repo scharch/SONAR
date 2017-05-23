@@ -26,7 +26,7 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
     maxl	Maximum length for read filtering (inclusive). Default = 600.
     locus	H: heavy chain / K: kappa chain / L: lambda chain / KL: kappa OR
                    lambda / HKL: any / C: custom library (supply -lib)
-                   Default = 0.
+                   Default = H.
     qual 	CURRENTLY DEPRECATED!
                 0: noquals/use fasta only / 1: use qual information 
                    Default = 0.
@@ -35,7 +35,8 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
 		   with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
 		   .fastq) in the root project directory.
     lib  	Location of file containing custom library (e.g. for use with
-                   non-human genes).
+                   non-human genes). Note that `-locus C` *MUST* be used or the 
+                   program will ignore this argument.
     f 	 	Forcing flag to overwrite existing working directories.
     threads     Number of threads to use when running locally. Ignored if 
                    -cluster is specified. Default = 1.
