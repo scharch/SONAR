@@ -14,7 +14,7 @@ Options:
 	  \tsomatic hypermutation is calculated. fasta file output from pipeline is ok. For example, 
 	  \t'>00000089 V_gene=IGHV1-2*02'. Please seperate '00000089 and 'V_gene' with space or tab.
 	-g\tgermline V gene file, optional.Default: IgHKLV.fa in the program folder.
-	-a\tfasta file has the sequence of interested antibody. optional.
+	-a\tfasta file has the sequence of interested antibody if use CDR3, please input the CDR3 region of interested antibody. optional.
 	-t\tthreads, default:5
 	-npt\tnumber of sequences per thread. default:1000
 	-p\tprotein or DNA sequence. default: DNA
@@ -122,8 +122,12 @@ foreach(sort keys %{$anti}){
 print YY "\n";
 my $file_calculation=$para{'-f'};
 if($para{'-pu'}){#dereplicate
-  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout $changefile\_unique.fa -uc $changefile.cluster  > usearchlog.txt");
-  $file_calculation="$changefile\_unique.fa";
+  system("1.4-dereplicate_sequences.pl -f $para{'-f'} -id 1 -min1 1 -min2 1 -s 2 > usearchlog.txt");
+  #system("cp *.cluster ./cdr3_cluster.txt");
+  $file_calculation=~s/\.fa.*//;
+  $changefile=$file_calculation;
+  $file_calculation="$file_calculation\_unique.fa";
+	print "reading $file_calculation\n";
 }
 open READs,"$file_calculation"or die "$file_calculation not found\n";#read sequences and assign to threads
     my $i=1;
@@ -160,7 +164,6 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
 	       for my $field (@line) { if ($field=~/V_gene=/) { $readgerm{$id}=$field; } }
             $readgerm{$id}=~s/V\_gene\=//g;
             $readgerm{$id}=~s/\,.+//g;
-            
         }
         else{
             $seq{$id}.=$_;
@@ -235,7 +238,7 @@ sub paired_identity{#calculate sequence identity
       push @identity,$div;
     }
     elsif($para{'-g'}&&!$germ){
-    	push @coverage,'NA'; 
+    	push @coverage,'NA';
       push @identity,'NA';
       warn "Could not find germline gene for $id\n";
     }
