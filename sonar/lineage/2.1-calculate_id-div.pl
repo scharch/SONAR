@@ -122,11 +122,12 @@ foreach(sort keys %{$anti}){
 print YY "\n";
 my $file_calculation=$para{'-f'};
 if($para{'-pu'}){#dereplicate
-  system("1.4-dereplicate_sequences.pl -f $para{'-f'} -id 1 -min1 1 -min2 1 -s 2 > usearchlog.txt");
+  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout Temp.unique.fa -uc Temp1.cluster -sizeout > usearchlog.txt");
   #system("cp *.cluster ./cdr3_cluster.txt");
-  $file_calculation=~s/\.fa.*//;
-  $changefile=$file_calculation;
-  $file_calculation="$file_calculation\_unique.fa";
+  &changename_usearch($para{'-f'},'Temp1.unique.fa');
+  $file_calculation='Temp1.unique.fa';
+  $changefile='Temp1';
+  #$file_calculation="$file_calculation\_unique.fa";
 	print "reading $file_calculation\n";
 }
 open READs,"$file_calculation"or die "$file_calculation not found\n";#read sequences and assign to threads
@@ -144,7 +145,7 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
                	 while(threads->list(threads::running)>=$para{'-t'}){#threading
                	 	foreach(threads->list(threads::joinable)){
                      my @result=$_->join();
-                     print  YY $result[0];
+                     print YY $result[0];
                      print ZZ $result[1];
                       }
     		            sleep(1);
@@ -171,9 +172,7 @@ open READs,"$file_calculation"or die "$file_calculation not found\n";#read seque
     }
     
  if(%seq){
-
-  threads->create({'context' => 'list'},\&calculation,\%seq,\%readgerm,$germV,$anti);
- 	
+  threads->create({'context' => 'list'},\&calculation,\%seq,\%readgerm,$germV,$anti); 	
 }   
 
 while(threads->list()){#waiting for all threads finish
@@ -187,9 +186,9 @@ while(threads->list()){#waiting for all threads finish
 
 if($para{'-pu'}){#add redundant sequences back
   &recover($changefile,$output_id,$output_cov);
-  unlink "$changefile\_unique.fa","$changefile.cluster","usearchlog.txt";
+  unlink "$changefile\.unique.fa","$changefile.cluster","usearchlog.txt";
 }
-&add_column_to_statistic($output_id);
+if(-d "./output/tables/"){&add_column_to_statistic($output_id);}
 ##################################
 sub rm_r{#remove \r at line end
       my $file=shift;
@@ -442,11 +441,12 @@ sub recover{#add back all the identity and coverage calculation for redundant re
    my %ids=();
    &rm_r("$filename.cluster");
   open HH,"$filename.cluster" or die "Usearch clustering file not exist";
-  
    while(<HH>){
     if($_=~/^H/){
     	chomp;
       my @line=split/\t/,$_;
+      $line[9]=~s/[ \t].+//;
+      $line[8]=~s/[ \t].+//;
       push @{$ids{$line[9]}},$line[8];
      }	
    }  	
@@ -481,7 +481,48 @@ sub recover{#add back all the identity and coverage calculation for redundant re
 		system("cat tempchange.txt >>$output_cov");
    unlink "tempchange.txt";
 }
-
+sub changename_usearch{
+  my ($input,$seive)=@_;
+  open CH,"$seive" or die "usearch file $seive not found\n";
+	open CY,"$input" or die "Original seq file $input not found\n";
+	open CZ,">tempusearch.fa";
+	my %id=();
+	my $id='';
+	my $mark=0;
+	my %size=0;
+	while(<CH>){
+		if($_=~/>([^\t \;]+)/){
+		   chomp;
+		   $id=$1;
+		   $id=~s/centroid\=//;
+		   $id{$id}=1;
+		   if($_=~/size\=([0-9]+)/){
+		   $size{$id}=$1;
+		   }
+		}
+	}
+	while(<CY>){
+		if($_=~/>([^\t \;\n\r]+)/){
+			chomp;
+			my $k=$1;
+			$k=~s/centroid\=//;
+		   if($id{$k}==1){
+		   	  $mark=1;	
+		   	  print CZ "$_\n";
+		   }
+		 	 else{
+		 	    $mark=0;	
+		 	}
+		}
+		elsif($mark==1){
+		  print CZ "$_";	
+		}
+	}
+	close CZ;
+	close CH;
+	close CY;
+	system("mv tempusearch.fa $seive");
+}
 sub add_column_to_statistic{
     my ($identity_file)=@_;
     open HH,"$identity_file" or die "Sequence identity file $identity_file not found\n";
@@ -490,44 +531,47 @@ sub add_column_to_statistic{
     my %identity=();
     if($l[1]!~/germ_div/){
       	print "Unexpected header line $l, cannot add $identity_file to statistics file!\n";
-	return;
+				return;
     }	
     else{
-	while(<HH>){
-	    chomp;
-	    @l=split/\t/,$_;
-	    $identity{$l[0]}=$l[1];	
-	}
+			while(<HH>){
+	    	chomp;
+	    	@l=split/\t/,$_;
+	    	$identity{$l[0]}=$l[1];	
+				}
     }
     close HH;
     my @stats=<./output/tables/*all_seq_stats.txt>;
     if(-e "$stats[0]"){
-	print "$stats[0]##\n";
-	&rm_r($stats[0]);
-	open ST,"$stats[0]";
+				print "$stats[0]##\n";
+				&rm_r($stats[0]);
+				open ST,"$stats[0]";
 	
-	my $line=<ST>;
-	if($line!~/V\_div/){
-	    chomp $line;		 	
-	    open STo,">temstat.txt";
-	    print STo "$line\tV_div\n";
-	    while(<ST>){
-		chomp;
-		if($_=~/^[\d\w]/){
-		    my @li=split/\t/,$_;
-		    if($identity{$li[0]})	{
-			print STo "$_\t$identity{$li[0]}\%\n";#print "$_ $identity{$li[0]}\n";
-		    }
-		    else{
-			print STo "$_\tNA\n";
-		    }
-		}
-	    } 	
+				my $line=<ST>;
+			if($line!~/V\_div/){
+	   		 chomp $line;		 	
+	    		open STo,">temstat.txt";
+	    		print STo "$line\tV_div\n";
+	   		 while(<ST>){
+					chomp;
+						if($_=~/^[\d\w]/){
+		  			  my @li=split/\t/,$_;
+		   				 if($identity{$li[0]})	{
+									print STo "$_\t$identity{$li[0]}\%\n";#print "$_ $identity{$li[0]}\n";
+		   				 }
+		    			else{
+									print STo "$_\tNA\n";
+		    			}
+						}
+	    	} 	
 	    close ST;
 	    close STo;
 	    system("mv temstat.txt $stats[0]"); 	
-	}
-    } else { print "\n\nCould not find master table in output/tables/ \n\t-cannot add germline divergence to the all_seq_stats table for use with 4.1_setup_plots.pl\n\n"; }
+		}
+   } 
+   else { 
+   	print "\n\nCould not find master table in output/tables/ \n\t-cannot add germline divergence to the all_seq_stats table for use with 4.1_setup_plots.pl\n\n"; 
+   }
     
 }
 

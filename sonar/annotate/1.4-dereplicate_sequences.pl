@@ -18,7 +18,7 @@ options:
 	-min2	minimun sequencing coverage of a read to be kept in the seconde step of clustering, default:3
 	-f	sequence file in fasta format
 	-t	number of threads to run the script. Default:1
-	-s	whether to cluster CDR3, default: 1. Optional, 2 is only for using 1.4 for clustering seqeunces.
+	-s	Optional (Default: 1). A value of 2 is used when clustering a sequence file of interest, unrelated to the pipeline.
 Example:
 1.4-dereplicate_sequences.pl -pu usearch -min1 2 -min2 3 -f ./test.fa -t 5
 
@@ -138,7 +138,7 @@ sub changename{#change sequence names back to the input sequence name
     }
     close SEI;
     
-    if(-e "$stat_file[0]"){#write statistic info to ./output/table/project_all_seq_stats.txt
+    if(-e "$stat_file[0]"&& $para{'-s'}==1){#write statistic info to ./output/table/project_all_seq_stats.txt
 	&rm_r($stat_file[0]);
 	open STi,"$stat_file[0]";	
 	my $title=<STi>;
@@ -200,11 +200,7 @@ sub changename{#change sequence names back to the input sequence name
 		$uniq = "T";
 		$size = $size{$_};
 	    }
-	    #my @line = @{$state{$_}};
-	    #$line[$unique_column] = $uniq;
-	    #$line[$unique_column + 1] = $size;
       print STo "$state{$_}\t$uniq\t$size\n";
-	    #print STo join("\t",@line) . "\n";
 	}		
     
 	close STi;
@@ -212,7 +208,7 @@ sub changename{#change sequence names back to the input sequence name
 	system("mv stats.txt $stat_file[0]");
     }
 
-    if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/){#move output files to standard pipeline folders
+    if(-d "./output/sequences/nucleotide"&&$seive!~/output\/sequences\/nucleotide/&&$para{'-s'}==1){#move output files to standard pipeline folders
 	system("mv tempusearch.fa ./output/sequences/nucleotide/$seive");
     }
     else{
