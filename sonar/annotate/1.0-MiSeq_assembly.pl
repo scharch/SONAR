@@ -118,11 +118,11 @@ print "Pairing\n";
      	my @li=split/[\.\_]/,$_;
         system("$para{'-usearch'} -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt -threads $para{'-threads'} -fastq_minmergelen $para{'-minl'} -fastq_maxmergelen $para{'-maxl'} ");
  	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} ");	
+ 	  		system("$para{'-usearch'} -filter_phix good_$li[2].fna -output filtered_$li[2].fna -threads $para{'-threads'} >>phix.txt 2>&1");
+ 	  		system("mv filtered_$li[2].fna good_$li[2].fna");
     }
     system("cat merge_report_*.txt >>merge_report.txt");
-    system("cat good_*fna >>good.fna");
-    system("$para{'-usearch'} -filter_phix good.fna -output filtered_reads.fna -threads $para{'-threads'} &>phix.txt");
- 		system("mv filtered_reads.fna good.fna");
+    system("cat good_*fna >>good.fna");		
     system("cat merged_*.fastq >>merged.fastq");
     unlink <merge_report_*.txt>,<good_*fna>,<*match*.fastq>,<merged_*.fastq>;
   }
@@ -308,7 +308,7 @@ sub find_match_pair{
        	  }
        	  
        	my @line=split/[ \t\/]/,$_;
-       	$id=$line[0];
+       	$id=$line[0];$id=~s/\:2\:/\:1\:/;
        	 if($r_name{$id}){
        	   print FO "$_";
        	   $mark=1;	
