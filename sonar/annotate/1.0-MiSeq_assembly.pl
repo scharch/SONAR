@@ -23,6 +23,7 @@ if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl
 	-threads default:20
 	-minl minimal length for the merged reads default:300
 	-maxl maximal length for the merged reads default:600
+	-phix (yes or no) whether to remove phix genome in the dataset, require usearchv9 and above. Default is no.
 Example:
 1.0-MiSeq_assembly.pl -usearch usearch -f forward_read.fastq.gz -r reverse_read.fastq.gz -o ./
 
@@ -52,6 +53,7 @@ if(!$para{'-maxdiffpct'}){$para{'-maxdiffpct'}=$para{'-maxdiff'};}
 if(!$para{'-threads'}){$para{'-threads'}=20;}
 if(!$para{'-minl'}){$para{'-minl'}=300;}
 if(!$para{'-maxl'}){$para{'-maxl'}=600;}
+if(!$para{'-phix'}){$para{'-phix'}='no';}
 #if(!$para{'-split'}){$para{'-split'}=1000000;}
 if(-e "./merge_report.txt"){unlink "./merge_report.txt";}
 my $outputfolder='preprocessed';
@@ -108,8 +110,10 @@ print "Pairing\n";
    if(!$para{'-split'}){
  		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt -threads $para{'-threads'} -fastq_minmergelen 300  -fastq_maxmergelen $para{'-maxl'}");
  		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout good.fna -fastq_maxee $para{'-maxee'}");
- 		system("$para{'-usearch'} -filter_phix good.fna -output filtered_reads.fna -threads $para{'-threads'} &>phix.txt");
- 		system("mv filtered_reads.fna good.fna");
+ 		if($para{'-phix'}=~/y/i){
+ 			system("$para{'-usearch'} -filter_phix good.fna -output filtered_reads.fna -threads $para{'-threads'} &>phix.txt");
+ 			system("mv filtered_reads.fna good.fna");
+ 		}
  	}	
   else{
      foreach(<forward_matched_*.fastq>){
@@ -117,9 +121,11 @@ print "Pairing\n";
      	   $filer=~s/forward/revers/;
      	my @li=split/[\.\_]/,$_;
         system("$para{'-usearch'} -fastq_mergepairs $_ -reverse $filer -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged_$li[2].fastq -fastq_eeout -report merge_report_$li[2].txt -threads $para{'-threads'} -fastq_minmergelen $para{'-minl'} -fastq_maxmergelen $para{'-maxl'} ");
- 	  		system("usearch -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} ");	
- 	  		system("$para{'-usearch'} -filter_phix good_$li[2].fna -output filtered_$li[2].fna -threads $para{'-threads'} >>phix.txt 2>&1");
- 	  		system("mv filtered_$li[2].fna good_$li[2].fna");
+ 	  		system("$para{'-usearch'} -fastq_filter merged_$li[2].fastq -fastaout good_$li[2].fna -fastq_maxee $para{'-maxee'} ");
+ 	  		if($para{'-phix'}=~/y/i){	
+ 	  			system("$para{'-usearch'} -filter_phix good_$li[2].fna -output filtered_$li[2].fna -threads $para{'-threads'} >>phix.txt 2>&1");
+ 	  			system("mv filtered_$li[2].fna good_$li[2].fna");
+ 	  		}
     }
     system("cat merge_report_*.txt >>merge_report.txt");
     system("cat good_*fna >>good.fna");		
