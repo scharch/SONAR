@@ -55,6 +55,7 @@ if(!$para{'-minl'}){$para{'-minl'}=300;}
 if(!$para{'-maxl'}){$para{'-maxl'}=600;}
 if(!$para{'-phix'}){$para{'-phix'}='no';}
 #if(!$para{'-split'}){$para{'-split'}=1000000;}
+if($para{'-split'}){$para{'-p'}=1;}
 if(-e "./merge_report.txt"){unlink "./merge_report.txt";}
 my $outputfolder='preprocessed';
 #my $outputfolder='0-original';
@@ -85,7 +86,7 @@ else{
 
 #plot quality
 print "Analyzing sequencing quality\n";
-`$para{'-fastx_quality_stats'} -i forward.fastq -o forward_quality.txt`;
+$para{'-fastx_quality_stats'} -i forward.fastq -o forward_quality.txt`;
 `$para{'-fastx_quality_stats'} -i revers.fastq -o revers_quality.txt`;
 `$para{'-fastq_quality_boxplot_graph.sh'} -i forward_quality.txt -o forward_quality.png`;
 `$para{'-fastq_quality_boxplot_graph.sh'} -i revers_quality.txt -o revers_quality.png`;
@@ -100,7 +101,7 @@ system("$para{'-fastx_trimmer'}  -t $para{'-trimf'} -i forward.fastq -o forward1
 system("$para{'-fastx_trimmer'} -t $para{'-trimr'}  -i revers.fastq -o revers1.fastq");
 system("mv forward1.fastq forward.fastq");
 system("mv revers1.fastq revers.fastq");
-if($para{'-p'}){&find_match_pair('forward.fastq','revers.fastq');}
+if($para{'-p'}|| $para{'-split'}){&find_match_pair('forward.fastq','revers.fastq');}
 my $lines=`wc -l forward.fastq`;
 $lines=~/(\d+)/;
 print SAT "Total pre-merging quality control: ",int($1/4),"\n";
@@ -108,7 +109,7 @@ print SAT "Total pre-merging quality control: ",int($1/4),"\n";
 #Pairing with usearch
 print "Pairing\n";
    if(!$para{'-split'}){
- 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt -threads $para{'-threads'} -fastq_minmergelen 300  -fastq_maxmergelen $para{'-maxl'}");
+ 		system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastqout merged.fastq -fastq_eeout -report merge_report.txt -threads $para{'-threads'} -fastq_minmergelen $para{'-minl'}  -fastq_maxmergelen $para{'-maxl'}");
  		system("$para{'-usearch'} -fastq_filter merged.fastq -fastaout good.fna -fastq_maxee $para{'-maxee'}");
  		if($para{'-phix'}=~/y/i){
  			system("$para{'-usearch'} -filter_phix good.fna -output filtered_reads.fna -threads $para{'-threads'} &>phix.txt");
@@ -314,7 +315,7 @@ sub find_match_pair{
        	  }
        	  
        	my @line=split/[ \t\/]/,$_;
-       	$id=$line[0];$id=~s/\:2\:/\:1\:/;
+       	$id=$line[0];#$id=~s/\:2\:/\:1\:/;
        	 if($r_name{$id}){
        	   print FO "$_";
        	   $mark=1;	
