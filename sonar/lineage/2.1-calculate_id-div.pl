@@ -122,7 +122,7 @@ foreach(sort keys %{$anti}){
 print YY "\n";
 my $file_calculation=$para{'-f'};
 if($para{'-pu'}){#dereplicate
-  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout Temp.unique.fa -uc Temp1.cluster -sizeout > usearchlog.txt");
+  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout Temp1.unique.fa -uc Temp1.cluster -sizeout > usearchlog.txt");
   #system("cp *.cluster ./cdr3_cluster.txt");
   &changename_usearch($para{'-f'},'Temp1.unique.fa');
   $file_calculation='Temp1.unique.fa';
