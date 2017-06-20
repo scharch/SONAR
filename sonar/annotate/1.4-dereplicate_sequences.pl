@@ -78,8 +78,8 @@ sub usearch{#do the two steps of clustering
 	  	my %final_good=();
 
                 #split files that are too big for 32-bit usearch (added by CAS 2016-05-18)
-                if (-s $file > 3_000_000_000) {
-		    system("$FindBin::Bin/../utilities/splitFastaForUSearch.py $file -o myDerepSplitter");
+     if (-s $file > 1_000_000_000) {
+		    system("python2 $FindBin::Bin/../utilities/splitFastaForUSearch.py $file -o myDerepSplitter");
 		    for my $splitFile (glob "myDerepSplitter*fa") {
 			system("$para{'-pu'} -derep_fulllength $splitFile -threads $para{'-t'} -fastaout processed-$splitFile -sizeout ");
 			system("cat processed-$splitFile >> temp_derepped.fa");
