@@ -86,7 +86,7 @@ else{
 
 #plot quality
 print "Analyzing sequencing quality\n";
-$para{'-fastx_quality_stats'} -i forward.fastq -o forward_quality.txt`;
+`$para{'-fastx_quality_stats'} -i forward.fastq -o forward_quality.txt`;
 `$para{'-fastx_quality_stats'} -i revers.fastq -o revers_quality.txt`;
 `$para{'-fastq_quality_boxplot_graph.sh'} -i forward_quality.txt -o forward_quality.png`;
 `$para{'-fastq_quality_boxplot_graph.sh'} -i revers_quality.txt -o revers_quality.png`;
