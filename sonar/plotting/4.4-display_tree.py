@@ -9,7 +9,7 @@ This script uses the ete2 module to display figure-quality phylogenetic
 
 Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                         [ -o tree.png -c collapse.txt -i intermediates.csv
-			  -colors "#FF000 #00FF00 #0000FF"
+			  -a annotations.txt -colors "#FF000 #00FF00 #0000FF"
 		          -f 1 -r 300 -sc 1000 -sp 12 -he 4 -w 4
 			  -left -showAll -path -noDots -noUCA -noV -noGuide ]
 
@@ -53,6 +53,9 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                          to highlight. First column is the node label in the
 			 newick file, optional second column gives a formatted
 			 label to display on the tree.
+    a         -    Optional tab-delimited text file specifying annotations for some
+                         or all nodes. First column is node label in the newick file,
+                         second is the annotation (eg CDR3 sequence).
     colors    -    Optional vector of colors (specified as a single, space-delimited
                          string) to use for each time point. Defaults to choosing
 			 up to 30 equally-ish spaced colors, sorted by hue from red
@@ -120,6 +123,7 @@ Created by Chaim A Schramm 2013-06-18
 Edited and commented for publication by Chaim A Schramm on 2015-11-04 --happy birthday, Lisa <3
 Edited to add showAll and noGuide options 2016-08-11 by CAS
 Added left-facing option 2017-03-21 by CAS
+Modified to add annotation option 2017-07-11 by CAS
 
 Copyright (c) 2013-2017 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -249,6 +253,11 @@ def layout(node):
                         tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
                         faces.add_face_to_node(tf, node, 0, position='branch-right')
 
+                #add annotation, if provided
+                if "annotation" in node.features:
+                        tf = TextFace(" %s"%node.annotation,ftype='Courier',fsize=fontSize)
+                        faces.add_face_to_node(tf, node, 0, position='aligned')
+
 		#label intermediates, if desired
 		if node.isIntermediate:
 			f=faces.DynamicItemFace(iLabel, node.name)
@@ -336,6 +345,18 @@ def main():
 		                                        #subtree of another collapsed node, but that 
 		                                        #should be sufficiently rare that I am ignoring it
 
+        #annotations?
+        if ( not annotationFile is None ):
+                reader  = csv.reader(open(annotationFile, "rU"), delimiter = sep)
+                for row in reader:
+                        if len(row)==2:
+                                try:
+                                        (myTree & row[0]).add_feature( "annotation", row[1] )
+                                except coretype.tree.TreeError:
+                                        print "Can't annotate ", row[0], ": name not found!"
+                        else:
+                                print "Unrecognized annotation row: ", row
+        
 	#for everything else, read off its timepoint
 	for leaf in myTree.iter_leaves():
 		if leaf.isNat or re.match("(IG|VH|VK|VL)", leaf.name):
@@ -421,12 +442,13 @@ def _custom_add_scale(img, mainRect, parent):
     from PyQt4 import QtGui
     from ete2.treeview.qt4_render import _EmptyItem
 
-    length    = fontBig * res / 4
-    length    = img._scale * numpy.ceil( 100 * float(length) / img._scale ) / 100 #this is my OCD...
+    length      = fontBig * res / 4
+    length      = img._scale * numpy.ceil( 100 * float(length) / img._scale ) / 100 #this is my OCD...
+    length_text = float(length) / img._scale
     
-    height    = length/3
-    scaleItem = _EmptyItem()
-    customPen = QtGui.QPen(QtGui.QColor("black"), res/72)
+    height      = length/3
+    scaleItem   = _EmptyItem()
+    customPen   = QtGui.QPen(QtGui.QColor("black"), res/72)
     
     line = QtGui.QGraphicsLineItem(scaleItem)
     line2 = QtGui.QGraphicsLineItem(scaleItem)
@@ -435,19 +457,28 @@ def _custom_add_scale(img, mainRect, parent):
     line2.setPen(customPen)
     line3.setPen(customPen)
     
+    if leftFace:
+            length = -length
+
     line.setLine(0, height/2, length, height/2)
     line2.setLine(0, 0, 0, height)
     line3.setLine(length, 0, length, height)
-    length_text = float(length) / img._scale
     scale_text = "%0.2f" % (length_text)
     scale = QtGui.QGraphicsSimpleTextItem(scale_text)
     scale.setFont(QtGui.QFont("Arial", fontSize*0.75))
     scale.setParentItem(scaleItem)
     scale.setPos(length/3, -height)
+    if leftFace:
+            scale.setPos(2*length/3, -height)
     
     scaleItem.setParentItem(parent)
-    scaleItem.setPos(mainRect.bottomLeft())
-    scaleItem.moveBy(img.margin_left, -img.margin_bottom)
+    
+    if leftFace:
+            scaleItem.setPos(mainRect.bottomRight())
+            scaleItem.moveBy(-img.margin_right, -img.margin_bottom)
+    else:
+            scaleItem.setPos(mainRect.bottomLeft())
+            scaleItem.moveBy(img.margin_left, -img.margin_bottom)
     mainRect.adjust(0, 0, 0, height)
 
 
@@ -534,11 +565,11 @@ if __name__ == '__main__':
 		sys.exit("\nThe Qt4 drawing engine requires an active X server.\nPlease enable X forwarding or use xvfb-run.\n")
 
 	#parse remainder of options
-	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile", colors="manualColors",
+	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile", a="annotationFile", colors="manualColors",
 				 c="collapseFile", sc="scale", sp="spacing", r="res", f="fontBig", w="width", he="height")
 	dict_defaults = dict( scale=None, spacing=None, res=300, fontBig=1, height=None, width=None, outFile="tree.png", manualColors=None )
-	treeFile, nativeFile, outFile, intFile, collapseFile, manualColors, scale, spacing, res, fontBig, width, height = \
-	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "collapseFile", "manualColors", "scale", "spacing", "res", "fontBig", "width", "height" )
+	treeFile, nativeFile, outFile, intFile, annotationFile, collapseFile, manualColors, scale, spacing, res, fontBig, width, height = \
+	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "annotationFile", "collapseFile", "manualColors", "scale", "spacing", "res", "fontBig", "width", "height" )
 
 
 	#figure out image dimensions
@@ -569,7 +600,6 @@ if __name__ == '__main__':
 	# (function returns empty list if file is not specified)
 	intermediates = parseInternalNodes(intFile)
 	collapseList  = parseInternalNodes(collapseFile)
-
 
 
 	main()

@@ -52,6 +52,10 @@
                        sequencing run (by *ABSOLUTE* path to project folder). Can 
                        be specified multiple times, but user discretion is key.
 
+     --plotName  => Specify custom names for each statistic/dataset being plotted.
+                       Use multiple times, in the same order as the arguments to 
+                       `compare`. Default is project-subset-statistic.
+
      --output    => File name for output plot. Filetype (png, pdf, etc) specified
                        automatically by extension. Default file name is 
                        plot_of_PLOT_for_SUBSET.png in the output/plots directory. 
@@ -72,7 +76,7 @@
                               ( T for nt raw/trim and aa raw/trim;
                                 F for nt/aa CDR3, div/blastdiv, and charge )
                        * magnify (1)
-                       * showlegend (T)
+                       * showlegend (F)
                        * legendpos ("right")
                        * h [figure height] (chosen by system)
                        * w [figure width] (chosen by system)
@@ -83,6 +87,8 @@
                      calculated only for the listed sequences.
 
  Created by Chaim A. Schramm 2015-09-01.
+ Modified by CAS 2017-06-09 to add plotName option and to fix compatability with
+                          docopt usage by 4.2-plot_histograms.R
 
  Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
@@ -111,12 +117,14 @@ if ($#ARGV < 0) { pod2usage(1); }
 my @saveArgs = @ARGV;
 my @compare     = ( );
 my @plotOptions = ( );
+my @plotNames   = ( );
 my ($type, $subset, $outFile, $listFile, $help) = ( "ntraw", "orf", "", "", 0 );
 GetOptions("statistic=s" => \$type,
 	   "subset=s"    => \$subset,
 	   "compare=s"   => \@compare,
 	   "output=s"    => \$outFile,
 	   "plotOpt=s"   => \@plotOptions,
+	   "plotNames=s" => \@plotNames,
 	   "list=s"      => \$listFile,
            "help!"       => \$help
     );
@@ -129,27 +137,33 @@ if ($help) { pod2usage(1); }
 # doing it this way instead of asking user to input --option value to avoid ambiguities parsing options for this script.
 for my $opt (@plotOptions) {
     my @aa= split /=/,$opt;
-    $opt = "--$aa[0] $aa[1]";
+    $opt = "--$aa[0] '$aa[1]'";
 }
+my $commandOpts = join(" ",@plotOptions);
 
 #set up some defaults
-# put them at front of options array so they can be overriden if user specified alternates
+#docopt throws an error if options are repeated unexpectedly, so check for user specification
 $outFile = "output/plots/plot_of_$type\_for_$subset.png" if $outFile eq "";
-unshift @plotOptions, "--title ".basename( getcwd );
-unshift @plotOptions, ("--logx T","logy=T") if $type =~ /size/;
-unshift @plotOptions, "--mids T" if $type =~ /(raw|trim)/;
-unshift @plotOptions, "--bars stack" if $type =~ /(features|status)/;
+$commandOpts .= " --title ".basename( getcwd ) unless $commandOpts =~/title/;
+$commandOpts .= " --logx T" if $type =~ /size/ && $commandOpts !~ /logx/;
+$commandOpts .= " --logy T" if $type =~ /size/ && $commandOpts !~ /logy/;
+$commandOpts .= " --mids T" if $type =~ /(raw|trim)/ && $commandOpts !~ /mids/;
+$commandOpts .= " --bars stack" if $type =~ /(features|status)/ && $commandOpts !~ /bars/;
+
+#kluge
+my $logX=0;
+$logX=1 if $commandOpts =~ /logx=T/;
 
 
 #array to store output
 my @lines = ();
 
 #basic plot:
-&chooseSubset( $subset, $listFile, $type, \@lines, getcwd );
+&chooseSubset( $subset, $listFile, $type, \@lines, getcwd, shift(@plotNames) );
 
 #add overlays
 for my $over (@compare) {
-    if (-d $over) { &chooseSubset( $subset, $listFile, $type, \@lines, $over );
+    if (-d $over) { &chooseSubset( $subset, $listFile, $type, \@lines, $over, shift(@plotNames) );
     } elsif ($over =~ /(all|orf|unique|manual)/i) { &chooseSubset( $over, $listFile, $type, \@lines, getcwd );
     } else { &chooseSubset( $subset, $listFile, $over, \@lines, getcwd ); }
 }    
@@ -161,12 +175,11 @@ close OUT;
 
 #call 4.2 with appropriate options
 #add single quotes so spaces and parens are handled as expected
-system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile " . join(" ",@plotOptions) );
-
+system( "4.2-plot_histograms.R work/internal/dataForPlotting.txt $outFile $commandOpts" );
 
 sub chooseSubset {
 
-    my ($subset, $listFile, $stat, $linesRef, $project) = @_;
+    my ($subset, $listFile, $stat, $linesRef, $project, $customName) = @_;
 
     my $keepVal = 1; #default, corresponds to ORF
     my %lookUp;
@@ -188,14 +201,14 @@ sub chooseSubset {
 	}
     }
 
-    &chooseStatistic($stat, $linesRef, $project, $keepVal, \%lookUp, $subset )
+    &chooseStatistic($stat, $linesRef, $project, $keepVal, \%lookUp, $subset, $customName )
 
 }
 
 
 sub chooseStatistic {
 
-    my ($stat, $linesRef, $project, $keepVal, $listRef, $subset) = @_;
+    my ($stat, $linesRef, $project, $keepVal, $listRef, $subset, $customName) = @_;
  
     my $colNum = 3;
     my $type = "hist"; 
@@ -237,7 +250,7 @@ sub chooseStatistic {
 	}
     }
 
-    push @$linesRef, @{&plot($project, $keepVal, $listRef, $colNum, $type, $divide, $subset, $stat)}; 
+    push @$linesRef, @{&plot($project, $keepVal, $listRef, $colNum, $type, $divide, $subset, $stat, $customName)}; 
     #I am passing by reference from the main program so I don't need to return the modified array
 
 }
@@ -245,7 +258,7 @@ sub chooseStatistic {
 
 sub plot {
 
-    my ($project, $subset, $listRef, $column, $type, $divide, $subsetType, $statType) = @_;
+    my ($project, $subset, $listRef, $column, $type, $divide, $subsetType, $statType, $groupName) = @_;
 
     #for results
     my @values;
@@ -333,20 +346,20 @@ sub plot {
 	my $max = ceil( max(@values));
 	
 	#choose bins
-	if ($max > 1000) {
+	if ($statType =~ /size/ || $logX == 1) {
 	    #size plot, use log-scaled x
 	    $min = floor(log10($min));
 	    $max = ceil( log10($max));
 	    for (my $v=$min; $v<$max+0.2; $v+=0.2) {
 		$categories{sprintf("%d",10**$v)} = 0;
 	    }
-	} elsif ($max > 150) {
+	} elsif ($statType =~ /(ntraw|nttrim|aaraw)/) {
 	    #nt raw, nt trim, or aa raw read lengths
 	    $min = 25 * floor( $min/25 );
 	    for (my $v=$min; $v<$max+25; $v+=25) {
 		$categories{$v} = 0;
 	    }
-	} elsif ($max > 50 && $min > 30) {
+	} elsif ($statType =~ /aatrim/) {
 	    #aa trim lengths
 	    $min = 10 * floor( $min/10 );
 	    for (my $v=$min; $v<$max+10; $v+=10) {
@@ -362,18 +375,18 @@ sub plot {
 	#now sort into the bins
 	my @bins = sort { $b <=> $a } keys %categories;
 	for my $obs (@values) {
-	    for my $b (@bins) {
-		if ($b <= $obs) {
-		    $categories{$b}++;
+	    for my $bin (@bins) {
+		if ($bin <= $obs) {
+		    $categories{$bin}++;
 		    last;
 		}
 	    }
 	}
-	
-	}
+
+    }
     
     my @lines;
-    my $groupName = "$prj_name-$subsetType-$statType";
+    $groupName = "$prj_name-$subsetType-$statType" unless -defined($groupName);
     for my $cat ( sort mysort keys %categories ) {
 	#line format: group x y
 	#for status and features, group and x are reversed compared to genes
