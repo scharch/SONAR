@@ -8,34 +8,37 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" -nterm truncate]
+Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" -nterm truncate -noclean]
 
     Invoke with -h or --help to print this documentation.
 
     Optional Parameters:
 
-    jmotif - Conserved nucleotide sequence indicating the start of FWR4 on
+    jmotif  - Conserved nucleotide sequence indicating the start of FWR4 on
                 the J gene. Defaults to either TGGGG for heavy chains or
 		TT[C|T][G|A]G for light chains; set manually for species
 		which may have a different motif.
-    nterm  - What to do if blast hit does not extend to the N terminus of the
+    nterm   - What to do if blast hit does not extend to the N terminus of the
                 germline V gene. Options are 
                    'truncate' - trim to blast hit (default)
                    'extend'   - change trim boundary to correspond to expected
                                 N terminus of germline or beginning of read if
                                 shorter (NOT recommended, typically results in
                                 bad sequences)
-                   'germline' - replace missing region with the germline V sequence
-                                (useful for FWR1 primers)
+                   'germline' - replace missing region with the germline V
+                                sequence (useful for FWR1 primers)
                    'discard'  - only mark as 'good' sequences with full germline
                                 region
+    noclean - Disable automatic deletion of working files from 1.1 and 1.2
 
 Created by Chaim A Schramm on 2013-07-05
 Edited and commented for publication by Chaim A Schramm on 2015-02-25.
 Edited to add custom J motif option for other species by CAS 2016-05-16.
 Edited to add options to handle missing N terminal by CAS 2017-05-08.
+Edited to make motif matching case-insensitive and to disable auto-clean-up
+                               by CAS 2017-07-31.
 
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -75,7 +78,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		cys_pat = "TGCTGC" #special case
 	if re.match("IGHV1-C",v_id):
 		cys_pat = "TATGC"
-	for m in re.finditer(cys_pat,vgene):
+	for m in re.finditer(cys_pat,vgene,flags=re.I):
 		vMatches.append(m)
 
 	#last one **IN FRAME** is the cysteine we want! (matters for light chains)
@@ -98,7 +101,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		else:
 			cdr3_start = -1
 
-	jMatch = re.search(jMotif,jgene)
+	jMatch = re.search(jMotif,jgene,flags=re.I)
         WF_motif = -1 #pass back to main program to check for out-of-frame junctions
 
 	try:
@@ -412,7 +415,7 @@ def main():
 
 	#clean up!!
 	oldFiles = glob.glob("%s/*txt"%prj_tree.vgene) + glob.glob("%s/*fasta"%prj_tree.vgene) +  glob.glob("%s/*txt"%prj_tree.jgene) + glob.glob("%s/*fasta"%prj_tree.jgene) + glob.glob("%s/id_lookup.txt"%prj_tree.internal)
-	if len(oldFiles) > 0:
+	if len(oldFiles) > 0 and autoDelete:
 		[os.remove(f) for f in oldFiles]
 			
 
@@ -427,6 +430,13 @@ if __name__ == '__main__':
 
 	#log command line
 	logCmdLine(sys.argv)
+
+        #check auto delete
+        autoDelete = True
+	flag = [ x for x in sys.argv if re.search("noclean", x, flags=re.I) ]
+        if len(flag) > 0:
+                sys.argv.remove(flag[0])
+                autoDelete = False
 
 	prj_tree  = ProjectFolders(os.getcwd())
 	prj_name  = fullpath2last_folder(prj_tree.home)

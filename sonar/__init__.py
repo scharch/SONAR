@@ -429,7 +429,7 @@ def load_quals(f):
 
 def has_pat(s, pat):
 	has, start, end = False, -1, -1
-	matches = re.finditer(pat, s)
+	matches = re.finditer(pat, s, flags=re.I)
 	for match in matches:
 		has, start, end = True, match.start(), match.end()
 	return has, start, end
