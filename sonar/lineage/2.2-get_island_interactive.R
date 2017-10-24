@@ -190,13 +190,13 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
     
       #generate initial plot; supress color bar and increase size of plot title from default
       #   keep title separate, because we'll want to use different titles at different stages
-      p <- plot_all(smalldata, mab.R, mab, "germline V") + guides(fill=F) + theme( plot.title=element_text(size = 18) )
+      pp <- plot_all(smalldata, mab.R, mab, "germline V") + guides(fill=F) + theme( plot.title=element_text(size = 18) )
       if ( ! is.null(refPointsData) ) {
-      	 p <- p + geom_point( data=refData, aes_string(x="germ_div",y=mab.R, z=NA), shape=5, stroke=2, colour="black" )
+      	 p  <- pp + geom_point( data=refData, aes_string(x="germ_div",y=mab.R, z=NA), shape=5, stroke=2, colour="black" )
       }
       t <- labs( title=sprintf("Click to draw a border around an island for %s\nClick original point to complete",mab) )
 
-      allPlots[[mab_num]] <- p
+      allPlots[[mab_num]] <- pp
 
       myClick <<- 2 #value returned by right click 
     
@@ -284,10 +284,15 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
       pl <- list()
       titlePlot <- ggplot( data.frame(x=1,y=1,text=sprintf( "Final Selections (total %d transcripts)",length(idsOnly) )) ) +
       		   	   geom_text(aes(x,y,label=text), size=4) + scale_x_continuous(limits=c(0,2)) + scale_y_continuous(limits=c(0,2)) +
-			   geom_point( data=lineageReads, aes_string(x="germ_div",y=natAbList[1],colour="referent"),size=0 ) +
-			   guides( colour=guide_legend(nrow=1, title="", override.aes=list(size=3)) ) + theme_void() + 
+			   geom_point( data=lineageReads, aes_string(x="germ_div",y=make.names(natAbList[1]),colour="referent"),size=0 ) +
+			   guides( colour=guide_legend(nrow=1, title="", override.aes=list(size=3), order=1) ) + theme_void() + 
 			   theme( legend.position="bottom", legend.key=element_blank(), legend.text=element_text(size=8),
 			   	  legend.margin=unit(0,"in") )
+      if ( ! is.null(refPointsData) ) {
+      	   titlePlot <- titlePlot + geom_point( inherit.aes=F, data=data.frame(x=0,y=0,shape="reference antibodies"), aes(x,y,shape=shape), size=0, stroke=0  ) +
+	   	     		    scale_shape_manual( values=c(5) ) +
+	   	     		    guides( shape=guide_legend(nrow=1, title="", override.aes=list(size=2,stroke=.5), order=2) )
+      }
       pl[[1]] <- titlePlot
       for( i in seq_along(allPlots) ) {
       	   thisAb  <- natAbList[i]
@@ -295,8 +300,11 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
 	   lineageReads$round <- rep( "previous", length(lineageReads$ID) )
 	   lineageReads$round[current] <- rep( "current", length(current) )
 	   lineageReads <- lineageReads[ order(lineageReads$round, decreasing=T), ] #put reads from current mAb at the bottom so they plot on top
-	   pl[[i+1]] <- allPlots[[i]] + geom_point( inherit.aes=F, data=lineageReads, aes_string(x="germ_div",y=thisAb,colour="referent"), size=0.5 ) +
+	   pl[[i+1]] <- allPlots[[i]] + geom_point( inherit.aes=F, data=lineageReads, aes_string(x="germ_div",y=make.names(thisAb),colour="referent"), size=0.5 ) +
 		  		        guides(colour=F) + labs( title=thisAb ) + theme( plot.title=element_text(size = 10) )
+	   if ( ! is.null(refPointsData) ) {
+      	      	  pl[[i+1]] <- pl[[i+1]] + geom_point( inherit.aes=F, data=refData, aes_string(x="germ_div",y=make.names(thisAb)), shape=5, stroke=.5, size=.75, colour="black" )
+      	   }
       }
       myLayout <- layoutGrid( TRUE, FALSE, length(natAbList), 1, FALSE )
 
@@ -308,7 +316,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
       
       multiplot( plotlist=pl, layout=myLayout )
       ggsave(sprintf("%s/%s.png",outDir,outFile),multiplot( plotlist=pl, layout=myLayout ),h=3,w=2*length(natAbList),dpi=300)
-      Sys.sleep(10)
+      #Sys.sleep(10)
   }
   
   #output
