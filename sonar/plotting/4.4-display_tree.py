@@ -9,7 +9,8 @@ This script uses the ete2 module to display figure-quality phylogenetic
 
 Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
                         [ -o tree.png -c collapse.txt -i intermediates.csv
-			  -a annotations.txt -colors "#FF000 #00FF00 #0000FF"
+			  -a annotations.txt  -date formattedTimes.txt
+                          -colors "#FF000 #00FF00 #0000FF"
 		          -f 1 -r 300 -sc 1000 -sp 12 -he 4 -w 4
 			  -left -showAll -path -noDots -noUCA -noV -noGuide ]
 
@@ -56,6 +57,10 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
     a         -    Optional tab-delimited text file specifying annotations for some
                          or all nodes. First column is node label in the newick file,
                          second is the annotation (eg CDR3 sequence).
+    dates     -    Optional tab-delimited text file to convert timepoint labels as
+                         used in the tree file and the natives file (first column) to
+                         something more intelligible for the figure legend (second 
+                         column).
     colors    -    Optional vector of colors (specified as a single, space-delimited
                          string) to use for each time point. Defaults to choosing
 			 up to 30 equally-ish spaced colors, sorted by hue from red
@@ -124,6 +129,9 @@ Edited and commented for publication by Chaim A Schramm on 2015-11-04 --happy bi
 Edited to add showAll and noGuide options 2016-08-11 by CAS
 Added left-facing option 2017-03-21 by CAS
 Modified to add annotation option 2017-07-11 by CAS
+Added date option 2017-09-27 by CAS
+Modified to adjust automatic color selection and allow annotation of internal
+              nodes 2017-09-28 by CAS
 
 Copyright (c) 2013-2017 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -198,6 +206,30 @@ def parseInternalNodes(infile):
 	return iNodes
 
 
+def parsePrettyDates(infile, unformatted):
+	if ( infile is None ):
+		return dict( zip(unformatted, unformatted) )
+
+        dates   = dict()
+
+        reader  = csv.reader(open(infile, "rU"), delimiter = sep)
+        for row in reader:
+                if len(row)==2:
+                        name, show = row
+                elif len(row)==1:
+                        [ name ] = row
+                        show     = name
+                else:
+                        print "Unrecognized row: ", row
+
+                if show == '':
+                        show = name
+
+		dates[name] = show
+
+	return dates
+
+
 def layout(node):
 
 	# Get birthday color (defaults to black in case of error)
@@ -255,8 +287,11 @@ def layout(node):
 
                 #add annotation, if provided
                 if "annotation" in node.features:
-                        tf = TextFace(" %s"%node.annotation,ftype='Courier',fsize=fontSize)
-                        faces.add_face_to_node(tf, node, 0, position='aligned')
+                        tf = TextFace(" %s"%node.annotation,ftype='Arial',fsize=fontSize)
+                        if node.is_leaf():
+                                faces.add_face_to_node(tf, node, 0, position='aligned')
+                        else:
+                                faces.add_face_to_node(tf, node, 0, position='branch-bottom')                                
 
 		#label intermediates, if desired
 		if node.isIntermediate:
@@ -274,7 +309,10 @@ def layout(node):
 
 def makeRainbow(thisLevel, numLevels):
 	global fullListOfColors
-	subset = [int( a * len(fullListOfColors) / numLevels ) for a in range(numLevels)]
+        if numLevels==1:
+                return fullListofColors[0]
+        else:
+	        subset = [int( a * (len(fullListOfColors)-1) / (numLevels-1) ) for a in range(numLevels)]
 	return fullListOfColors[subset[thisLevel]]
 
 
@@ -423,7 +461,7 @@ def main():
 			bar.margin_right  = res/24
 			bar.margin_left   = res/24
 			ts.legend.add_face(bar, column=0)
-			text = TextFace(timepoints[time],ftype="Arial",fsize=fontSize*0.75,fgcolor="#000000")
+			text = TextFace(datesInLegend[timepoints[time]],ftype="Arial",fsize=fontSize*0.75,fgcolor="#000000")
 			text.hz_align     = 0
 			text.vt_align     = 1
 			text.margin_left  = res/24
@@ -565,11 +603,11 @@ if __name__ == '__main__':
 		sys.exit("\nThe Qt4 drawing engine requires an active X server.\nPlease enable X forwarding or use xvfb-run.\n")
 
 	#parse remainder of options
-	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile", a="annotationFile", colors="manualColors",
+	dict_args = processParas(sys.argv, t="treeFile", n="nativeFile", o="outFile", i="intFile", a="annotationFile", date="dateFile", colors="manualColors",
 				 c="collapseFile", sc="scale", sp="spacing", r="res", f="fontBig", w="width", he="height")
 	dict_defaults = dict( scale=None, spacing=None, res=300, fontBig=1, height=None, width=None, outFile="tree.png", manualColors=None )
-	treeFile, nativeFile, outFile, intFile, annotationFile, collapseFile, manualColors, scale, spacing, res, fontBig, width, height = \
-	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "annotationFile", "collapseFile", "manualColors", "scale", "spacing", "res", "fontBig", "width", "height" )
+	treeFile, nativeFile, outFile, intFile, annotationFile, collapseFile, dateFile, manualColors, scale, spacing, res, fontBig, width, height = \
+	    getParasWithDefaults( dict_args, dict_defaults, "treeFile", "nativeFile", "outFile", "intFile", "annotationFile", "collapseFile", "dateFile", "manualColors", "scale", "spacing", "res", "fontBig", "width", "height" )
 
 
 	#figure out image dimensions
@@ -596,6 +634,9 @@ if __name__ == '__main__':
 	natives, timepoints = parseNatives(nativeFile)
 	timeRegex = re.compile( "(" + ")|(".join(timepoints) + ")" )
 
+        #formatted dates?
+        datesInLegend = parsePrettyDates( dateFile, timepoints )
+        
 	#parse intermediates and nodes to collapse
 	# (function returns empty list if file is not specified)
 	intermediates = parseInternalNodes(intFile)
