@@ -191,12 +191,17 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
       #generate initial plot; supress color bar and increase size of plot title from default
       #   keep title separate, because we'll want to use different titles at different stages
       pp <- plot_all(smalldata, mab.R, mab, "germline V") + guides(fill=F) + theme( plot.title=element_text(size = 18) )
+
+      #want referents to look different on interactive and final figure (mostly about size)
+      #   so save this first, then add
+      allPlots[[mab_num]] <- pp
+
       if ( ! is.null(refPointsData) ) {
       	 p  <- pp + geom_point( data=refData, aes_string(x="germ_div",y=mab.R, z=NA), shape=5, stroke=2, colour="black" )
+      } else {
+      	 p  <- pp
       }
       t <- labs( title=sprintf("Click to draw a border around an island for %s\nClick original point to complete",mab) )
-
-      allPlots[[mab_num]] <- pp
 
       myClick <<- 2 #value returned by right click 
     
