@@ -14,7 +14,8 @@ This script uses CDR3 identity to group unique sequences from a given data set
       USearch is used to cluster the CDR3 sequences.
 
 Usage: 2.4-cluster_into_groups.py [ -id 90 -gaps 0
-                                    -n natives.fa -v nat_v_gene -j nat_j_gene ]
+                                    -n natives.fa -v nat_v_gene -j nat_j_gene
+                                    -full sequences.fa -cdr3 cdr3_nt.fa ]
 
     All options are optional, see below for defaults.
     Invoke with -h or --help to print this documentation.
@@ -38,11 +39,16 @@ Usage: 2.4-cluster_into_groups.py [ -id 90 -gaps 0
     nat_j_gene  J gene used by the known antibodies (no allele, eg: "HJ2")
                    If not supplied, will be extracted from the fasta file by
                    looking for "J_gene=IG[HKL]J..."
+    full        Fasta file with full length sequences, if clustering something
+                   other than unique ORFs. Must specify CDR3 file, as well.
+    cdr3        CDR3 nucleotide sequences extracted from custom sequence file if
+                   not using unique ORFs. Must specify -full as well.
 
 
 Created by Chaim A Schramm on 2015-04-27.
 Edited by CAS 2017-07-26 to allow for automated extraction of V/J genes for native
                          antibodies and to exclude native-only clusters.
+Edited by CAS 2018-06-13 to allow custom target file.
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
@@ -62,7 +68,7 @@ except ImportError:
 def main():
 
     #need both CDR3 and full length - infile maybe not parameter
-    global natFile, nat_genes, gene_pat, idLevel, maxgaps
+    global natFile, nat_genes, gene_pat, idLevel, maxgaps, cdr3File, fullLengthFile
 
     #open logfile
     log = open("%s/cluster_into_groups.txt" % prj_tree.logs, "w")
@@ -74,7 +80,11 @@ def main():
     vj_partition = dict()
     cdr3_info = dict()
     seqSize = Counter()
-    for sequence in SeqIO.parse(open("%s/%s_goodCDR3_unique.fa" % (prj_tree.nt, prj_name), "rU"), "fasta"):
+
+    inputFile = "%s/%s_goodCDR3_unique.fa" % (prj_tree.nt, prj_name)
+    if cdr3File != "": inputFile = cdr3File
+    
+    for sequence in SeqIO.parse(open(inputFile, "rU"), "fasta"):
         genes = re.search(gene_pat, sequence.description)
         if genes:
             key = genes.group(1) + "_" + genes.group(2)
@@ -186,9 +196,15 @@ def main():
                               cdr3_info[centroid]['cdr3_len'], cdr3_info[centroid]['cdr3_seq'], size, ",".join(centroidData[centroid]['nats']) ])
 
     #do sequence output
+    seqFile = "%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)
+    if fullLengthFile != "": seqFile = fullLengthFile
+
+    notationFile = re.sub( "\.f.+", "_lineageNotations.fa", seqFile )
+    repFile      = re.sub( "\.f.+", "_lineageRepresentatives.fa", seqFile )
+    
     rep_seqs = []
-    with open( "%s/%s_goodVJ_unique_lineageNotations.fa" % (prj_tree.nt, prj_name), "w" ) as handle:
-        for read in generate_read_fasta("%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)):
+    with open( notationFile, "w" ) as handle:
+        for read in generate_read_fasta(seqFile):
             if ";" in read.id:
                 read.id = read.id[0,8] #this is for raw USearch output with size annotations
                                        #shouldn't be relevant in pipeline context
@@ -199,7 +215,7 @@ def main():
             if read.id in centroidData:
                 rep_seqs.append(read)
 
-    with open( "%s/%s_lineageRepresentatives.fa" % (prj_tree.nt, prj_name), "w" ) as handle:
+    with open( repFile, "w" ) as handle:
         #use a sort to put them out in order of lineage rank (ie size)
         SeqIO.write( sorted(rep_seqs, key=lambda cent: centroidData[cent.id]['rank']), handle, "fasta" )
 
@@ -218,9 +234,9 @@ if __name__ == '__main__':
 	logCmdLine(sys.argv)
 
 	# get parameters from input
-	dict_args = processParas(sys.argv, id="idLevel", gaps="maxgaps", n="natFile", v="natV", j="natJ")
-	idLevel, maxgaps, natFile, natV, natJ = getParasWithDefaults(dict_args, dict(idLevel=90, maxgaps=0, natFile="", natV="", natJ=""),
-                                                                     "idLevel", "maxgaps", "natFile", "natV", "natJ")
+	dict_args = processParas(sys.argv, id="idLevel", gaps="maxgaps", n="natFile", v="natV", j="natJ", cdr3="cdr3File", full="fullLengthFile")
+	idLevel, maxgaps, natFile, natV, natJ, cdr3File, fullLengthFile = getParasWithDefaults(dict_args, dict(idLevel=90, maxgaps=0, natFile="", natV="", natJ="", cdr3File="", fullLengthFile=""),
+                                                                     "idLevel", "maxgaps", "natFile", "natV", "natJ", "cdr3File", "fullLengthFile")
 
         if os.path.isfile(natFile):
             #working with known sequences, check for manual input of V and J genes
@@ -230,7 +246,11 @@ if __name__ == '__main__':
                 sys.exit("Cannot recognize input genes for known sequences.")
             elif re.search("\*", natV) or re.search("\*", natJ):
                 sys.exit("Please input germ line genes without allele (eg HV1-2 or KJ1)")
-        
+
+
+        if (cdr3File=="" and fullLengthFile!="") or (cdr3File!="" and fullLengthFile==""):
+                sys.exit("Please specify files for both full length sequences and extracted CDR3s.")
+                
 
         nat_genes = natV + "_" + natJ
         gene_pat = re.compile("V_gene=IG([HKL]V\d+(?:D|\/OR\d*)?Y?-(?:NL)?\d+).*J_gene=IG([HKL]J\d)")
