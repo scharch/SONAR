@@ -126,9 +126,8 @@ def main():
                         key = genes.group(1) + "_" + genes.group(2)
 
                 if re.match("_", key) or re.search("_$",key):
-                        print("V and J genes not found for native sequence %s, skipping it. Please check file or input manually."%n)
-                        continue
-                
+                        sys.exit("V and J genes not found for native sequence %s. Please check file or input manually."%n)
+
                 if key not in vj_partition:
                         print "No NGS sequences with the same V/J genes as native sequence %s (%s); skipping..." % (n, key)
                         continue
@@ -260,8 +259,7 @@ if __name__ == '__main__':
                 
 
         nat_genes = natV + "_" + natJ
-        #gene_pat = re.compile("V_gene=IG([HKL]V\d+(?:D|\/OR\d*)?Y?-(?:NL)?\d+).*J_gene=IG([HKL]J\d)")
-        gene_pat = re.compile("V_gene=IG([HKL]V[^*]+).*J_gene=IG([HKL]J\d)")
+        gene_pat = re.compile("V_gene=IG([HKL]V\d+(?:D|\/OR\d*)?Y?-(?:NL)?\d+).*J_gene=IG([HKL]J\d)")
 
 
         prj_tree = ProjectFolders(os.getcwd())

@@ -56,10 +56,7 @@ Usage: [xvfb-run] 4.4-plot_tree.py -t newick.txt -n natives.csv
 			 label to display on the tree.
     a         -    Optional tab-delimited text file specifying annotations for some
                          or all nodes. First column is node label in the newick file,
-                         second is the annotation (eg CDR3 sequence). If the annotation
-                         is "shapeXX", adds a shape annotation. First digit indicates
-                         circle (0) or square (1); second digit is color (white, black,
-                         red, blue, green).
+                         second is the annotation (eg CDR3 sequence).
     dates     -    Optional tab-delimited text file to convert timepoint labels as
                          used in the tree file and the natives file (first column) to
                          something more intelligible for the figure legend (second 
@@ -135,16 +132,15 @@ Modified to add annotation option 2017-07-11 by CAS
 Added date option 2017-09-27 by CAS
 Modified to adjust automatic color selection and allow annotation of internal
               nodes 2017-09-28 by CAS
-Modified to add shapes as annotations to branches 2018-04-12 by CAS
 
-Copyright (c) 2013-2018 Columbia University and Vaccine Research Center, National
+Copyright (c) 2013-2017 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
 
 import sys, os, re, colorsys
 from ete2 import *
-from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush, QPen
+from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush
 import string, random
 
 try:
@@ -291,31 +287,11 @@ def layout(node):
 
                 #add annotation, if provided
                 if "annotation" in node.features:
-                        ann = re.findall("shape([01])([0-4]?)", node.annotation)
-                        if ann:
-                                #first digit is shape: 0=circle, 1=square (native to ete; other shapes require messing with Qt)
-                                #second digit is fill: 0/missing=white, 1=black, 2=red, 3=blue, 4=green
-                                fillColors = ['white','black','red','blue','green']
-                                whichCol = 0
-                                for shape in ann:
-                                        thisFill   = fillColors[ int(shape[1] or 0) ]
-                                        whichCol += 1
-                                        if shape[0] == '0':
-                                                faces.add_face_to_node(TextFace("  "), node, whichCol)
-                                                whichCol += 1
-                                                cf = CircleFace(fontSize/2, thisFill)
-                                                faces.add_face_to_node(cf, node, whichCol)
-                                        else:
-                                                faces.add_face_to_node(TextFace("  "), node, whichCol)
-                                                whichCol += 1
-                                                rf = RectFace(fontSize-1, fontSize-1, 'black', thisFill)
-                                                faces.add_face_to_node(rf, node, whichCol)
+                        tf = TextFace(" %s"%node.annotation,ftype='Arial',fsize=fontSize)
+                        if node.is_leaf():
+                                faces.add_face_to_node(tf, node, 0, position='aligned')
                         else:
-                                tf = TextFace(" %s"%node.annotation,ftype='Arial',fsize=fontSize)
-                                if node.is_leaf():
-                                        faces.add_face_to_node(tf, node, 0, position='aligned')
-                                else:
-                                        faces.add_face_to_node(tf, node, 0, position='branch-bottom')                                
+                                faces.add_face_to_node(tf, node, 0, position='branch-bottom')                                
 
 		#label intermediates, if desired
 		if node.isIntermediate:
@@ -324,7 +300,7 @@ def layout(node):
 
 		#label UCA/root, if desired
 		if uca and not node.up: 
-			tf = TextFace(' UCA ',ftype='Arial',fsize=fontSize)
+			tf = TextFace('UCA ',ftype='Arial',fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-top')
 			# change horizontal line color??
 
@@ -334,7 +310,7 @@ def layout(node):
 def makeRainbow(thisLevel, numLevels):
 	global fullListOfColors
         if numLevels==1:
-                return "#000000" # might need to check for a manual color input here
+                return fullListofColors[0]
         else:
 	        subset = [int( a * (len(fullListOfColors)-1) / (numLevels-1) ) for a in range(numLevels)]
 	return fullListOfColors[subset[thisLevel]]
@@ -348,21 +324,18 @@ def iLabel(node, *args, **kargs):
 	my_label = args[0][0] #or maybe just node.name?
 
 	ellipse = QGraphicsEllipseItem(0,0,fontSize*2,fontSize*2) #I think the first two are coords of center; second pair is major/minor axis
-	ellipse.setPen(QPen(QColor( 'black' )))
-	ellipse.setBrush(QBrush(QColor( 'white' )))
+	ellipse.setBrush(QBrush(QColor( 'black' )))
 
 	text = QGraphicsSimpleTextItem(my_label)
 	text.setParentItem(ellipse)
-	text.setBrush(QBrush(QColor("black")))
-        font = QFont("Arial",fontSize*.9,weight=80)
-        font.setLetterSpacing(1, 2) #add 2 pixels between letters for legibility
-	text.setFont(font)
+	text.setBrush(QBrush(QColor("white")))
+	text.setFont(QFont("Arial",fontSize*.75))
 
 	#Center text according to masterItem size
 	tw = text.boundingRect().width()
 	th = text.boundingRect().height()
 	center = ellipse.boundingRect().center()
-	text.setPos(center.x()+1-tw/2, center.y()-th/2) #since the last letter has an extra 2 pixels after it from the spacing command, adjust center to compensate
+	text.setPos(center.x()-tw/2, center.y()-th/2)
     
 	return ellipse
 
@@ -451,7 +424,7 @@ def main():
 		spacing = res/24
 
 	if width is not None:
-		pixelW = (width - 2) * res #.5 for margin, .75 for color key, .5 for native labels (may not be necessary), .25 for branch behind UCA
+		pixelW = (width - 1.75) * res #.5 for margin, .5 for color key, .5 for native labels (may not be necessary), .25 for branch behind UCA
 		if hideLegend: pixelW = (width - 1.25)
 		scale = pixelW / myTree.get_farthest_leaf()[1]
 	elif scale is None:
@@ -540,11 +513,7 @@ def _custom_add_scale(img, mainRect, parent):
     
     if leftFace:
             scaleItem.setPos(mainRect.bottomRight())
-            if not hideLegend:
-                    from ete2.treeview.qt4_render import _FaceGroupItem
-                    scaleItem.moveBy(-_FaceGroupItem(img.legend,None).get_size()[0]+res/24, -img.margin_bottom)
-            else:
-                    scaleItem.moveBy(-img.margin_right, -img.margin_bottom)
+            scaleItem.moveBy(-img.margin_right, -img.margin_bottom)
     else:
             scaleItem.setPos(mainRect.bottomLeft())
             scaleItem.moveBy(img.margin_left, -img.margin_bottom)
@@ -563,8 +532,8 @@ def _custom_add_legend(img, mainRect, parent):
      place_at = mid_height - lg_h/2
      legend.setParentItem(parent)
      legend.setPos(mainRect.width(), place_at)
-     #legend.moveBy(-img.margin_right,0)
-     mainRect.adjust(0, 0, lg_w+img.margin_right, 0)
+     legend.moveBy(-img.margin_right,0)
+     mainRect.adjust(0, 0, lg_w, 0)
 		      
 
 ############################################
