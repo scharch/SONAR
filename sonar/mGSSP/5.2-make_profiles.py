@@ -22,7 +22,7 @@ Options:
    -g --germline germV.fa       Location of germline V sequences to use for building
                                    profiles. Expected as trimmed/padded AA sequences.
                                    [default: /ifs/scratch/c2b2/ls_nih/cs3037/spectrum/nonredundant_AA_alleles_includingNovel_20160609.fa]
-   -a                           Input sequences are amino acid (don't translate) [default: True]
+   -a                           Input sequences are amino acid (don't translate) [default: False]
    -u --use-all                 Don't subset or run multiple profiles. Still uses the numPerProfile
                                    parameter as a minimum [default: False]
 
@@ -186,7 +186,7 @@ def main():
                 numInProfile = len(masterList[v])
             for p, pos in enumerate(pssm):
                 germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-                output.writerow( [ v, i+1, p+1, germAA, "%.2f"%(sum(pos.values())/numInProfile) ] + [ "%.2f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+                output.writerow( [ v, i+1, p+1, germAA, "%.5f"%(sum(pos.values())/numInProfile) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
             
             #clean up
             for f in glob.glob("%s.*"%tempFile): 

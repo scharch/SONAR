@@ -135,49 +135,49 @@ def main():
 
 		# write pbs files and auto submit shell script
 		if os.path.isfile(const_lib):
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s -perc_identity 100" % ( "%03d", CMD_BLAST % (cluster_blast, const_lib, 
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\nmodule load BLAST+/2.2.31-goolf-1.7.20-Python-2.7.9\n%s -perc_identity 100\n" % ( "%03d", CMD_BLAST % (cluster_blast, const_lib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
-			pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+			pbs.write( PBS_STRING%("cBlast-%s"%prj_name, "2G", "%s 2> %s/%s_C_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 			pbs.close()
 			os.system("%s -t 1-%d %s/cblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-			check = "%s/utilities/checkClusterBlast.py -gene c -big %d -check %s/cmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
+			check = "module load Biopython/1.65-goolf-1.7.20-Python-2.7.9\n%s/utilities/checkClusterBlast.py -gene c -big %d -check %s/cmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/cmonitor.sh"%prj_tree.jgene, 'w')
-			monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+			monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
-			os.system( "%s %s/cmonitor.sh"%(qsub,prj_tree.jgene) )
+			#os.system( "%s %s/cmonitor.sh"%(qsub,prj_tree.jgene) )
 
 		if os.path.isfile(dlib):
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, dlib, 
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\nmodule load BLAST+/2.2.31-goolf-1.7.20-Python-2.7.9\n%s\n" % ( "%03d", CMD_BLAST % (cluster_blast, dlib, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
-			pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "2G", "1:00:00", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+			pbs.write( PBS_STRING%("dBlast-%s"%prj_name, "2G", "%s 2> %s/%s_D_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 			pbs.close()
 			os.system("%s -t 1-%d %s/dblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-			check = "%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/dmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
+			check = "module load Biopython/1.65-goolf-1.7.20-Python-2.7.9\n%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/dmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
-			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "2:00:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
+			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
-			os.system( "%s %s/dmonitor.sh"%(qsub,prj_tree.jgene) )
+			#os.system( "%s %s/dmonitor.sh"%(qsub,prj_tree.jgene) )
 
 		#now basic J (do last so the holds work properly -at least for the first round)
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, library, 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\nmodule load BLAST+/2.2.31-goolf-1.7.20-Python-2.7.9\n%s\n" % ( "%03d", CMD_BLAST % (cluster_blast, library, 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 		pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
-		pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
+		pbs.write( PBS_STRING%("jBlast-%s"%prj_name, "2G", "%s 2> %s/%s_$NUM.err"%(command, prj_tree.jgene, prj_name)) )
 		pbs.close()
 		os.system("%s -t 1-%d %s/jblast.sh"%(qsub, f_ind,prj_tree.jgene))
 
-		check = "%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+		check = "module load Biopython/1.65-goolf-1.7.20-Python-2.7.9\n%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
 		if callF:
 			check += " -after %s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
 		monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
-		monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
+		monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "10G", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
 		monitor.close()
 		os.system( "%s %s/jmonitor.sh"%(qsub,prj_tree.jgene) )
 

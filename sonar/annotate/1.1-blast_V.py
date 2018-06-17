@@ -14,7 +14,7 @@ This script looks for raw NGS data files in the current folder and parses them
       output files created.
 
 Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
-                      [-qual <0|1>] -fasta file1.fa [ -fasta file2.fa ... ]
+		      [-qual <0|1>] -fasta file1.fa [ -fasta file2.fa ... ]
 		       -lib path/to/library.fa -h -f
 		      [-threads 1 -npf 50000 -cluster -callJ
 		       -jArgs "-lib path/to/custom/j-library.fa]
@@ -25,30 +25,30 @@ Usage: 1.1-blast-V.py -minl min_len -maxl max_len -locus <H|K|L|KL|HKL|C>
     minl	Minimum length for read filtering (inclusive). Default = 300
     maxl	Maximum length for read filtering (inclusive). Default = 600.
     locus	H: heavy chain / K: kappa chain / L: lambda chain / KL: kappa OR
-                   lambda / HKL: any / C: custom library (supply -lib)
-                   Default = H.
-    qual 	CURRENTLY DEPRECATED!
-                0: noquals/use fasta only / 1: use qual information 
-                   Default = 0.
-    fasta       File(s) containing the input reads to process. May be specified
-                   multiple times. Default = use all FASTA/FASTQ files (those
+		   lambda / HKL: any / C: custom library (supply -lib)
+		   Default = H.
+    qual	CURRENTLY DEPRECATED!
+		0: noquals/use fasta only / 1: use qual information 
+		   Default = 0.
+    fasta	File(s) containing the input reads to process. May be specified
+		   multiple times. Default = use all FASTA/FASTQ files (those
 		   with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
 		   .fastq) in the root project directory.
-    lib  	Location of file containing custom library (e.g. for use with
-                   non-human genes). Note that `-locus C` *MUST* be used or the 
-                   program will ignore this argument.
-    f 	 	Forcing flag to overwrite existing working directories.
-    threads     Number of threads to use when running locally. Ignored if 
-                   -cluster is specified. Default = 1.
-    npf         Number of sequences in each split file. Resource requests for 
-                   the cluster are calibrated to groups of 50K sequences, and 
+    lib		Location of file containing custom library (e.g. for use with
+		   non-human genes). Note that `-locus C` *MUST* be used or the 
+		   program will ignore this argument.
+    f		Forcing flag to overwrite existing working directories.
+    threads	Number of threads to use when running locally. Ignored if 
+		   -cluster is specified. Default = 1.
+    npf		Number of sequences in each split file. Resource requests for 
+		   the cluster are calibrated to groups of 50K sequences, and 
 		   cannot be changed. For local usage, Default = 10,000.
-    cluster     Flag to indicate that blast jobs should be submitted to the
-                   SGE cluster. Throws an error if presence of a cluster was
+    cluster	Flag to indicate that blast jobs should be submitted to the
+		   SGE cluster. Throws an error if presence of a cluster was
 		   not indicated during setup. Default = run locally.
-    callJ 	Flag to call 1.2-blast_J.py when done. Default = False.
-    jArgs       Optional arguments to be provided to 1.2-blast_j.py. If provided,
-                   forces callJ flag to True.
+    callJ	Flag to call 1.2-blast_J.py when done. Default = False.
+    jArgs	Optional arguments to be provided to 1.2-blast_j.py. If provided,
+		   forces callJ flag to True.
 
 Created by Zhenhai Zhang on 2011-04-12.
 Edited and commented for publication by Chaim A Schramm on 2014-12-22.
@@ -56,7 +56,7 @@ Edited to add queue monitoring by CAS 2015-07-30.
 Added local option with threading CAS 2015-11-13.
 
 Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
-                         Institutes of Health, USA. All rights reserved.
+			 Institutes of Health, USA. All rights reserved.
 
 """
 
@@ -83,24 +83,24 @@ total, total_good, f_ind = 0, 0, 1
 def main():
 
 	global total, total_good, f_ind, fastaFiles
-		
+
 	# open initial output files
-	fasta 	  = open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
-        id_handle = open("%s/id_lookup.txt"  %  folder_tree.internal,                 'w')
+	fasta	  = open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
+	id_handle = open("%s/id_lookup.txt"  %	folder_tree.internal,		      'w')
 	id_map	  = csv.writer(id_handle, delimiter=sep)
 
 
 	#if we decide to use quals for something, can add this block back in
 	'''
 	if use_qual > 0:
-		qual =       open("%s/%s_%03d.qual"   % (folder_tree.vgene,    prj_name, f_ind), 'w')
-		qual_generator 	= generate_quals_folder(folder_tree.home)
+		qual =	     open("%s/%s_%03d.qual"   % (folder_tree.vgene,    prj_name, f_ind), 'w')
+		qual_generator	= generate_quals_folder(folder_tree.home)
 	'''
 
 
 	#iterate through sequences in all raw data files
 	if len(fastaFiles)==0: fastaFiles = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
-
+        
 	for myseq, myqual, file_name in generate_read_fasta_folder(fastaFiles, use_qual):
 
 		total += 1
@@ -150,19 +150,19 @@ def main():
 	if useCluster:
 
 		# write pbs files and auto submit shell script
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (cluster_blast, library, 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\nmodule load BLAST+/2.2.31-goolf-1.7.20-Python-2.7.9\n%s\n" % ( "%03d", CMD_BLAST % (cluster_blast, library, 
 									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
 									      "%s/%s_$NUM.txt"   % (folder_tree.vgene, prj_name), V_BLAST_WORD_SIZE) )
 		pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
-		pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
+		pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "2G", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
 		pbs.close()
 		os.system( "%s -t 1-%d %s/vblast.sh"%(qsub,f_ind,folder_tree.vgene) )
 		
-		check = "%s/utilities/checkClusterBlast.py -gene v -big %d -check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
+		check = "module load Biopython/1.65-goolf-1.7.20-Python-2.7.9\n%s/utilities/checkClusterBlast.py -gene v -big %d -check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
 		if callJ:
 			check += " -after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, jArgs)
 			monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
-			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
+			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "5G", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
 			monitor.close()
 			os.system( "%s %s/vmonitor.sh"%(qsub,folder_tree.vgene) )
 

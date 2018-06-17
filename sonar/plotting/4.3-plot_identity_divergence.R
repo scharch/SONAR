@@ -199,9 +199,10 @@ width   <- 2.5 * ((!transpose)*length(dataFileList) + transpose*length(natAbList
 ggsave(
 	paste(outDir,outFile,sep="/"),
 	multiplot( plotlist=myplots, layout=myLayout ),
-	dpi = 600,
-	height = height,
-	width = width
+	dpi = 200,
+	height = height/2,
+	width = width/2,
+	limitsize = FALSE
 )
 
 
