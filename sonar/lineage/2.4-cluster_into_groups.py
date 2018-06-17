@@ -81,6 +81,18 @@ def main():
     cdr3_info = dict()
     seqSize = Counter()
 
+    #start off by getting size annotations
+    seqFile = "%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)
+    if fullLengthFile != "": seqFile = fullLengthFile
+    for read in generate_read_fasta(seqFile):
+        seqSize[read.id] = 1	
+        check = re.search( " size=(\d+)", read.description)
+        if check:
+                seqSize[read.id] = int(check.group(1))
+ 
+
+
+
     inputFile = "%s/%s_goodCDR3_unique.fa" % (prj_tree.nt, prj_name)
     if cdr3File != "": inputFile = cdr3File
     
@@ -96,13 +108,8 @@ def main():
 	    vj_partition[key]['ids'].append(sequence.id)
 	    cdr3_info[sequence.id] = { 'cdr3_len' : len(sequence.seq)/3 - 2, 'cdr3_seq' : sequence.seq.translate() }
 
-	    #add sizes
-	    seqSize[sequence.id] = 1	
-	    check = re.search( " size=(\d+)", sequence.description)
-	    if check:
-		    seqSize[sequence.id] = int(check.group(1))
-	    #make available to usearch
-	    sequence.id += ";size=%d;" % seqSize[sequence.id] #do this even if there's no label
+	    #make sizes available to usearch (using v9 formatting here)
+	    sequence.description += ";size=%d;" % seqSize[sequence.description] #do this even if there's no label
 	                                                      #so I don't need to divide the cases for usearch
 
 	    #and write
@@ -126,7 +133,7 @@ def main():
                         continue
 
 		seqSize[ n ] = 0
-		s.id += ";size=0;"
+		s.description += ";size=0;"
 		vj_partition[key]['count'] += 1
 		vj_partition[key]['ids'].append( n )
 		cdr3_info[ n ] = { 'cdr3_len' : len(s.seq)/3 - 2, 'cdr3_seq' : s.seq.translate() }
@@ -165,8 +172,10 @@ def main():
 		uc = csv.reader( handle, delimiter=sep )
 		for row in uc:
 			#first get rid of size annotations and fasta def line (which is included as of usearch9)
-			hit  = re.sub(";size=\d+;.*","",row[8])
-			cent = re.sub(";size=\d+;.*","",row[9]) # just a * for S rows, use hit as cent
+			#hit  = re.sub(";size=\d+;.*","",row[8])
+			#cent = re.sub(";size=\d+;.*","",row[9]) # just a * for S rows, use hit as cent
+			hit  = re.sub(" .*","",row[8])
+			cent = re.sub(" .*","",row[9]) # just a * for S rows, use hit as cent
 
                         if cent in natives:
                                 continue
@@ -196,9 +205,6 @@ def main():
                               cdr3_info[centroid]['cdr3_len'], cdr3_info[centroid]['cdr3_seq'], size, ",".join(centroidData[centroid]['nats']) ])
 
     #do sequence output
-    seqFile = "%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)
-    if fullLengthFile != "": seqFile = fullLengthFile
-
     notationFile = re.sub( "\.f.+", "_lineageNotations.fa", seqFile )
     repFile      = re.sub( "\.f.+", "_lineageRepresentatives.fa", seqFile )
     
