@@ -206,7 +206,7 @@ def main():
     with open( notationFile, "w" ) as handle:
         for read in generate_read_fasta(seqFile):
             if ";" in read.id:
-                read.id = read.id[0,8] #this is for raw USearch output with size annotations
+                read.id = read.id[0:8] #this is for raw USearch output with size annotations
                                        #shouldn't be relevant in pipeline context
 	    if read.id not in clusterLookup: continue
             read.description += " lineage_num=%05d lineage_rep=%s lineage_size=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 
