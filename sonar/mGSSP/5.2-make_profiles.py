@@ -12,23 +12,28 @@ This script takes input sequences and generates germline mutability profiles
       and run 2.1-calculate_id-div.pl on the translated sequences to identify and
       remove those with no amino acid substitutions. Then run this program.
 
-Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 50 -g germV.fa -a -u ]
+Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -g germV.fa -a -u ]
 
 Options:
    -h --help                    Show this documentation
    <sequences.fa>               Processed ngs sequences to be used to build the profiles
    -o --output profiles.txt     Where to save output [default: profiles.txt]
-   -n --numPerProfile 50        Number of reads to use in building each profile [default: 50]
-   -g --germline germV.fa       Location of germline V sequences to use for building
-                                   profiles. Expected as trimmed/padded AA sequences.
-                                   [default: /ifs/scratch/c2b2/ls_nih/cs3037/spectrum/nonredundant_AA_alleles_includingNovel_20160609.fa]
-   -a                           Input sequences are amino acid (don't translate) [default: True]
-   -u --use-all                 Don't subset or run multiple profiles. Still uses the numPerProfile
-                                   parameter as a minimum [default: False]
+   -n --numSequences 300        Number of reads to use in building each profile [default: 300]
+   -p --profiles 0              Number of profiles to build for each germline gene by randomly 
+                                   subsetting -n sequences each time. Currently does not check 
+                                   total number of sequences to make sure subsets are different
+                                   enough from each other. If set to zero, all sequences will
+                                   be used for a single profile, with -n sequences being a
+                                   minimum only. [default: 0]
+   -g --germline germV.fa       Location of germline V sequences to use for building profiles. 
+                                   Expected as trimmed/padded AA sequences. Interprets relative 
+                                   paths w.r.t. the SONAR directory. [default: germDB/IgHKLV_cysTruncated.AA.fa]
+   -a                           Input sequences are amino acid (don't translate) [default: False]
 
 Created by Chaim Schramm on 2016-05-27.
 Added to SONAR as part of mGSSP on 2017-02-24.
-Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
+Changed some options and defaults by CAS 2018-07-10.
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -104,8 +109,8 @@ def main():
     #now let's start building profiles
     for v in sorted(masterList.keys()):
 
-        if len(masterList[v]) < arguments["--numPerProfile"]:
-            print "Skipping %s, not enough sequences..." % v
+        if len(masterList[v]) < arguments["--numSequences"]:
+            print "Skipping %s, not enough sequences (%d)..." % ( v, len(masterList[v]) )
             continue #not enough data for a profile
 
         if v not in germList:
@@ -113,13 +118,10 @@ def main():
             continue
 
 
-        #we're going to take random overlapping subsets; how many is reasonable?
-        #   the way I am doing this is completely arbitrary
-        #   every 10 sequences, we'll add another iteration (or =20% for larger n)
-        #   But cap it at 5, no need to get carried away
-        numProfiles = int(numpy.ceil( (len(masterList[v])-arguments["--numPerProfile"])/(float(arguments["--numPerProfile"])/5) ))
-        if numProfiles > 5: numProfiles = 5
-        if arguments["--use-all"]:
+        # Take random overlapping subsets to generate multiple profiles
+        #  need to add back a sanity check for capping the number of subsets if there's not enough raw data.
+        numProfiles = arguments['--profiles']
+        if arguments["--profiles"] == 0:
             numProfiles = 1
 
         success = 0
@@ -127,20 +129,20 @@ def main():
 
 
             seqs = [] + germList[v] #force a copy rather than an alias
-            if arguments["--use-all"]:
+            if arguments["--profiles"] == 0:
                 seqs += list(masterList[v])
                 #with open("../log.txt", "a") as handle:
                 #    handle.write( "\t".join([ arguments["<sequences.fa>"], v, str(len(masterList[v])) ]) + "\n" )
             else:
                 #get our sequence subset, add the germlines, and write them
                 #   to a temporary file for alignment
-                seqs += list(numpy.random.choice(masterList[v], size=arguments["--numPerProfile"], replace=False))
+                seqs += list(numpy.random.choice(masterList[v], size=arguments["--numSequences"], replace=False))
 
             tempFile = "".join(numpy.random.choice(list("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), size=8))
             with open("%s.fa"%tempFile, "w") as temp:
                 SeqIO.write(seqs,temp,"fasta")
 
-            clustal_cline = MuscleCommandline(input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+            clustal_cline = MuscleCommandline(input="%s.fa"%tempFile, out="%s.aln"%tempFile) # ***ADD*** explicit program path as first argument here!
             try:
                 stdout, stderr = clustal_cline()
             except:
@@ -181,18 +183,18 @@ def main():
                     pssm[pos][residue] = 0
 
             #normalize and save
-            numInProfile = arguments["--numPerProfile"]
-            if arguments["--use-all"]:
+            numInProfile = arguments["--numSequences"]
+            if arguments["--profiles"] == 0:
                 numInProfile = len(masterList[v])
             for p, pos in enumerate(pssm):
                 germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-                output.writerow( [ v, i+1, p+1, germAA, "%.2f"%(sum(pos.values())/numInProfile) ] + [ "%.2f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+                output.writerow( [ v, i+1, p+1, germAA, "%.5f"%(sum(pos.values())/numInProfile) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
             
             #clean up
             for f in glob.glob("%s.*"%tempFile): 
                 os.remove(f)
 
-        print "Successfully built %d/%d profiles for %s!" % (success, numProfiles, v)
+        print "Successfully built %d/%d profiles for %s using %d sequences!" % ( success, numProfiles, v, len(seqs)-len(germList[v]) )
 
 
     outHandle.close()
@@ -207,8 +209,16 @@ if __name__ == '__main__':
     cmdLine = sys.argv
 
     arguments = docopt(__doc__)
-    arguments['--numPerProfile'] = int(arguments['--numPerProfile'])
+    arguments['--numSequences'] = int(arguments['--numSequences'])
+    arguments['--profiles'] = int(arguments['--profiles'])
 
+    if arguments['--germline'][0] != "/":
+	find_SONAR = sys.argv[0].split("sonar/mGSSP")
+        arguments['--germline'] = find_SONAR[0] + "/sonar/" + arguments['--germline']
+
+#    if not os.access("muscle", os.X_OK):
+#            sys.exit("Can't find muscle - please create an alias and I will fix this stupid bug later")
+        
     #log command line
     logCmdLine(sys.argv)
     
