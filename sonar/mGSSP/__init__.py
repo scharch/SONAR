@@ -39,7 +39,7 @@ class GSSP:
 						self.vgenes[thisV].append( sample )
 					sample = []
 					thisV = row[0]
-				sample.append( dict( germline=row[3].split(","), freq=float(row[4]), profile=map(float, row[5:]) ) )
+				sample.append( dict( germline=row[3].split(","), freq=eval(row[4]), profile=map(float, row[5:]) ) )
 			if thisV is not None: #relevant for empty profile (no genes with enough seqs)
 				self.vgenes[thisV].append( sample )
 
@@ -95,6 +95,8 @@ class GSSP:
 			r = defaultdict( lambda: defaultdict( list ) )
 			for i in self.vgenes[v]:
 				for p, pos in enumerate(i):
+                                        if pos['freq'] is None:
+                                                continue
 					for aa, mut in enumerate(pos['profile']):
 						if aaList[aa] in pos['germline']:
 							continue #skip germline residues
@@ -106,17 +108,24 @@ class GSSP:
 
 
         #averages multiple GSSPs sampled from a single gene
+        # currently 
 	def averageProfile(self):
 		for v in self.vgenes:
 			r = [ [0] * 20 for dummy in range(len(self.vgenes[v][0])) ]
-			f = [0] * len(self.vgenes[v][0])
+			f = [ []  for dummy in range(len(self.vgenes[v][0])) ]
 			for i in self.vgenes[v]:
 				for p, pos in enumerate(i):
+                                        if pos['freq'] is None:
+                                                continue
 					r[p] = [ r[p][a] + aa for a,aa in enumerate(pos['profile']) ]
-					f[p] += pos['freq']
+					f[p].append(pos['freq'])
 			#now divide out and store
 			for x in range(len(f)):
-				self.average[v].append( dict( freq=f[x]/len(self.vgenes[v]), profile=[ r[x][y]/len(self.vgenes[v]) for y in range(20) ] ) )
+                                if len(f[x]) == 0:
+                                        #masked position
+                                        self.average[v].append( dict( freq=None, profile=[ 0.00 for y in range(20) ] ) )
+                                else:
+				        self.average[v].append( dict( freq=sum(f[x])/len(f[x]), profile=[ r[x][y]/len(f[x]) for y in range(20) ] ) )
 
 
 	def profileEntropy(self, use_all=True):
@@ -127,6 +136,8 @@ class GSSP:
 				e = []
 				w = []
 				for pos in self.average[v]:
+                                        if pos['freq'] is None:
+                                                continue
 					e.append( shannon(pos['profile']) )
 					w.append( pos['freq'] )
 				self.entropy.append( [ self.name, v, "%.3f"%average(e, weights=w) ] )
@@ -135,6 +146,8 @@ class GSSP:
 				e = []
 				w = []
 				for pos in self.vgenes[v][0]:
+                                        if pos['freq'] is None:
+                                                continue
 					e.append( shannon(pos['profile']) )
 					w.append( pos['freq'] )
 				self.entropy.append( [ self.name, v, "%.3f"%average(e, weights=w) ] )
@@ -321,7 +334,8 @@ def spectrumJSD( spectrum1, spectrum2, v1=None, v2=None ):
 	currentJSD = []
 	weights    = []
 	for p1, p2 in zip(spectrum1, spectrum2):
-		currentJSD.append( positionJSD( p1['profile'], p2['profile'] ) )
-		weights.append( average( [ p1['freq'], p2['freq'] ] ) )
+                if p1['freq'] is not None and p2['freq'] is not None:
+		        currentJSD.append( positionJSD( p1['profile'], p2['profile'] ) )
+		        weights.append( average( [ p1['freq'], p2['freq'] ] ) )
 
 	return average( currentJSD, weights=weights )

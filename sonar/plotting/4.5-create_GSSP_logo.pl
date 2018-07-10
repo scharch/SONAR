@@ -52,9 +52,13 @@ while (<PROF>) {
     chomp;
     my @arr = split;
 
-    push @{$profiles{$arr[0]}}, [ map { 100 * $arr[4] * $_ } @arr[5..24] ];
-	   
-    while ( 100 * $arr[4] > $maxY ) { $maxY += 10; }
+    if ( $arr[4] eq "None" ) {
+	push @{$profiles{$arr[0]}}, []; #masked position
+    } else {
+	push @{$profiles{$arr[0]}}, [ map { 100 * $arr[4] * $_ } @arr[5..24] ];
+	while ( 100 * $arr[4] > $maxY ) { $maxY += 10; }
+    }
+    
 }
 close PROF;
 
@@ -89,7 +93,7 @@ for my $gene (sort keys %profiles) {
 /yellow [0.9 0.9 0] def
 /purple [0.8 0 0.8] def
 /orange [1 0.7 0] def
-/gray [0.8 0.8 0.8] def
+/gray [0.95 0.95 0.95] def
 
 
 /logoWidth 30 cm def
@@ -148,7 +152,8 @@ for my $gene (sort keys %profiles) {
   (L)  black  
   (I)  black  
   (M)  black  
-  (V)  black  
+  (V)  black
+  (|)  gray  
 >> def
 
 
@@ -715,11 +720,18 @@ FIN
     for my $stack (@{$profiles{$gene}}) {
 	$stackNum++;
 	print EPS "($stackNum) startstack\n";
-	my @sorted = sort { $stack->[$a] <=> $stack->[$b] } (0..19);
-	for my $num (@sorted) {
-	    next if $stack->[$num] == 0;
-	    print EPS " ($stackNum) $stack->[$num] ($aas[$num]) numchar\n";
+
+	if ( scalar(@{$stack}) == 0 ) {
+	    #masked position
+	    print EPS " ($stackNum) $maxY (|) numchar\n";
+	} else {
+	    my @sorted = sort { $stack->[$a] <=> $stack->[$b] } (0..19);
+	    for my $num (@sorted) {
+		next if $stack->[$num] == 0;
+		print EPS " ($stackNum) $stack->[$num] ($aas[$num]) numchar\n";
+	    }
 	}
+	
 	print EPS "endstack\n";
     }
 

@@ -12,7 +12,7 @@ This script takes input sequences and generates germline mutability profiles
       and run 2.1-calculate_id-div.pl on the translated sequences to identify and
       remove those with no amino acid substitutions. Then run this program.
 
-Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -g germV.fa -a -u ]
+Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -m 0 -g germV.fa -a -u ]
 
 Options:
    -h --help                    Show this documentation
@@ -25,9 +25,13 @@ Options:
                                    enough from each other. If set to zero, all sequences will
                                    be used for a single profile, with -n sequences being a
                                    minimum only. [default: 0]
+   -m --mask 0                  Mask the first m positions at the 5' end of each gene (missing
+                                   data and/or degenerate primers). Can also be specified as a
+                                   tsv file with the first column as the gene name and the second
+                                   column as the number of positions to mask. In this case, genes
+                                   that do not appear in the file will not be masked. [default: 0]
    -g --germline germV.fa       Location of germline V sequences to use for building profiles. 
-                                   Expected as trimmed/padded AA sequences. Interprets relative 
-                                   paths w.r.t. the SONAR directory. [default: germDB/IgHKLV_cysTruncated.AA.fa]
+                                   Expected as trimmed/padded AA sequences. [default: sonar/germDB/IgHKLV_cysTruncated.AA.fa]
    -a                           Input sequences are amino acid (don't translate) [default: False]
 
 Created by Chaim Schramm on 2016-05-27.
@@ -101,6 +105,9 @@ def main():
             #collapse distal alleles and remove allele designation
             gene = re.sub("(V\d-\d+)D?\*.*", r'\1', sequence.id)
             germList[ gene ].append( sequence )
+
+            if gene not in mask:
+                mask[gene] = arguments['--mask']
     
     
     #start output file
@@ -190,7 +197,7 @@ def main():
                 numInProfile = len(masterList[v])
             for p, pos in enumerate(pssm):
                 germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-                output.writerow( [ v, i+1, p+1, germAA, "%.5f"%(sum(pos.values())/numInProfile) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+                output.writerow( [ v, i+1, p+1, germAA, "None" if p < mask[v] else "%.5f"%(sum(pos.values())/numInProfile) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
             
             #clean up
             for f in glob.glob("%s.*"%tempFile): 
@@ -214,13 +221,24 @@ if __name__ == '__main__':
     arguments['--numSequences'] = int(arguments['--numSequences'])
     arguments['--profiles'] = int(arguments['--profiles'])
 
-    if arguments['--germline'][0] != "/":
+    if arguments['--germline'] == "sonar/germDB/IgHKLV_cysTruncated.AA.fa":
 	find_SONAR = sys.argv[0].split("sonar/mGSSP")
-        arguments['--germline'] = find_SONAR[0] + "/sonar/" + arguments['--germline']
+        arguments['--germline'] = find_SONAR[0] + "/" + arguments['--germline']
 
 #    if not os.access("muscle", os.X_OK):
 #            sys.exit("Can't find muscle - please create an alias and I will fix this stupid bug later")
+
+    mask = dict()
+    try:
+        arguments['--mask'] = int( arguments['--mask'] )
+    except ValueError:
+        with open( arguments['--mask'], "rU" ) as handle:
+            reader = csv.reader( handle, delimiter="\t" )
+            for row in reader:
+                mask[ row[0] ] = int( row[1] )
+        arguments['--mask'] = 0 #for all other genes
         
+
     #log command line
     logCmdLine(sys.argv)
     

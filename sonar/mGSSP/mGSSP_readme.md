@@ -29,7 +29,7 @@ Suggested workflow for generating GSSPs using SONAR
                        -l output/tables/mutatedSequences.list \
                        -o output/sequences/amino_acid/<project>_finalForProfiles.fa
    ```
-1. Now we are ready to construct the GSSPs. We recommend using at least 300 sequences per GSSP for robust results, but sometimes use 100 for rarer V genes. Here we calculate profiles just using the standard IMGT database, however we strongly recommend using a personalized germline allele database constructed using [TIgGER](http://tigger.readthedocs.io/en/0.2.8/), [partis](https://github.com/psathyrella/partis), or [IgDiscover](https://bitbucket.org/igdiscover/igdiscover).
+1. Now we are ready to construct the GSSPs. We recommend using at least 300 sequences per GSSP for robust results, but sometimes use 100 for rarer V genes. Here we calculate profiles just using the standard IMGT database, however we strongly recommend using a personalized germline allele database constructed using [TIgGER](http://tigger.readthedocs.io/en/0.2.8/), [partis](https://github.com/psathyrella/partis), or [IgDiscover](https://bitbucket.org/igdiscover/igdiscover). Incomplete sequences should be masked using the -m argument.
    ```
    $> 5.2-make_profiles.py output/sequences/amino_acid/<project>_finalForProfiles.fa -o <project>_profiles.txt -n 300 -p 0 -g /<path-to-sonar>/germDB/IgHKLV_cysTruncated.AA.fa -a
    ```
