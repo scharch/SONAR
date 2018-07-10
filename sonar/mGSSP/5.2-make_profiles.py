@@ -96,6 +96,8 @@ def main():
     germList = defaultdict( list )
     with open(arguments["--germline"], 'rU') as handle:
         for sequence in SeqIO.parse(handle, "fasta"):
+            #start with a special case where IMGT allele is misnamed
+            sequence.id = re.sub("IGHV4-4\*0[78]", "IGHV4-59*11", sequence.id)
             #collapse distal alleles and remove allele designation
             gene = re.sub("(V\d-\d+)D?\*.*", r'\1', sequence.id)
             germList[ gene ].append( sequence )
