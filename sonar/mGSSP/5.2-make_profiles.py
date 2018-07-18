@@ -184,6 +184,13 @@ def main():
             germRes = defaultdict(Counter)
             summary_align = AlignInfo.SummaryInfo(alignment)
             pssm = summary_align.pos_specific_score_matrix(chars_to_ignore=['-','X'])
+
+            #get number of datapoints at each position (might be different than the number of sequences in the profile if there are gaps or missing data)
+            # do this by using sum(pos.values()) after ignoring missing data (previous line) but before dumping germline residues.
+            denominator = []
+            for p,pos in enumerate(pssm):
+                    denominator.append( sum(pos.values()) - len(germList[v]) )
+            
             for germ in germList[v]:
                 for pos, residue in enumerate(germ):
                     if residue == "X":
@@ -192,12 +199,9 @@ def main():
                     pssm[pos][residue] = 0
 
             #normalize and save
-            numInProfile = arguments["--numSequences"]
-            if arguments["--profiles"] == 0:
-                numInProfile = len(masterList[v])
             for p, pos in enumerate(pssm):
                 germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-                output.writerow( [ v, i+1, p+1, germAA, "None" if p < mask[v] else "%.5f"%(sum(pos.values())/numInProfile) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+                output.writerow( [ v, i+1, p+1, germAA, "None" if (p < mask[v] or denominator[p] < arguments["--numSequences"]/2) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
             
             #clean up
             for f in glob.glob("%s.*"%tempFile): 
