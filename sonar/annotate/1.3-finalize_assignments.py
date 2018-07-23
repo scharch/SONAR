@@ -37,8 +37,10 @@ Edited to add custom J motif option for other species by CAS 2016-05-16.
 Edited to add options to handle missing N terminal by CAS 2017-05-08.
 Edited to make motif matching case-insensitive and to disable auto-clean-up
                                by CAS 2017-07-31.
+Edited to distinguish between nonproductive junctions and apparent frameshifts
+                               within V by CAS 2018-07-23.
 
-Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -152,7 +154,7 @@ def main():
 
 
 	raw_count, total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 0, 1
-	counts = {'good':0,'indel':0,'noCDR3':0,'stop':0}
+	counts = {'good':0,'nonproductive':0,'indel':0,'noCDR3':0,'stop':0}
         if nterm=="discard":
                 counts["missingNterm"]=0
 
@@ -176,7 +178,7 @@ def main():
 
 
 	seq_stats = csv.writer(open("%s/%s_all_seq_stats.txt"%(prj_tree.tables, prj_name), "w"), delimiter = sep)
-	seq_stats.writerow(["id","source_file","source_id","raw_len","trim_len","V_genes","D_genes","J_genes","Ig_class", "indels","stop_codons","status","blast_div","cdr3_nt_len","cdr3_aa_len","cdr3_aa_seq"])
+	seq_stats.writerow(["id","source_file","source_id","raw_len","trim_len","V_genes","D_genes","J_genes","Ig_class","productive","indels","stop_codons","status","blast_div","cdr3_nt_len","cdr3_aa_len","cdr3_aa_seq"])
 
 	
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
@@ -229,6 +231,7 @@ def main():
 				myV = dict_vgerm_aln[entry.id]
 				myJ = dict_jgerm_aln[entry.id]
                                 added5 = 0
+                                productive = "T"
 				indel = "F"
 				stop = "F"
 				cdr3 = True
@@ -291,8 +294,8 @@ def main():
 
 				#check for in-frame junction
 				if len(cdr3_seq) % 3 != 0:
-					indel = "T"
-				else: #even if cdr3 looks ok, might be indels in V and/or J
+					productive = "F"
+				else: #even if recombination looks ok, might be (sequencing) indels in V and/or J
 					j_frame = 3 - ( ( WF_motif - myJ.sstart ) % 3 ) #j genes start in different frames, so calculate based on position of conserved W/F found by the cdr3 subroutine above
 					frame_shift = (v_len + myJ.qstart + added5 - 1) % 3
 
@@ -312,6 +315,8 @@ def main():
 				status = "good"
 				if not cdr3:
 					status = "noCDR3"
+                                elif productive == "F":
+                                        status = "nonproductive"
 				elif indel == "T":
 					status = "indel"
 				elif stop == "T":
@@ -365,9 +370,9 @@ def main():
 				elif cdr3:
 					#CDR3 but not "good"
 					all_cdr3_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, cdr3_seq))
-					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "%s"%indel, "%s"%stop, status, "%3.1f%%"%(100-myV.identity), "%d"%(len(cdr3_seq)-6), "NA", "NA"])
+					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "%s"%productive, "%s"%indel, "%s"%stop, status, "%3.1f%%"%(100-myV.identity), "%d"%(len(cdr3_seq)-6), "NA", "NA"])
 				else:
-					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "%s"%indel, "%s"%stop, status, "%3.1f%%"%(100-myV.identity), "NA", "NA", "NA"])
+					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "%s"%productive, "%s"%indel, "%s"%stop, status, "%3.1f%%"%(100-myV.identity), "NA", "NA", "NA"])
 
 
 
@@ -406,8 +411,8 @@ def main():
                         writer.writerow(aline)
                 handle.close()
 
-	message = "\nTotal raw reads: %d\nCorrect Length: %d\nV assigned: %d\nJ assigned: %d\nCDR3 assigned: %d\nIn-frame junction/no indels: %d\nContinuous ORF with no stop codons: %d\n\n"  % \
-	                                                     (raw_count, total, total-noV, found, found-counts['noCDR3'], found-counts['noCDR3']-counts['indel'], counts['good'])
+	message = "\nTotal raw reads: %d\nCorrect Length: %d\nV assigned: %d\nJ assigned: %d\nCDR3 assigned: %d\nIn-frame junction: %d\nNo indels: %d\nContinuous ORF with no stop codons: %d\n\n"  % \
+	                                                     (raw_count, total, total-noV, found, found-counts['noCDR3'], found-counts['noCDR3']-counts['nonproductive'], found-counts['noCDR3']-counts['nonproductive']-counts['indel'], counts['good'])
 	print message
 	handle = open("%s/finalize_blast.log"%prj_tree.logs, "w")
 	handle.write(message)
