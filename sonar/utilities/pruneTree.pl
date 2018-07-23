@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 =head 1 SUMMARY
  
@@ -33,6 +33,7 @@ Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, Nationa
  
 =cut
 
+use warnings;
 use strict;
 use diagnostics;
 use Pod::Usage;
