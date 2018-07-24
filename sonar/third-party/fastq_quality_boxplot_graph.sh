@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #    FASTX-toolkit - FASTA/FASTQ preprocessing tools.
-#    Copyright (C) 2009-2013  A. Gordon (assafgordon@gmail.com)
+#    Copyright (C) 2009  A. Gordon (gordon@cshl.edu)
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU Affero General Public License as
@@ -139,27 +139,24 @@ GNUPLOTCMD="
 $OUTPUTTERM
 set boxwidth 0.8 
 set size 1,1
-#set key Left inside
-set key off
-#set xlabel \"read position\" font \"Arial,20\"
-#set ylabel \"Quality Score\" font \"Arial,20\"
-#set title  \"\"
+set key Left inside
+set xlabel \"read position\"
+set ylabel \"Quality Score (Solexa Scale: 40=Highest, -15=Lowest)\"
+set title  \"Quality Scores $TITLE\"
 #set auto x
 set bars 4.0
 set xrange [ 0: $NUM_CYCLES ]
-set yrange [0:40]
-#set y2range [0:40]
-set xtics 50 font \"Arial,20\"
-#set x2tics 1
-set ytics 5 font \"Arial,20\"
-#set y2tics 2
-set tics out nomirror
+set yrange [-15:45]
+set y2range [-15:45]
+set xtics 1 
+set x2tics 1
+set ytics 2
+set y2tics 2
+set tics out
 set grid ytics
 set style fill empty
- 
-plot '$FILENAME' every 2:2:1 using 1:7:11:12:9 with candlesticks lt 1  lw 1  title 'Quartiles' whiskerbars, \
-      ''         every 2:2:1 using 1:8:8:8:8 with candlesticks lt -1 lw 3 lc rgb \"black\" title 'Medians', \
-      ''				 every 2:2:1 using 1:8 with lines lw 2 lc rgb \"black\" title 'Medians'
+plot '$FILENAME' using 1:7:11:12:9 with candlesticks lt 1  lw 1 title 'Quartiles' whiskerbars, \
+      ''         using 1:8:8:8:8 with candlesticks lt -1 lw 2 title 'Medians'
 "
 
 echo "$GNUPLOTCMD" | gnuplot > "$OUTPUTFILE"
