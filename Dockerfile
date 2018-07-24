@@ -69,13 +69,13 @@ RUN apt-get update && apt-get install -y r-base r-base-dev
 
 #install R packages
 RUN wget https://cran.r-project.org/src/contrib/docopt_0.4.5.tar.gz
-R CMD INSTALL docopt_0.4.5.tar.gz
+RUN R CMD INSTALL docopt_0.4.5.tar.gz
 
 RUN wget https://cran.r-project.org/src/contrib/Archive/ggplot2/ggplot2_2.2.1.tar.gz
-R CMD INSTALL ggplot2_2.2.1.tar.gz
+RUN R CMD INSTALL ggplot2_2.2.1.tar.gz
 
 RUN wget https://cran.r-project.org/src/contrib/MASS_7.3-50.tar.gz
-R CMD INSTALL MASS_7.3-50.tar.gz
+RUN R CMD INSTALL MASS_7.3-50.tar.gz
 
 #RUN wget 
 #R CMD INSTALL 
