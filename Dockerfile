@@ -12,7 +12,7 @@ FROM biopython/biopython
 MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 
 #add docopt
-RUN pip install docopt
+RUN pip3 install docopt
 
 #install libraries for bioperl
 RUN apt-get update && apt-get install -y \
@@ -59,7 +59,7 @@ RUN cpanm -v \
 RUN apt-get install -y \
     python3-qt4 python3-qt4.qtopenlgl python-lxml python-six
 
-RUN pip install --upgrade ete3
+RUN pip3 install --upgrade ete3
 
 #install R
 RUN echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list
