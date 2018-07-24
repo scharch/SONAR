@@ -35,6 +35,9 @@ RUN cpanm \
   Clone \
   HTML::TableExtract \
   Algorithm::Munkres \
+  Algorithm::Combinatorics \
+  Statistics::Basic \
+  List::Util \
   Array::Compare \
   Convert::Binary::C \
   Error \
@@ -49,6 +52,7 @@ RUN cpanm \
   IO::String \
   JSON \
   Data::Stag \
+  CGI \
   Bio::Phylo
 
 #now actually install BioPerl
