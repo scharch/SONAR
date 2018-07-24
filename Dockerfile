@@ -61,7 +61,7 @@ RUN cpanm -v \
 
 #install PyQt and ete3
 RUN apt-get install -y \
-    python3-pyqt4 python3-pyqt4.qtopenlgl python-lxml python-six
+    python3-pyqt4 python3-pyqt4.qtopengl python-lxml python-six
 
 RUN pip3 install --upgrade ete3
 
