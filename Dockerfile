@@ -77,4 +77,4 @@ RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http:/
 
 #pull latest SONAR source code
 WORKDIR /sonar
-RUN git pull https://github.com/scharch/SONAR.git
+RUN git clone https://github.com/scharch/SONAR.git
