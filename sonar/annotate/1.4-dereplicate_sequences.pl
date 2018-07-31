@@ -23,8 +23,9 @@ Example:
 1.4-dereplicate_sequences.pl -pu usearch -min1 2 -min2 3 -f ./test.fa -t 5
 
 Created by Zizhang Sheng.
+Edited to switch to VSearch by Chaim A Schramm 2018-07-30.
 
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
  ";
  
 foreach(@ARGV){if($_=~/^[\-]{1,2}(h|help)/){die "$usage";}}
@@ -77,25 +78,16 @@ sub usearch{#do the two steps of clustering
     my %derep=();
 	  	my %final_good=();
 
-                #split files that are too big for 32-bit usearch (added by CAS 2016-05-18)
-     if (-s $file > 1_000_000_000) {
-		    system("python2 $FindBin::Bin/../utilities/splitFastaForUSearch.py $file -o myDerepSplitter");
-		    for my $splitFile (glob "myDerepSplitter*fa") {
-			system("$para{'-pu'} -derep_fulllength $splitFile -threads $para{'-t'} -fastaout processed-$splitFile -sizeout ");
-			system("cat processed-$splitFile >> temp_derepped.fa");
-			system("rm $splitFile processed-$splitFile");
-		    }
-		    $file = "temp_derepped.fa";
-		} #done splitting, back to regular program
-
-	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -fastaout $file_out\_unique.fa -sizein -sizeout -uc $file_out.cluster ");#first step on higher identity
-	  	if(-z "$file_out\_unique.fa"){die "No duplicate sequence found in your input sample.\n";}
-	  	system("$para{'-pu'} -sortbysize $file_out\_unique.fa -minsize $para{'-min1'} -fastaout $file_out.nonredundant.fa");
+                #first step on higher identity
+	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -output $file_out\_nonredundant.fa -sizein -sizeout -uc $file_out.cluster -minuniquesize $para{'-min1'}");
 	  	if(-z "$file_out.nonredundant.fa"){die "No duplicate sequence found in your input sample.\n";}
-	  	system("$para{'-pu'} -cluster_fast $file_out.nonredundant.fa -sort size -id $para{'-id'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa ");#second step on higher identity
+
+                #second clustering step
+                #vsearch cluster_size seems to be the equivalent of the --sortby size option in usearch
+	  	system("$para{'-pu'} -cluster_size $file_out\_nonredundant.fa -id $para{'-id'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa -minuniquesize $para{'-min2'} -fasta_width 0");
 	  	if(-z "$file_out\_unique.fa"){die "No cluster found for your sequences.\n";}
-	  	system("$para{'-pu'} -sortbysize $file_out\_unique.fa -minsize $para{'-min2'} -fastaout $file_out.nonredundant.fa");	  	
-	  	system("mv $file_out.nonredundant.fa $file_out\_unique.fa");
+    system("rm $file_out\_nonredundant.fa");
+    
   	  unlink "usearchlog.txt";
 	  return "$file_out\_unique.fa";
 }

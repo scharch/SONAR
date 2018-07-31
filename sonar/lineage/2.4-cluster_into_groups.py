@@ -49,7 +49,9 @@ Created by Chaim A Schramm on 2015-04-27.
 Edited by CAS 2017-07-26 to allow for automated extraction of V/J genes for native
                          antibodies and to exclude native-only clusters.
 Edited by CAS 2018-06-13 to allow custom target file.
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+Modified to use VSearch by CAS 2018-07-30.
+
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -108,8 +110,8 @@ def main():
 	    vj_partition[key]['ids'].append(sequence.id)
 	    cdr3_info[sequence.id] = { 'cdr3_len' : len(sequence.seq)/3 - 2, 'cdr3_seq' : sequence.seq.translate() }
 
-	    #make sizes available to usearch (using v9 formatting here)
-	    sequence.description += ";size=%d;" % seqSize[sequence.description] #do this even if there's no label
+	    #make sizes available to vsearch
+	    sequence.id += ";size=%d" % seqSize[sequence.id] #do this even if there's no label
 	                                                      #so I don't need to divide the cases for usearch
 
 	    #and write
@@ -133,7 +135,7 @@ def main():
                         continue
 
 		seqSize[ n ] = 0
-		s.description += ";size=0;"
+		s.id += ";size=1"
 		vj_partition[key]['count'] += 1
 		vj_partition[key]['ids'].append( n )
 		cdr3_info[ n ] = { 'cdr3_len' : len(s.seq)/3 - 2, 'cdr3_seq' : s.seq.translate() }
@@ -159,10 +161,10 @@ def main():
 	    clusterSizes[ single ] = seqSize[ single ]
             continue
 
-        #cluster with usearch
-        subprocess.call([usearch, "-cluster_fast", vj_partition[group]['file'], 
+        #cluster with vsearch
+        subprocess.call([usearch, "-cluster_size", vj_partition[group]['file'], 
                          "-id", str(idLevel/100.0), "-maxgaps", str(maxgaps*3), "-sizein",
-                         "-sort", "size", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
+                         "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
                          "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
                         stdout=log, stderr=subprocess.STDOUT)
 
@@ -171,11 +173,9 @@ def main():
 	with open("%s/%s.uc"%(prj_tree.lineage, group), "rU") as handle:
 		uc = csv.reader( handle, delimiter=sep )
 		for row in uc:
-			#first get rid of size annotations and fasta def line (which is included as of usearch9)
-			#hit  = re.sub(";size=\d+;.*","",row[8])
-			#cent = re.sub(";size=\d+;.*","",row[9]) # just a * for S rows, use hit as cent
-			hit  = re.sub(" .*","",row[8])
-			cent = re.sub(" .*","",row[9]) # just a * for S rows, use hit as cent
+			#first get rid of size annotations
+			hit  = re.sub(";size=\d+.*","",row[8])
+			cent = re.sub(";size=\d+.*","",row[9]) # just a * for S rows, use hit as cent
 
                         if cent in natives:
                                 continue

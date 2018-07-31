@@ -22,8 +22,9 @@
  Modified to current form by CA Schramm, 2015-07-21
  Added to SONAR utilities 2017-02-24
  Added min option 2017-04-23
+ Modified to use VSearch by CAS 2018-07-30.
 
- Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut
@@ -79,29 +80,25 @@ for my $f (@seqFiles) {
     my $prefix = (split(/[_]/, $base))[0];
     $correlated{$prefix} = [];
     
-    my $cmd = "usearch -derep_fulllength $f -fastaout derep-$base -sizein -sizeout -minuniquesize $min";
+    my $cmd = ppath('usearch') . " -derep_fulllength $f -output derep-$base -sizein -sizeout -minuniquesize $min";
     print "\n$cmd\n\n";
     system( $cmd );
 
-    #this is annoying; it's because usearch <9 doesn't preserve fasta description lines
+    #this is annoying; it's because vsearch doesn't preserve fasta description lines
     my %unique;
     my $usearch = Bio::SeqIO->new( -file=>"derep-$base" );
     while (my $seq = $usearch->next_seq) { 
 	my $seqID = $seq->id;
 	my $size  = 0;
-	if ($seqID =~ /;size=(\d+);/) {
-	    #usearch8
+	if ($seqID =~ /;size=(\d+)/) {
 	    $size = $1;
 	    $seqID =~ s/;.*//;
-	} else {
-	    #usearch9
-	    ($size) = $seq->description =~ /;size=(\d+);/;
 	}
 	$unique{$seqID} = 1;
 	$sizes{"$prefix-".$seqID} = $size;
     }
 
-    my $in = Bio::SeqIO->new( -file=>$f ); #with usearch9, this is an unnecessary step
+    my $in = Bio::SeqIO->new( -file=>$f );
     while (my $seq = $in->next_seq) {
 	next unless -defined( $unique{$seq->id} );
 	my $newName = "$prefix-" . $seq->id;
@@ -114,7 +111,7 @@ $all->close();
 
 
 # run USearch
-my $cmd = "usearch -derep_fulllength all_seqs.fa -uc derep_all.uc";
+my $cmd = ppath('usearch') . " -derep_fulllength all_seqs.fa -uc derep_all.uc";
 print "\n$cmd\n\n";
 system($cmd);
 
@@ -127,12 +124,12 @@ system($cmd);
 
 my %cluster;
 my ($total, $both) = (0, 0);
-open UC, "derep_all.uc" or die "Can't find output from USearch: $!. Please check parameters.\n";
+open UC, "derep_all.uc" or die "Can't find output from vsearch: $!. Please check parameters.\n";
 while (<UC>) {
     last if /^C/; #speed processing by skipping summary lines
 
     my @a = split /\t/;
-    my @fastaDefLine = split /\s/, $a[8];
+    my @fastaDefLine = split /\s/, $a[8]; #legacy from usearch9, which included fasta definition line
     my ($time) = $fastaDefLine[0] =~ /^(.*)\-/; #greedy operators mean we don't have to worry about dashes in user-supplied prefixes
 
     if ($a[0] eq "S") {
@@ -140,7 +137,7 @@ while (<UC>) {
 	$cluster{$fastaDefLine[0]}{$time} = $fastaDefLine[0];
 	$total++;
     } else {
-	my @centroid = split /\s/, $a[9];
+	my @centroid = split /\s/, $a[9]; #legacy from usearch9, which included fasta definition line
 	$cluster{$centroid[0]}{$time} = $fastaDefLine[0];
     }
 }

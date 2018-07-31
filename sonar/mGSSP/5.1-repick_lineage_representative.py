@@ -23,7 +23,9 @@ Usage: 5.1-repick_lineage_representative.py [ -i input.fa -o output.fa -m 2 ]
 
 Created by Chaim A Schramm on 2016-05-24.
 Added to SONAR as part of mGSSP on 2017-02-24.
-Copyright (c) 2011-2017 Columbia University and Vaccine Research Center, National
+Modified to use VSearch instead of USearch by CAS on 2018-07-30.
+
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -75,7 +77,7 @@ def main():
                         SeqIO.write([sequence], handle, 'fasta')
                 else:
                     #add size notation in a way usearch can understand
-                    sequence.id += ";size=%s;" % info.group(1) #it's a string because that's what re.search returns
+                    sequence.id += ";size=%s" % info.group(1) #it's a string because that's what re.search returns
                     SeqIO.write([sequence], getHandle(info.group(2)), 'fasta')
 
         count += 1
@@ -97,20 +99,23 @@ def main():
             with open("%s/%s.fa" % (prj_tree.lineage, lin), "rU") as handle:
                 reps.append( SeqIO.read(handle,'fasta') )
         else:
-            #cluster and rapid align with usearch
-            subprocess.call([usearch, "-cluster_fast", "%s/%s.fa" % (prj_tree.lineage, lin), 
-                             "-id", "0.97", "-sizein", "-sort", "size", "-sizeout",
-                             "-consout", "%s/%s_consensus.fa" % (prj_tree.lineage, lin),
-                             "-msaout", "%s/msa/Cluster"%prj_tree.lineage],
+            #cluster and rapid align with vsearch
+            subprocess.call([usearch, "-cluster_size", "%s/%s.fa" % (prj_tree.lineage, lin), 
+                             "-id", "0.97", "-sizein", "-sizeout",
+                             "-msaout", "%s/%s_msa.fa"%(prj_tree.lineage, lin), "-clusterout_sort"],
                              stdout=FNULL, stderr=subprocess.STDOUT)
 
-            #check which cluster is biggest
-            with open("%s/%s_consensus.fa"%(prj_tree.lineage, lin), "rU") as cons:
-                biggest = SeqIO.parse(cons, "fasta").next()
-                clust = biggest.id.split(";")[0]
+            #extract biggest cluster
+            with open("%s/%s_msa.fa"%(prj_tree.lineage, lin), "rU") as allClusters:
+                with open("%s/%s_msaBiggest.fa"%(prj_tree.lineage, lin), "w") as biggestOnly:
+                    blank = allClusters.next()
+                    for line in allClusters:
+                        if "consensus" in line:
+                            break
+                        biggestOnly.write(line)
             
             #open the msa
-            with open("%s/msa/%s" % (prj_tree.lineage, clust), "rU") as handle:
+            with open("%s/%s_msaBiggest.fa" % (prj_tree.lineage, lin), "rU") as handle:
                 aln = AlignIO.read(handle, "fasta")
                 
             #add derep size to alignment as weighting
@@ -130,6 +135,7 @@ def main():
             d=sorted(aln, key=lambda rec: scores[rec], reverse=True) #reverse -> get max
             d[0].seq = d[0].seq.ungap("-") #remove gaps
             d[0].id = d[0].id.split(";")[0] #remove usearch size annotation
+            d[0].id = re.sub("^\*","",d[0].id) #get rid of possible annotation from vsearch
             d[0].description = lineages[lin]['desc'][d[0].id] #restore original info
             reps.append( d[0] )
             

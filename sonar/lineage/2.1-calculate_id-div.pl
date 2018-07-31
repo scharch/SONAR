@@ -28,8 +28,9 @@ Example:
 2.1-calculate_id-div.pl -f test.fa -g germline.fa -a antibody.fa -t 5 -npt 1000 -p DNA -ap muscle -pu usearch
 
 Created by Zizhang Sheng.
+Modified to use VSearch by Chaim A Schramm 2018-07-30.
 
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.	
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.	
  ";
 foreach(@ARGV){if($_=~/^[\-]{1,2}(h|help)/){die "$usage";}}
 if(@ARGV%2>0){die "$usage"; }
@@ -122,7 +123,7 @@ foreach(sort keys %{$anti}){
 print YY "\n";
 my $file_calculation=$para{'-f'};
 if($para{'-pu'}){#dereplicate
-  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -fastaout Temp1.unique.fa -uc Temp1.cluster -sizeout > usearchlog.txt");
+  system("$para{'-pu'} -derep_fulllength $para{'-f'} -threads $para{'-t'} -output Temp1.unique.fa -uc Temp1.cluster -sizeout > usearchlog.txt");
   #system("cp *.cluster ./cdr3_cluster.txt");
   &changename_usearch($para{'-f'},'Temp1.unique.fa');
   $file_calculation='Temp1.unique.fa';
