@@ -76,20 +76,23 @@ sub usearch{#do the two steps of clustering
     my $file_out=$file;
     $file_out=~s/\.fa.*//;	  	
     my %derep=();
-	  	my %final_good=();
+    my %final_good=();
 
-                #first step on higher identity
-	  	system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -output $file_out\_nonredundant.fa -sizein -sizeout -uc $file_out.cluster -minuniquesize $para{'-min1'}");
-	  	if(-z "$file_out.nonredundant.fa"){die "No duplicate sequence found in your input sample.\n";}
-
-                #second clustering step
-                #vsearch cluster_size seems to be the equivalent of the --sortby size option in usearch
-	  	system("$para{'-pu'} -cluster_size $file_out\_nonredundant.fa -id $para{'-id'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_unique.fa -minuniquesize $para{'-min2'} -fasta_width 0");
-	  	if(-z "$file_out\_unique.fa"){die "No cluster found for your sequences.\n";}
+    #first step on higher identity
+    system("$para{'-pu'} -derep_fulllength $file -threads $para{'-t'} -output $file_out\_dedup.fa -sizein -sizeout -uc $file_out.cluster -minuniquesize $para{'-min1'}");
+    if(-z "$file_out\_dedup.fa"){die "No duplicate sequence found in your input sample.\n";}
+    
+    #second clustering step
+    #vsearch cluster_size seems to be the equivalent of the --sortby size option in usearch
+    system("$para{'-pu'} -cluster_size $file_out\_dedup.fa -id $para{'-id'} -sizein -sizeout -uc $file_out.cluster -centroids $file_out\_nonredundant.fa");
+    system("$para{'-pu'} -sortbysize $file_out\_nonredundant.fa -output $file_out\_unique.fa -minsize $para{'-min2'} -fasta_width 0");
+    if(-z "$file_out\_unique.fa"){die "No cluster found for your sequences.\n";}
+    system("rm $file_out\_dedup.fa");
     system("rm $file_out\_nonredundant.fa");
     
-  	  unlink "usearchlog.txt";
-	  return "$file_out\_unique.fa";
+    unlink "usearchlog.txt";
+    return "$file_out\_unique.fa";
+    
 }
 
 
