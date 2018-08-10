@@ -238,7 +238,15 @@ def main():
 				
 				#get actual V(D)J sequence
 				v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
-				vdj_len = v_len + myJ.qend
+
+                                #try to recover 3' of J
+                                if myJ.send < len(dict_j[myJ.sid].seq) and \
+                                   ( (myV.strand == "plus" and myV.qstart + v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send) <= len(entry.seq)) or \
+                                     (myV.strand == "minus" and myV.qend - (v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send)) >= 0) ):
+                                                vdj_len = v_len + myJ.qend + (len(dict_j[myJ.sid].seq) - myJ.send)
+                                else:
+				        vdj_len = v_len + myJ.qend
+                                        
 				if (myV.strand == 'plus'):
 					if myV.sstart > 1:
                                                 if nterm == "extend":
@@ -261,19 +269,19 @@ def main():
                                         if myV.send > 1:
                                                 if nterm == "extend":
                                                         if len(entry.seq)-myV.qend >= myV.send-1:
-					                        entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend+myV.send-1 ].reverse_complement()
+					                        entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend+myV.send-1 ].reverse_complement()
                                                                 added5 = myV.send - 1
                                                         else:
                                                                 added5 = len(entry.seq) - myV.qend
-					                        entry.seq = entry.seq[  myV.qend - vdj_len + 1 :  ].reverse_complement()
+					                        entry.seq = entry.seq[  myV.qend - vdj_len :  ].reverse_complement()
                                                 elif nterm == "germline":
-                                                        entry.seq = dict_v[myV.sid].seq[ 0 : myV.send-1 ] + entry.seq[  myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
+                                                        entry.seq = dict_v[myV.sid].seq[ 0 : myV.send-1 ] + entry.seq[  myV.qend - vdj_len : myV.qend ].reverse_complement()
                                                         added5 = myV.send - 1
                                                 else:
-                                                        entry.seq = entry.seq[  myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
+                                                        entry.seq = entry.seq[  myV.qend - vdj_len : myV.qend ].reverse_complement()
 
                                         else: #blast found full V gene
-					        entry.seq = entry.seq[ myV.qend - vdj_len + 1 : myV.qend ].reverse_complement()
+					        entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
 				cdr3_start,cdr3_end,WF_motif = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq[ added5 :  ])) #min and max statments take care of switching possible minus strand hit
@@ -285,8 +293,8 @@ def main():
 				entry.seq = 'N' * five_prime_add + entry.seq 
 
 				#prevent BioPython errors by trimming to last full codon
-				if (len(entry.seq) % 3) > 0:
-					entry.seq = entry.seq [ :  -1 * (len(entry.seq) % 3) ]
+				#if (len(entry.seq) % 3) > 0:
+				#	entry.seq = entry.seq [ :  -1 * (len(entry.seq) % 3) ]
 
 				#check for stop codons
 				if '*' in entry.seq.translate():
