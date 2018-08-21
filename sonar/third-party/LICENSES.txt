@@ -1,3 +1,7 @@
+beast is distributed by the Centre for Computational Evolution and is made available under a GNU Lesser GPLv2.1 license. Please cite:
+         Bouckaert, R., Heled, J., Kühnert, D., Vaughan, T., Wu, C-H., Xie, D., Suchard, MA., Rambaut, A., & Drummond, A. J. (2014). BEAST 2: A Software Platform for Bayesian Evolutionary Analysis. PLoS Computational Biology, 10(4), e1003537. doi:10.1371/journal.pcbi.1003537
+	 For more information: http://www.beast2.org
+
 blastn is part of the BLAST+ suite developed at the NCBI and is in the public domain. Please cite:
        	 Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, Madden TL. BLAST+: architecture and applications. BMC Bioinformatics. 2009 Dec 15;10:421. doi: 10.1186/1471-2105-10-421. PubMed PMID: 20003500; PubMed Central PMCID:PMC2803857.
 	 For more information: https://blast.ncbi.nlm.nih.gov/Blast.cgi
