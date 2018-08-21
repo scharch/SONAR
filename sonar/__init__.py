@@ -2,12 +2,12 @@
 
 
 """
-Core functions for the "ZAP" package,
+Core functions for SONAR
 
 Created by Zhenhai Zhang on 2011-04-05 as mytools.py
 Edited and commented for publication by Chaim A Schramm on 2015-02-10.
 
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 """
 
@@ -15,7 +15,6 @@ from Bio import SeqIO
 from Bio import Seq
 from Bio import AlignIO
 from Bio.SeqRecord import SeqRecord
-from Bio.Align.Applications import ClustalwCommandline
 from math import log
 
 import glob
@@ -61,33 +60,39 @@ hooks.hook()
 
 def logCmdLine( command ):
     
-    global printLog
+    global printLog, logFile
 
+    logFile = "SONAR_command_history.log"
     if os.path.isdir( "%s/output/logs" % os.getcwd() ):
+        logFile = "%s/output/logs/command_history.log"%os.getcwd()
 
-        for idx,arg in enumerate(command):
-            if re.search("\s", arg):
-                command[idx] = '"'+arg+'"'
+    for idx,arg in enumerate(command):
+        if re.search("(\s|\*)", arg):
+            command[idx] = "'"+arg+"'"
 
-        p = subprocess.Popen(['git', '-C', os.path.dirname(command[0]), 
-                              'describe', '--always','--dirty','--tags'],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        VERSION = p.communicate()[0].strip()
-        
-        with open("%s/output/logs/command_history.log"%os.getcwd(), "a") as handle:
-            handle.write( "\n%s -- SONAR %s run with command:\n\t%s\n" % (time.strftime("%c"), VERSION, " ".join(command)) )
+    p = subprocess.Popen(['git', '-C', os.path.dirname(command[0]), 
+                          'describe', '--always','--dirty','--tags'],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    VERSION = p.communicate()[0].strip()
+
+    logStatement = "\n%s -- SONAR %s run with command:\n\t%s\n" % (time.strftime("%c"), VERSION, " ".join(command))
+    print >> sys.stderr, logStatement
+    
+    try:
+        with open(logFile, "a") as handle:
+            handle.write( logStatement )
             
         printLog = True
 
-    else:
-        print >> sys.stderr, "SONAR log directory not found; command line and output will not be saved"
+    except:
+        print >> sys.stderr, "Directory appears to be read-only; command line and output will not be saved"
 
     
 def logExit():
 
-    global printLog
+    global printLog, logFile
     if printLog:
-        with open("%s/output/logs/command_history.log" % os.getcwd(), "a") as handle:
+        with open(logFile, "a") as handle:
             if hooks.exit_code is not None:
                 formatted = re.sub( "\n", "\n\t", hooks.exit_code.strip(" \t\r\n") ) #remove white space and new lines on both ends; indent if multiple lines
                 handle.write( "%s -- Program exited with error:\n\t%s\n" % (time.strftime("%c"),formatted) )
