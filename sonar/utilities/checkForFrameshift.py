@@ -6,8 +6,9 @@ checkForFrameshift.py
 
 This script uses pairwise clustal alignments to the assigned germline to detect
       and discard possible frameshift errors (primarily expected in data from 454
-      or other pyrosequencing techniques). Uses clustal despite it being slower 
-      and less efficient because I was unable to optimize parameters for muscle.
+      or other pyrosequencing techniques). Uses clustalw despite it being slower 
+      and less efficient because I was unable to optimize parameters for clustalo
+      and muscle.
 
 Usage: checkForFrameshift.py in.fa out.fa [ db.fa ]
 
@@ -23,8 +24,9 @@ Usage: checkForFrameshift.py in.fa out.fa [ db.fa ]
                      in CDR3.
 
 Created by Chaim Schramm on 2015-12-29.
+Minor adjustments 2018-08-21 bby CAS.
 
-Copyright (c) 2015-2016 Columbia University and Vaccine Research Center, National
+Copyright (c) 2015-2018 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -87,7 +89,7 @@ for entry in reader:
         with open("%s.fa"%fa_head, "w") as handle:
             handle.write(">%s\n%s\n>%s\n%s\n" % ( germline, germs[germline], entry.id, entry.seq ))
 
-        clustal_cline = ClustalwCommandline(infile="%s.fa"%fa_head)
+        clustal_cline = ClustalwCommandline(cmd="%s/third-party/clustalw2"%SCRIPT_FOLDER, infile="%s.fa"%fa_head)
         try:
             stdout, stderr = clustal_cline()
         except:

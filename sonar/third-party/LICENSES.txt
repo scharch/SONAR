@@ -10,6 +10,11 @@ clustalO is made available by the Conway Institute UCD Dublin under a GPLv2 lice
 	 Sievers F, Wilm A, Dineen DG, Gibson TJ, Karplus K, Li W, Lopez R, McWilliam H, Remmert M, Söding J, Thompson JD, Higgins DG (2011). Fast, scalable generation of high-quality protein multiple sequence alignments using Clustal Omega. Molecular Systems Biology 7:539 doi:10.1038/msb.2011.75
 	 For more information: http://www.clustal.org/omega/
 
+clustalW2 is made available by the Conway Institute UCD Dublin under a GPLv3 license. Please cite:
+	 Larkin MA, Blackshields G, Brown NP, Chenna R, McGettigan PA, McWilliam H, Valentin F, Wallace IM, Wilm A, Lopez R, Thompson JD, Gibson TJ, Higgins DG.
+(2007). Clustal W and Clustal X version 2.0. Bioinformatics, 23, 2947-2948.
+	 For more information: http://www.clustal.org/clustal2/
+
 dnaml is a part of the PHYLIP package made available by Joe Felsenstein of the University of Washington under an open source license. Please cite:
       	 Felsenstein J, Churchill GA. A Hidden Markov Model approach to variation among sites in rate of evolution. Mol Biol Evol. 1996 Jan;13(1):93-104. PubMed PMID: 8583911.
 	 For more information: http://evolution.genetics.washington.edu/phylip/doc/dnaml.html
