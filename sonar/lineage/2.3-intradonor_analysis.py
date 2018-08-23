@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 2.3-intradonor_analysis.py
@@ -27,67 +27,59 @@ This algorithm is generally intended to find somatically related antibodies
       It is unknown at this time whether this method would work for other
       classes of antibodies.
 
-Usage: 2.3-intradonor_analysis.py -n native.fa -v germline_V
-                                 [-locus <H|K|L|C> -lib path/to/library.fa
-				  -i custom/input.fa -maxIters 15
-				  -cluster -npf 250 -threads 1
-				  -nofilter -a -h -f]
+Usage: 2.3-intradonor_analysis.py --n native.fa --v germline_V [--locus H | --lib path/to/library.fa] [--in custom/input.fa | [ -a --noFilter ]] [options]
 
-    Invoke with -h or --help to print this documentation.
-
-    Required parameters:
-    n		Fasta file containing the known sequences.
-    v		Assigned germline V gene of known antibodes, for use in 
-                   rooting the trees.
-
-    Optional parameters:	   
-    locus	H (default): use V heavy / K: use V kappa / L: use V lambda /
-                   C: use a custom germline V library (specify -lib).
-		   PLEASE NOTE: This algorithm is not generally recommended
-		   for analyzing light chain sequences.
-    lib		Optional custom germline library (eg Rhesus or Mouse).
-                   Ignored unless "-locus C" is used.
-    i		Optional custom set of sequences to be analayzed. "-nofilter"
-                   and "-a" flags will be ignored if this option is used.
-		   Default is output/sequences/ROOT_goodVJ_unique.fa (or 
-		   output/sequences/ROOT_allV.fa with the -a flag below)
-    maxIters	Optional maximum number of rounds to conduct before giving up.
-                   Default = 15.
-    npf         Optional number of sequences to include in each split file.
-                   Larger number results in slower runtime due to constructing
-		   the MSA but fewer iterations to convergence. Default = 250
-		   when running locally and 1,000 on a cluster.
-    threads     Number of threads to use when running locally. Default = 1.
-
-    Optional flags:
-    cluster	Submit tree-building jobs to the cluster.
-    nofilter	Do NOT filter NGS sequences for correct germline V gene
-                   assignment. Default = OFF (DO filter).
-    a		Use all NGS sequences with an assigned V, even those with
-                   out-of frame junctions and/or stop codons or without a 
-		   successfuly assigned J gene. Default = OFF (use in-frame ORF
-		   sequences only). Instead of using -a, recommended usage is 
-		   to manually dereplicate the output/sequences/ROOT_allV.fa
-		   file using 1.4-dereplicate_sequences.pl with the -f flag
-		   and then passing that output to the -i parameter of this 
-		   script.
-    f		Force a restart of the analysis, even if there are files from
-                   a previous run in the working directory.
+Options:
+    --n	<native.fa>       Fasta file containing the known sequences.
+    --v	<IGHV1-2*02>      Assigned germline V gene of known antibodes, for use in 
+                             rooting the trees.
+    --locus H             H: use V heavy / K: use V kappa / L: use V lambda
+                             PLEASE NOTE: This algorithm is not generally recommended
+                             for analyzing light chain sequences.
+                             [default: H]
+    --lib <germline.fa>   Optional custom germline library (eg Rhesus or Mouse).
+                             Mutually exclusive with --locus.
+    --in <seqs.fa>        Optional custom set of sequences to be analayzed.
+                             Default is output/sequences/<ROOT>_goodVJ_unique.fa (or 
+                             output/sequences/<ROOT>_allV.fa with the -a flag).
+    -a		          Use all NGS sequences with an assigned V, even those with
+                             without an assigned J gene or other possible errors.
+                             Not available in combination with --in.
+                             Instead of using -a, recommended usage is to run
+                             `1.4-dereplicate_sequences.pl -f output/sequences/<ROOT>_allV.fa -s 2`
+                             and then calling this script with `--in output/sequences/ROOT_allV_unique.fa`
+                             [default: False]
+    --noFilter            Do NOT filter NGS sequences for correct germline V gene
+                             assignment. Not available in combination with --in
+                             (which assumes you've done your own filtering, if you
+                             want it). [default: False]
+    --cluster             Submit tree-building jobs to the cluster. [default: False]
+    --maxIters <15>       Optional maximum number of rounds to conduct before giving up.
+                             [default: 15]
+    --npf <250>           Optional number of sequences to include in each split file.
+                             Larger number results in slower runtime due to constructing
+		             the MSA but fewer iterations to convergence. Default = 250
+		             when running locally and 1,000 on a cluster.
+    --threads <1>         Number of threads to use when running locally. [default: 1]
+    -f                    Force a restart of the analysis, even if there are files from
+                             a previous run in the working directory. [default: False]
 
 Created by Zhenhai Zhang on 2011-07-12.
 Modified to compress into a single script and many updates by 
         Chaim A Schramm 2014-01-09.
 Edited and commented for publication by Chaim A Schramm on 2015-04-14.
+Edited to use Py3 and DocOpt by CAS 2018-08-22.
 
-Copyright (c) 2011-2016 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2018 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
 
 import time, sys
+from docopt import docopt
 from multiprocessing import Pool
 from functools import partial
-from cStringIO import StringIO
+from io import StringIO
 from sonar.lineage import *
 from Bio import Phylo
 from Bio.Align.Applications import MuscleCommandline
@@ -103,11 +95,11 @@ except ImportError:
 
 def muscleProcess (threadID, filebase, outbase, treebase):
 
-	fasta    = filebase % threadID
-	output   = outbase  % threadID
+	fasta	 = filebase % threadID
+	output	 = outbase  % threadID
 	treeFile = treebase % threadID
 
-	print "Building NJ tree from %s" % fasta
+	print( "Building NJ tree from %s" % fasta )
 
 	run_muscle = MuscleCommandline( input=fasta, out=output )
 	run_muscle.tree1      = treeFile
@@ -120,7 +112,7 @@ def muscleProcess (threadID, filebase, outbase, treebase):
 
 def main():
 
-	global npf, converged, maxIters, cluster, force, num_nats, correct_V_only, germlineV, germ_seq, inFile, natFile, locus, library
+	global converged, num_nats, germ_seq
 	currentIter = 0
 	log = open( "%s/intradonor.log" % prj_tree.logs, "a+" )
 
@@ -131,14 +123,14 @@ def main():
 		# start total at 1 so good/total < .95 when we start a new analysis
 		tree_files, good, total, retained_reads = sorted(glob.glob("%s/NJ*.tree" %prj_tree.lineage)), 0.0, 1.0, []
 								 
-		if force:
+		if arguments['-f']:
 			tree_files = [] #no need to process the files since we will be starting over
-			force = False #turn it off so we don't get stuck in an infinite loop of restarts
+			arguments['-f'] = False #turn it off so we don't get stuck in an infinite loop of restarts
 
-	        #this gets skipped in the first round
+		#this gets skipped in the first round
 		for idx, tf in enumerate(tree_files):
 			
-		        #read in the tree as a string
+			#read in the tree as a string
 			tree_string = open(tf, "rU").read().strip()
 			
 			#get rid of possible negative branch lengths and then parse
@@ -151,15 +143,15 @@ def main():
 			
 			#outgroup root the tree on the germline
 			try:
-				germ_node = tree.find_clades(germlineV).next()
+				germ_node = next( tree.find_clades(arguments['--v']) )
 			except StopIteration:
-				sys.exit( "Can't find germline gene %s in file %s" % (germlineV, tf) )
+				sys.exit( "Can't find germline gene %s in file %s" % (arguments['--v'], tf) )
 			tree.root_with_outgroup(germ_node)
 
 
 			# start by finding one of the natives
 			try:
-				nat1 = tree.find_clades(natives_list[0]).next()
+				nat1 = next( tree.find_clades(natives_list[0]) )
 			except StopIteration:
 				sys.exit( "Can't find native antibody %s in file %s" % (natives_list[0], tf) )
 
@@ -182,8 +174,8 @@ def main():
 			retained_reads += all_leaves
 			good += len(all_leaves) - num_nats
 			total += len(tree.get_terminals()) - num_nats - 1 #also don't count germline
-			if idx % 25 == 0 and not cluster:
-				print "Found %d reads in subtree #%d. Total saved so far: %d / %d" % ( len(all_leaves)-num_nats, idx+1, good, total-1)
+			if not arguments['--cluster']:
+				print( "Found %d reads in subtree #%d. Total saved so far: %d / %d" % ( len(all_leaves)-num_nats, idx+1, good, total-1) )
 
 
 		# processed all trees from last round, now do a sanity check
@@ -197,29 +189,29 @@ def main():
 		read_dict = dict()
 		if len(tree_files) == 0:
 			log.write( "%s - Starting a new analysis from scratch...\n" % time.strftime("%H:%M:%S") )
-			print "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S")
-			if correct_V_only:
+			print( "%s - Starting a new analysis from scratch..." % time.strftime("%H:%M:%S") )
+			if not arguments['--noFilter']:
 				#load by gene but ignore allele
-				read_dict = load_fastas_with_Vgene( inFile, germlineV.split("*")[0] )
+				read_dict = load_fastas_with_Vgene( arguments['--in'], arguments['--v'].split("*")[0] )
 			else:
-				read_dict = load_fastas( inFile )
+				read_dict = load_fastas( arguments['--in'] )
 		else:
-			read_dict = load_seqs_in_dict( inFile, set(retained_reads) )
+			read_dict = load_seqs_in_dict( arguments['--in'], set(retained_reads) )
 
 		#error checking
 		if len(read_dict) == 0:
-			log.write( "%s - Error: failed to load any sequences from %s, stopped\n" % (time.strftime("%H:%M:%S"), inFile) )
+			log.write( "%s - Error: failed to load any sequences from %s, stopped\n" % (time.strftime("%H:%M:%S"), arguments['--in']) )
 			log.close()
-			sys.exit( "Error: failed to load any sequences from %s, stopped" % inFile )
+			sys.exit( "Error: failed to load any sequences from %s, stopped" % arguments['--in'] )
 
 		#randomize the order
-		shuffled_reads = read_dict.values()
+		shuffled_reads = list(read_dict.values())
 		random.shuffle(shuffled_reads)
 			
 		# Check for convergence before starting a new round
 		if good/total < 0.95:
 			
-			if currentIter >= maxIters:
+			if currentIter >= arguments['--maxIters']:
 				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), good, 100*good/total) )
 				log.close()
 				sys.exit( "Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input" % (good, 100*good/total) )
@@ -227,7 +219,7 @@ def main():
 				if len(tree_files) > 0: 
 					#it's a silly message to print the first time through
 					log.write( "%s - Finished processing round %d: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total) )
-					print "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total)
+					print( "%s - Finished processing round %d: %d reads, %5.2f%% of input" % (time.strftime("%H:%M:%S"), currentIter, good, 100*good/total) )
 				currentIter +=1
 
 
@@ -251,7 +243,7 @@ def main():
 				currentSize += 1
 					
 				#reached max size for this split?
-				if currentSize == npf:
+				if currentSize == arguments['--npf']:
 
 					#add native and germline sequences before closing file
 					outFasta.write( ">%s\n%s\n" % (germ_seq.id, germ_seq.seq) )
@@ -274,7 +266,7 @@ def main():
 
 				
 			# At this point, if we are running on the cluster, submit this round and quit loop
-			if cluster:
+			if arguments['--cluster']:
 				# write pbs files and auto submit shell script
 				command = "NUM=`printf \"%%05d\" $SGE_TASK_ID`\n%s -in %s/NJ$NUM.fa -out %s/NJ$NUM.aln -cluster1 neighborjoining -maxiters 1 -tree1 %s/NJ$NUM.tree" % \
 				    (cluster_muscle, prj_tree.lineage, prj_tree.lineage, prj_tree.lineage)
@@ -292,12 +284,12 @@ def main():
 #$ -cwd\t\t\t\t\t# use current directory\n\
 #$ -o %s/restart-intradonor.out\t#output\n\
 #$ -e %s/restart-intradonor.err\t#error\n\
-%s/lineage/2.3-intradonor_analysis.py -n %s -v %s -locus %s -lib %s -i %s -maxIters %d -cluster\n" % 
-						  (prj_name, prj_tree.lineage, prj_tree.lineage, SCRIPT_FOLDER, natFile, germlineV, locus, library, inFile, maxIters-1) )
+%s/lineage/2.3-intradonor_analysis.py --n %s --v %s --lib %s --in %s --maxIters %d --cluster\n" % 
+						  (prj_name, prj_tree.lineage, prj_tree.lineage, SCRIPT_FOLDER, arguments['--n'], arguments['--v'], arguments['--library'], arguments['--in'], arguments['--maxIters']-1) )
 				next_round.close()
 
 				os.system( "%s -t 1-%d %s/intradonor.sh" % (qsub, f_ind, prj_tree.lineage) )
-				os.system( "%s %s/nextround.sh"  % (qsub, prj_tree.lineage) )
+				os.system( "%s %s/nextround.sh"	 % (qsub, prj_tree.lineage) )
 				log.write( "%s - Submitted current round to cluster\n" % time.strftime("%H:%M:%S") )
 				log.close()
 				break #exits "while not converged" loop
@@ -306,7 +298,7 @@ def main():
 				#run locally
 				partial_muscle = partial( muscleProcess, filebase="%s/NJ%%05d.fa"%prj_tree.lineage, 
 							  outbase="%s/NJ%%05d.aln"%prj_tree.lineage, treebase="%s/NJ%%05d.tree"%prj_tree.lineage )
-				muscle_pool = Pool(numThreads)
+				muscle_pool = Pool(arguments['--threads'])
 				muscle_pool.map(partial_muscle, range(1,f_ind+1))
 				muscle_pool.close()
 				muscle_pool.join()
@@ -315,8 +307,8 @@ def main():
 		
 		# If we have converged, write final output
 		else:
-			out_nt   = open("%s/%s_intradonor_positives.fa"  % (prj_tree.nt, prj_name),     "w")
-			out_aa   = open("%s/%s_intradonor_positives.fa"  % (prj_tree.aa, prj_name),     "w")
+			out_nt	 = open("%s/%s_intradonor_positives.fa"	 % (prj_tree.nt, prj_name),	"w")
+			out_aa	 = open("%s/%s_intradonor_positives.fa"	 % (prj_tree.aa, prj_name),	"w")
 			SeqIO.write(read_dict.values(), out_nt, "fasta")
 			SeqIO.write( [SeqRecord(r.seq.translate(),id=r.id, description=r.description) for r in read_dict.values()], out_aa, "fasta" )
 			out_nt.close()
@@ -329,95 +321,81 @@ def main():
 			
 			log.write( "%s - Tree has converged with %d reads!\n" % (time.strftime("%H:%M:%S"), good) )
 			log.close()
-			print "Tree has converged with %d reads!" % good
+			print( "Tree has converged with %d reads!" % good )
 			converged = True
 
 	
 
 if __name__ == '__main__':
 
-	#check if I should print documentation
-	q = lambda x: x in sys.argv
-	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
-		print __doc__
-		sys.exit(0)
+	arguments = docopt(__doc__)
+
+
+	#load native sequences
+	if not os.path.isfile(arguments['--n']):
+		print("Error: cannot find file with native sequences")
+		sys.exit(1)
+	natives	      =	 load_fastas(arguments['--n'])
+	natives_list  =	 list( natives.keys() )
+	num_nats      =	 len(natives_list)
+
+	
+	converged = False #keep track of convergence when running locally
+	
+	
+	arguments['--maxIters'] = int( arguments['--threads'] )
+	arguments['--threads']	= int( arguments['--maxIters'] )
+	
+	if arguments['--npf'] is not None:
+		arguments['--npf'] = int( arguments['--npf'] )
+
+	if arguments['--cluster']:
+		if not clusterExists:
+			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
+		if arguments['--npf'] is None:
+			arguments['--npf'] = 1000
+	else:
+		if arguments['--npf'] is None:
+			arguments['--npf'] = 250
+	      
+
+	#get input
+	prj_tree	= ProjectFolders(os.getcwd())
+	prj_name	= fullpath2last_folder(prj_tree.home)
+	if arguments['--in'] is not None:
+		arguments['--noFilter'] = False
+		if not os.path.isfile(arguments['--in']):
+			print( "Can't find input file!" )
+			sys.exit(1)
+	else:
+		if arguments['-a']:
+			arguments['--in'] = "%s/%s_allV.fa" % (prj_tree.nt, prj_name)
+		else:
+			arguments['--in'] = "%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)
+
+	#get germline
+	if arguments['--lib'] is not None:
+		if not os.path.isfile(arguments['--lib']):
+			print( "Can't find custom V gene library file!" )
+			sys.exit(1)		   
+	else:
+		if arguments['--locus'] in dict_vgerm_db.keys():
+			arguments['--lib'] = dict_vgerm_db[arguments['--locus']]
+		else:
+			print("Error: valid options for --locus are H, K, L, KL, and HKL only")
+			sys.exit(1)
+
+	germ_dict = load_fastas(arguments['--lib'])
+	try:
+		germ_seq = germ_dict[ arguments['--v'] ]
+	except:
+		print( "Specified germline gene (%s) is not present in the %s library!\n" % (arguments['--v'], arguments['--lib']) )
+		sys.exit(1)
+
 
 	#log command line
 	logCmdLine(sys.argv)
 
-
-	#check forcing parameter
-	force = False
-	flag = [x for x in ["f", "-f", "--f", "force", "-force", "--force"] if q(x)]
-	if len(flag)>0:
-		sys.argv.remove(flag[0])
-		force = True
-
-
-	prj_tree 	= ProjectFolders(os.getcwd())
-	prj_name 	= fullpath2last_folder(prj_tree.home)
-
-
-	#check filtering parameter
-	correct_V_only = True
-	flag = [x for x in ["nof", "-nof", "--nof", "nofilter", "-nofilter", "--nofilter"] if q(x)]
-	if len(flag)>0:
-		sys.argv.remove(flag[0])
-		correct_V_only = False
-
-	#check sequence quality parameter
-	selectedFile = "%s/%s_goodVJ_unique.fa" % (prj_tree.nt, prj_name)
-	flag = [x for x in ["a", "-a", "--a", "all", "-all", "--all"] if q(x)]
-	if len(flag)>0:
-		sys.argv.remove(flag[0])
-		selectedFile = "%s/%s_allV.fa" % (prj_tree.nt, prj_name)
-
-	#check cluster parameter
-	cluster = False
-	default_npf = 250
-	flag = [x for x in ["c", "-c", "--c", "cluster", "-cluster", "--cluster"] if q(x)]
-	if len(flag)>0:
-		sys.argv.remove(flag[0])
-		cluster = True
-		default_npf = 1000
-
-	#get the parameters from the command line
-	dict_args = processParas(sys.argv, n="natFile", v="germlineV", locus="locus", lib="library", i="inFile", maxIters="maxIters", npf="npf", threads="numThreads")
-	defaults = dict(locus="H", library="", inFile=selectedFile, maxIters=15, npf=default_npf, numThreads=1)
-	natFile, germlineV, locus, library, inFile, maxIters, npf, numThreads = getParasWithDefaults(dict_args, defaults, "natFile", "germlineV", "locus", "library", "inFile", "maxIters", "npf", "numThreads")
-
-	if natFile is None or germlineV is None:
-		print __doc__
-		sys.exit(0)
-
-	#load native sequences
-	natives       =  load_fastas(natFile)
-	natives_list  =  natives.keys()
-	num_nats       =  len(natives_list) + 1
-
-
-	converged = False #keep track of convergence when running locally
-
-
-	#load germline sequence
-	if not os.path.isfile(library):
-		if locus in dict_vgerm_db.keys():
-			library = dict_vgerm_db[locus]
-		else:
-			print "Can't find custom V gene library file!"
-			sys.exit(1)
-
-	if inFile != selectedFile:
-		correct_V_only = False # Designation of custom starting sequences overrides the -a flag to prevent errors.
-		                       # Please do your own filtering if you are using this option.
-
-	germ_dict = load_fastas(library)
-	try:
-		germ_seq = germ_dict[germlineV]
-	except:
-		print "Specified germline gene (%s) is not present in the %s library!\n" % (germlineV, library)
-		sys.exit(1)
-		
 
 	main()
 

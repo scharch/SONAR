@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 
 """
@@ -25,7 +25,7 @@ import atexit
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
-from commonVars import *
+from sonar.commonVars import *
 
 
 ########## COMMAND LOGGING ############
@@ -76,7 +76,7 @@ def logCmdLine( command ):
     VERSION = p.communicate()[0].strip()
 
     logStatement = "\n%s -- SONAR %s run with command:\n\t%s\n" % (time.strftime("%c"), VERSION, " ".join(command))
-    print >> sys.stderr, logStatement
+    print(logStatement, file=sys.stderr)
     
     try:
         with open(logFile, "a") as handle:
@@ -85,7 +85,7 @@ def logCmdLine( command ):
         printLog = True
 
     except:
-        print >> sys.stderr, "Directory appears to be read-only; command line and output will not be saved"
+        print("Directory appears to be read-only; command line and output will not be saved", file=sys.stderr)
 
     
 def logExit():
@@ -228,69 +228,6 @@ class ProjectFolders:
 #
 
 
-
-#
-# -- BEGIN -- argument process functions
-#
-
-def processParas(para_list, **keywords):
-	""" 
-	process the parameter information, all parameter start with "-paraname"
-	return a dictionary (paraName, paraValue)
-	remove the first parameter which is the program name
-	"""
-	
-	para_list 		= para_list[1 :]
-	kwgs, values 	= para_list[ :: 2], para_list[1 :: 2]
-
-	if len(kwgs) != len(values):
-		print "number of keywords and values does not equal"
-		sys.exit(0)
-	
-	kwgs 	= map(lambda x : keywords[x[1 :]], kwgs)
-	values 	= map(evalValues, values)
-
-	#check for multiple uses of the same keyword and convert those values into a list
-	for k in set(kwgs):
-		if kwgs.count(k) > 1:
-			idx     = [ i for i,x in enumerate(kwgs) if x==k ]
-			valList = [ values[i] for i in idx ]
-			values[idx.pop(0)] = valList #pop removes first occurence from idx list so we can only eliminate later occurences in next 2 lines
-			kwgs    = [ x for i,x in enumerate(kwgs)   if i not in idx ]
-			values  = [ x for i,x in enumerate(values) if i not in idx ]
-			
-
-	return dict(zip(kwgs,values))
-	
-
-
-def evalValues(v):
-	"""Evaluate strings and return a value corresponding to its real type (int, float, list, tuple) """
-	
-	try:	return eval(v)
-	except:	return v
-
-
-
-def getParas(my_dict, *args):
-	"""return the value of the argument """	
-	
-	if len(args) == 1:	return my_dict[args[0]]
-	else:	return (my_dict.get(arg) for arg in args)
-		
-		
-def getParasWithDefaults(my_dict, default_dict, *args):
-	"""return the value of the argument or the default value if it wasn't specified on the command line"""	
-	
-	if len(args) == 1:	return my_dict.get(args[0],default_dict.get(args[0]))
-	else:	return (my_dict.get(arg,default_dict.get(arg)) for arg in args)
-		
-		
-#		
-# -- END -- argument process functions
-#
-
-
 #
 # -- BEGIN --  folder and file methods
 #
@@ -308,7 +245,7 @@ def create_folders(folder, force=False):
 
 	if (os.path.isdir("work")):
 		if not force:
-			sys.exit("Working directory already exists. Please use the -f(orce) option to re-intiate an analysis from scratch.\n")
+			sys.exit("Working directory already exists. Please use the -f option to re-intiate an analysis from scratch.\n")
 		else:
 			try:
 				shutil.rmtree("work")
@@ -335,7 +272,7 @@ def create_folders(folder, force=False):
 			os.mkdir(subfolder)
 			
 		except:		# may need to delete old folders
-			print "FOLDER EXISTS: %s"%subfolder
+			print( "FOLDER EXISTS: %s"%subfolder )
 			
 	
 	os.chdir(old_wd)
@@ -440,22 +377,6 @@ def has_pat(s, pat):
 	return has, start, end
 	
 
-def write_seq2file(myseq1, myseq2, f):
-	""" write two MySseq objects to given file"""
-	try:
-		handle = open(f, "w")
-		handle.write(">%s\n" %myseq1.seq_id)
-		handle.write("%s\n\n" %myseq1.seq)
-	
-		handle.write(">%s\n" %myseq2.seq_id)
-		handle.write("%s\n\n" %myseq2.seq)
-		handle.close()
-	except:
-		print type(myseq1)
-		print type(myseq2)
-
-
-
 def load_seqs_in_dict(f, ids):
 	"""
 	load all sequences in file f is their id is in ids (list or set or dictionary)
@@ -470,7 +391,7 @@ def load_seqs_in_dict(f, ids):
 
 def load_fastas_in_list(f, l):
 	
-	print "loading reads from %s as in given list..." %f
+	print( "loading reads from %s as in given list..." %f )
 	reader, result, good = SeqIO.parse(open(f, "rU"), "fasta"), dict(), 0
 
 	for entry in reader:
@@ -485,24 +406,24 @@ def load_fastas_in_list(f, l):
 			#myseq.desc = entry.description
 			#result[entry.id] = myseq
 
-	print "%d loaded...." %len(result)
+	print( "%d loaded...." %len(result) )
 	return result
 	
 
 def load_fastas_with_Vgene(f, v):
-	print "loading reads from %s assigned to %s..." %(f,v)
+	print( "loading reads from %s assigned to %s..." %(f,v) )
 	reader, dict_reads = SeqIO.parse(open(f, "rU"), "fasta"), dict()
 	for entry in reader:
 		if re.search(v, entry.description):
 			dict_reads[entry.id] = entry
 
-	print "%d loaded..." %len(dict_reads)
+	print( "%d loaded..." %len(dict_reads) )
 	return dict_reads
 
 	
 def load_fastas(f):
 	"""return gene ID and sequences in a dictionary"""
-	print "loading sequence info from %s..." %f
+	print( "loading sequence info from %s..." %f )
 
 	reader, result = SeqIO.parse(open(f, "rU"), "fasta"), dict()
 
@@ -522,7 +443,7 @@ def generate_read_fasta(f):
 		yield entry
 
 
-def generate_read_fasta_folder(fastas, type=1):
+def generate_read_fasta_folder(fastas):
 
 	for fasta_file in fastas:
 

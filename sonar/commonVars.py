@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 """
 commonVars.py
@@ -6,10 +6,10 @@ commonVars.py
 Created by Zhenhai Zhang on 2011-04-06.
 Renamed by Chaim A Schramm on 2015-02-10.
 
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 """
 
-import sys, os, csv, shutil, re, glob, pickle, string, time, random, commands
+import sys, os, csv, shutil, re, glob, string, time, random
 from sonar.paths import *
 
 sep = "\t"

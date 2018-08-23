@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 1.3-finalize_assignments.py
@@ -8,28 +8,26 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-finalize_assignments.py [ -h -jmotif "TT[C|T][G|A]G" -nterm truncate -noclean]
+Usage:  1.3-finalize_assignments.py [ --jmotif "TT[C|T][G|A]G" --nterm truncate --noclean ]
 
-    Invoke with -h or --help to print this documentation.
-
-    Optional Parameters:
-
-    jmotif  - Conserved nucleotide sequence indicating the start of FWR4 on
-                the J gene. Defaults to either TGGGG for heavy chains or
-		TT[C|T][G|A]G for light chains; set manually for species
-		which may have a different motif.
-    nterm   - What to do if blast hit does not extend to the N terminus of the
-                germline V gene. Options are 
-                   'truncate' - trim to blast hit (default)
-                   'extend'   - change trim boundary to correspond to expected
-                                N terminus of germline or beginning of read if
-                                shorter (NOT recommended, typically results in
-                                bad sequences)
-                   'germline' - replace missing region with the germline V
-                                sequence (useful for FWR1 primers)
-                   'discard'  - only mark as 'good' sequences with full germline
-                                region
-    noclean - Disable automatic deletion of working files from 1.1 and 1.2
+Options:
+    --jmotif TGGGG    Conserved nucleotide sequence indicating the start of FWR4 on
+                         the J gene. Defaults to either TGGGG for heavy chains or
+                         TT[C|T][G|A]G for light chains; set manually for custom 
+                         light chain libraries or for species with a different motif.
+    --nterm OPT       What to do if blast hit does not extend to the N terminus of the
+                         germline V gene. Options are:
+                            truncate - trim to blast hit;
+                            extend   - change trim boundary to correspond to expected N
+                                      N terminus of germline or beginning of read if
+                                      shorter (NOT recommended, typically results in
+                                      bad sequences)
+                            germline - replace missing region with the germline V
+                                      sequence (useful for FWR1 primers)
+                            discard  - only mark as 'good' sequences with full germline
+                                      region
+                         [default: truncate]
+    --noclean         Disable automatic deletion of working files from 1.1 and 1.2 [default: False]
 
 Created by Chaim A Schramm on 2013-07-05
 Edited and commented for publication by Chaim A Schramm on 2015-02-25.
@@ -39,6 +37,7 @@ Edited to make motif matching case-insensitive and to disable auto-clean-up
                                by CAS 2017-07-31.
 Edited to distinguish between nonproductive junctions and apparent frameshifts
                                within V by CAS 2018-07-23.
+Edited to use Py3 and DocOpt by CAS 2018-08-22.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -46,6 +45,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys, os
+from docopt import docopt
 
 try:
 	from sonar.annotate import *
@@ -62,14 +62,14 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 	v_id = name of assigned V gene (eg IGHV1-2*02)
 	vgene = germline sequence of assigned V gene
 	vlength = length of QUERY sequence taken up by match
-	            (might be different from blast-reported length 
+		    (might be different from blast-reported length 
 		     and/or vend-vstart+1 because of in-dels)
 	vstart = position on germline V gene where match begins (hopefully = 1)
 	vend = position on germline V gene where match ends
 	jgene = germline sequence of assigned J gene
 	jstart = position on germline J gene where match begins
 	j_start_on_read = position on query (v-cut version, not full 454 read) 
-	            where match with germline J begins
+		    where match with germline J begins
 	jgaps = blast-reported number of gaps in J assignment
 	read_sequence = V(D)J-trimmed sequence of the 454 read
 	'''
@@ -90,7 +90,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		if cys.start() % 3 == 0:
 			cdr3_start = vlength - (vend - cys.start())
 			break
-                
+		
 	# If BLAST has truncated the V gene alignment prior to reaching the conserved cysteine, but still found the J gene,
 	#   that likely indicates a large in-del, which must be accounted for, or the start position of CDR 3 will be wrong.
 	# The only easy/automatic tool we have is to look for the conserved CxR/K motif; if it's mutated (or we are looking
@@ -103,12 +103,12 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		else:
 			cdr3_start = -1
 
-	jMatch = re.search(jMotif,jgene,flags=re.I)
-        WF_motif = -1 #pass back to main program to check for out-of-frame junctions
+	jMatch = re.search(arguments['--jmotif'],jgene,flags=re.I)
+	WF_motif = -1 #pass back to main program to check for out-of-frame junctions
 
 	try:
 		cdr3_end = vlength + j_start_on_read + (jMatch.start() - jstart) +3
-                WF_motif = jMatch.start()
+		WF_motif = jMatch.start()
 	except:
 		cdr3_end = -1 #if we didn't find the motif, we'll count it as a bad cdr3 without crashing
 
@@ -117,7 +117,7 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 		#but only check from cdr3 start on and don't let the end move more
 		#    than a codon, because there can be similar motifs in CDR3
 		wgxg = []
-		for m in re.finditer(jMotif, read_sequence[cdr3_start:]):
+		for m in re.finditer(arguments['--jmotif'], read_sequence[cdr3_start:]):
 			wgxg.append(m)
 		if len(wgxg) > 0:
 			if abs(wgxg[-1].start() + 3 - cdr3_end) <= 3:
@@ -128,25 +128,25 @@ def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_rea
 
 def main():
 
-        if not glob.glob("%s/%s_*.fasta" % (prj_tree.jgene, prj_name)):
-                sys.exit("No jBlast output found!\n")
-        
-	print "curating junction and 3' end..."
+	if not glob.glob("%s/%s_*.fasta" % (prj_tree.jgene, prj_name)):
+		sys.exit("No jBlast output found!\n")
+	
+	print( "curating junction and 3' end..." )
 
 
-        allV_aa      = open ("%s/%s_allV.fa"     % (prj_tree.aa, prj_name), "w" )
-        allV_nt      = open( "%s/%s_allV.fa"     % (prj_tree.nt, prj_name), "w" )
+	allV_aa	     = open ("%s/%s_allV.fa"	 % (prj_tree.aa, prj_name), "w" )
+	allV_nt	     = open( "%s/%s_allV.fa"	 % (prj_tree.nt, prj_name), "w" )
 
-        allJ_aa      = open( "%s/%s_allJ.fa"     % (prj_tree.aa, prj_name), "w" )
-        allJ_nt      = open( "%s/%s_allJ.fa"     % (prj_tree.nt, prj_name), "w" )
+	allJ_aa	     = open( "%s/%s_allJ.fa"	 % (prj_tree.aa, prj_name), "w" )
+	allJ_nt	     = open( "%s/%s_allJ.fa"	 % (prj_tree.nt, prj_name), "w" )
 
-        vj_aa        = open( "%s/%s_goodVJ.fa"   % (prj_tree.aa, prj_name), "w" )
-        vj_nt        = open( "%s/%s_goodVJ.fa"   % (prj_tree.nt, prj_name), "w" )
+	vj_aa	     = open( "%s/%s_goodVJ.fa"	 % (prj_tree.aa, prj_name), "w" )
+	vj_nt	     = open( "%s/%s_goodVJ.fa"	 % (prj_tree.nt, prj_name), "w" )
 
-        good_cdr3_aa = open( "%s/%s_goodCDR3.fa" % (prj_tree.aa, prj_name), "w" )
-        good_cdr3_nt = open( "%s/%s_goodCDR3.fa" % (prj_tree.nt, prj_name), "w" )
+	good_cdr3_aa = open( "%s/%s_goodCDR3.fa" % (prj_tree.aa, prj_name), "w" )
+	good_cdr3_nt = open( "%s/%s_goodCDR3.fa" % (prj_tree.nt, prj_name), "w" )
 
-        all_cdr3_nt  = open( "%s/%s_allCDR3.fa"  % (prj_tree.nt, prj_name), "w" )
+	all_cdr3_nt  = open( "%s/%s_allCDR3.fa"	 % (prj_tree.nt, prj_name), "w" )
 
 
 	#get raw seq stats from temp table
@@ -155,8 +155,8 @@ def main():
 
 	raw_count, total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 0, 1
 	counts = {'good':0,'nonproductive':0,'indel':0,'noCDR3':0,'stop':0}
-        if nterm=="discard":
-                counts["missingNterm"]=0
+	if arguments['--nterm'] == "discard":
+		counts["missingNterm"]=0
 
 	writer = csv.writer(open("%s/%s_jgerm_tophit.txt" %(prj_tree.tables, prj_name), "w"), delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
@@ -183,26 +183,26 @@ def main():
 	
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
 
-		dict_vgerm_aln, dict_other_vgerms, dict_vcounts  =  get_top_hits("%s/%s_%03d.txt"%(prj_tree.vgene, prj_name, f_ind) )
-		dict_jgerm_aln, dict_other_jgerms, dict_jcounts  =  get_top_hits("%s/%s_%03d.txt"%(prj_tree.jgene, prj_name, f_ind), topHitWriter=writer, dict_germ_count=dict_jcounts )
+		dict_vgerm_aln, dict_other_vgerms, dict_vcounts	 =  get_top_hits("%s/%s_%03d.txt"%(prj_tree.vgene, prj_name, f_ind) )
+		dict_jgerm_aln, dict_other_jgerms, dict_jcounts	 =  get_top_hits("%s/%s_%03d.txt"%(prj_tree.jgene, prj_name, f_ind), topHitWriter=writer, dict_germ_count=dict_jcounts )
 
 		if c:
 			minCStartPos = dict( [ (x, dict_jgerm_aln[x].qend) for x in dict_jgerm_aln.keys() ] )
-			dict_cgerm_aln, dict_other_cgerms, dict_ccounts  =  get_top_hits("%s/%s_C_%03d.txt"%(prj_tree.jgene, prj_name, f_ind), topHitWriter=cWriter, dict_germ_count=dict_ccounts, minQStart=minCStartPos )
+			dict_cgerm_aln, dict_other_cgerms, dict_ccounts	 =  get_top_hits("%s/%s_C_%03d.txt"%(prj_tree.jgene, prj_name, f_ind), topHitWriter=cWriter, dict_germ_count=dict_ccounts, minQStart=minCStartPos )
 
 		if d:
 			maxDEndPos = dict( [ (x, dict_jgerm_aln[x].qstart) for x in dict_jgerm_aln.keys() ] )
-			dict_dgerm_aln, dict_other_dgerms, dict_dcounts  =  get_top_hits("%s/%s_D_%03d.txt"%(prj_tree.jgene, prj_name, f_ind), topHitWriter=dWriter, dict_germ_count=dict_dcounts, maxQEnd=maxDEndPos )
+			dict_dgerm_aln, dict_other_dgerms, dict_dcounts	 =  get_top_hits("%s/%s_D_%03d.txt"%(prj_tree.jgene, prj_name, f_ind), topHitWriter=dWriter, dict_germ_count=dict_dcounts, maxQEnd=maxDEndPos )
 
 		for entry in SeqIO.parse( "%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind), "fasta"):
 			total += 1
 
-			raw_stats = raw.next()
+			raw_stats = next(raw)
 			raw_count += 1
 			while not entry.id == raw_stats[0]:
 				#we found a read that did not meet the length cut-off
 				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "wrong_length", "NA", "NA", "NA", "NA"])
-				raw_stats = raw.next()
+				raw_stats = next(raw)
 				raw_count += 1
 
 
@@ -212,10 +212,10 @@ def main():
 			elif not entry.id in dict_jgerm_aln:
 				noJ+=1
 				myV = dict_vgerm_aln[entry.id]
-                                if (myV.strand == 'plus'):
-                                        entry.seq = entry.seq[ myV.qstart - 1 :  ]                                                      
+				if (myV.strand == 'plus'):
+					entry.seq = entry.seq[ myV.qstart - 1 :	 ]							
 				else:
-                                        entry.seq = entry.seq[  : myV.qend ].reverse_complement()
+					entry.seq = entry.seq[	: myV.qend ].reverse_complement()
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
 				entry.description = "V_gene=%s status=noJ" % (myVgenes)
 				allV_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
@@ -230,58 +230,58 @@ def main():
 				found += 1
 				myV = dict_vgerm_aln[entry.id]
 				myJ = dict_jgerm_aln[entry.id]
-                                added5 = 0
-                                productive = "T"
+				added5 = 0
+				productive = "T"
 				indel = "F"
 				stop = "F"
 				cdr3 = True
 				
 				#get actual V(D)J sequence
-				v_len   = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
+				v_len	= myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
 
-                                #try to recover 3' of J
-                                if myJ.send < len(dict_j[myJ.sid].seq) and \
-                                   ( (myV.strand == "plus" and myV.qstart + v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send) <= len(entry.seq)) or \
-                                     (myV.strand == "minus" and myV.qend - (v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send)) >= 0) ):
-                                                vdj_len = v_len + myJ.qend + (len(dict_j[myJ.sid].seq) - myJ.send)
-                                else:
-				        vdj_len = v_len + myJ.qend
-                                        
+				#try to recover 3' of J
+				if myJ.send < len(dict_j[myJ.sid].seq) and \
+				   ( (myV.strand == "plus" and myV.qstart + v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send) <= len(entry.seq)) or \
+				     (myV.strand == "minus" and myV.qend - (v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send)) >= 0) ):
+						vdj_len = v_len + myJ.qend + (len(dict_j[myJ.sid].seq) - myJ.send)
+				else:
+					vdj_len = v_len + myJ.qend
+					
 				if (myV.strand == 'plus'):
 					if myV.sstart > 1:
-                                                if nterm == "extend":
-                                                        if myV.qstart >= myV.sstart:
-					                        entry.seq = entry.seq[ myV.qstart - myV.sstart : myV.qstart + vdj_len - 1 ]
-                                                                added5 = myV.sstart - 1
-                                                        else:
-					                        entry.seq = entry.seq[  : myV.qstart + vdj_len - 1 ]
-                                                                added5 = myV.qstart - 1
-                                                elif nterm == "germline":
-                                                        entry.seq = dict_v[myV.sid].seq[ 0 : myV.sstart-1 ] + entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
-                                                        added5 = myV.sstart - 1
-                                                else:
-                                                      entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+						if arguments['--nterm'] == "extend":
+							if myV.qstart >= myV.sstart:
+								entry.seq = entry.seq[ myV.qstart - myV.sstart : myV.qstart + vdj_len - 1 ]
+								added5 = myV.sstart - 1
+							else:
+								entry.seq = entry.seq[	: myV.qstart + vdj_len - 1 ]
+								added5 = myV.qstart - 1
+						elif arguments['--nterm'] == "germline":
+							entry.seq = dict_v[myV.sid].seq[ 0 : myV.sstart-1 ] + entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+							added5 = myV.sstart - 1
+						else:
+						      entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
 
-                                        else: #blast found full V gene
-					        entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
+					else: #blast found full V gene
+						entry.seq = entry.seq[ myV.qstart - 1 : myV.qstart + vdj_len - 1 ]
 
 				else: #minus strand
-                                        if myV.send > 1:
-                                                if nterm == "extend":
-                                                        if len(entry.seq)-myV.qend >= myV.send-1:
-					                        entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend+myV.send-1 ].reverse_complement()
-                                                                added5 = myV.send - 1
-                                                        else:
-                                                                added5 = len(entry.seq) - myV.qend
-					                        entry.seq = entry.seq[  myV.qend - vdj_len :  ].reverse_complement()
-                                                elif nterm == "germline":
-                                                        entry.seq = dict_v[myV.sid].seq[ 0 : myV.send-1 ] + entry.seq[  myV.qend - vdj_len : myV.qend ].reverse_complement()
-                                                        added5 = myV.send - 1
-                                                else:
-                                                        entry.seq = entry.seq[  myV.qend - vdj_len : myV.qend ].reverse_complement()
+					if myV.send > 1:
+						if arguments['--nterm'] == "extend":
+							if len(entry.seq)-myV.qend >= myV.send-1:
+								entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend+myV.send-1 ].reverse_complement()
+								added5 = myV.send - 1
+							else:
+								added5 = len(entry.seq) - myV.qend
+								entry.seq = entry.seq[	myV.qend - vdj_len :  ].reverse_complement()
+						elif arguments['--nterm'] == "germline":
+							entry.seq = dict_v[myV.sid].seq[ 0 : myV.send-1 ] + entry.seq[	myV.qend - vdj_len : myV.qend ].reverse_complement()
+							added5 = myV.send - 1
+						else:
+							entry.seq = entry.seq[	myV.qend - vdj_len : myV.qend ].reverse_complement()
 
-                                        else: #blast found full V gene
-					        entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
+					else: #blast found full V gene
+						entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
 
 				#get CDR3 boundaries
 				cdr3_start,cdr3_end,WF_motif = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq[ added5 :  ])) #min and max statments take care of switching possible minus strand hit
@@ -309,7 +309,7 @@ def main():
 
 					if (v_frame + frame_shift) % 3 != j_frame % 3:
 						indel = "T"   #for gDNA we would probably want to distinguish between an out-of-frame recombination and sequencing in-dels in V or J
-						                #but that can be ambiguous and for cDNA we can assume that it's sll sequencing in-del anyway, even in CDR3.
+								#but that can be ambiguous and for cDNA we can assume that it's sll sequencing in-del anyway, even in CDR3.
 					else:
 						#use blast gaps to detect frame shift in-dels
 						#most of these have stop codons or other sequence problems, but we'll catch a few extra this way
@@ -323,14 +323,14 @@ def main():
 				status = "good"
 				if not cdr3:
 					status = "noCDR3"
-                                elif productive == "F":
-                                        status = "nonproductive"
+				elif productive == "F":
+					status = "nonproductive"
 				elif indel == "T":
 					status = "indel"
 				elif stop == "T":
 					status = "stop"
-                                elif nterm == "discard" and min(myV.sstart,myV.send) > 1:
-                                        status = "missingNterm"
+				elif arguments['--nterm'] == "discard" and min(myV.sstart,myV.send) > 1:
+					status = "missingNterm"
 
 				#add germline assignments to fasta description and write to disk
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
@@ -386,71 +386,60 @@ def main():
 
 				counts[status] += 1
 
-		print "%d done, found %d; %d good..." %(total, found, counts['good'])
+		print( "%d done, found %d; %d good..." %(total, found, counts['good']) )
 		f_ind += 1
 
 	#print out some statistics
 	handle = open("%s/%s_jgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-	writer 	= csv.writer(handle, delimiter = sep)
-	keys 	= sorted(dict_jcounts.keys())
+	writer	= csv.writer(handle, delimiter = sep)
+	keys	= sorted(dict_jcounts.keys())
 	writer.writerow(["gene", "count", "percent"])
 	for key in keys:
 		aline = [ key, dict_jcounts[key], "%4.2f" % (dict_jcounts[key] / float(found) * 100) ]
 		writer.writerow(aline)
 	handle.close()
 
-        if len(dict_ccounts) > 0:
-                handle = open("%s/%s_cgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-                writer 	= csv.writer(handle, delimiter = sep)
-                keys 	= sorted(dict_ccounts.keys())
-                writer.writerow(["gene", "count", "percent"])
-                for key in keys:
-                        aline = [ key, dict_ccounts[key], "%4.2f" % (dict_ccounts[key] / float(found) * 100) ]
-                        writer.writerow(aline)
-                handle.close()
+	if len(dict_ccounts) > 0:
+		handle = open("%s/%s_cgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
+		writer	= csv.writer(handle, delimiter = sep)
+		keys	= sorted(dict_ccounts.keys())
+		writer.writerow(["gene", "count", "percent"])
+		for key in keys:
+			aline = [ key, dict_ccounts[key], "%4.2f" % (dict_ccounts[key] / float(found) * 100) ]
+			writer.writerow(aline)
+		handle.close()
 
-        if len(dict_dcounts) > 0:
-                handle = open("%s/%s_dgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-                writer 	= csv.writer(handle, delimiter = sep)
-                keys 	= sorted(dict_dcounts.keys())
-                writer.writerow(["gene", "count", "percent"])
-                for key in keys:
-                        aline = [ key, dict_dcounts[key], "%4.2f" % (dict_dcounts[key] / float(found) * 100) ]
-                        writer.writerow(aline)
-                handle.close()
+	if len(dict_dcounts) > 0:
+		handle = open("%s/%s_dgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
+		writer	= csv.writer(handle, delimiter = sep)
+		keys	= sorted(dict_dcounts.keys())
+		writer.writerow(["gene", "count", "percent"])
+		for key in keys:
+			aline = [ key, dict_dcounts[key], "%4.2f" % (dict_dcounts[key] / float(found) * 100) ]
+			writer.writerow(aline)
+		handle.close()
 
 	message = "\nTotal raw reads: %d\nCorrect Length: %d\nV assigned: %d\nJ assigned: %d\nCDR3 assigned: %d\nIn-frame junction: %d\nNo indels: %d\nContinuous ORF with no stop codons: %d\n\n"  % \
-	                                                     (raw_count, total, total-noV, found, found-counts['noCDR3'], found-counts['noCDR3']-counts['nonproductive'], found-counts['noCDR3']-counts['nonproductive']-counts['indel'], counts['good'])
-	print message
+							     (raw_count, total, total-noV, found, found-counts['noCDR3'], found-counts['noCDR3']-counts['nonproductive'], found-counts['noCDR3']-counts['nonproductive']-counts['indel'], counts['good'])
+	print( message )
 	handle = open("%s/finalize_blast.log"%prj_tree.logs, "w")
 	handle.write(message)
 	handle.close()
 
 	#clean up!!
 	oldFiles = glob.glob("%s/*txt"%prj_tree.vgene) + glob.glob("%s/*fasta"%prj_tree.vgene) +  glob.glob("%s/*txt"%prj_tree.jgene) + glob.glob("%s/*fasta"%prj_tree.jgene) + glob.glob("%s/id_lookup.txt"%prj_tree.internal)
-	if len(oldFiles) > 0 and autoDelete:
+	if len(oldFiles) > 0 and not arguments['--noclean']:
 		[os.remove(f) for f in oldFiles]
 			
 
 
 if __name__ == '__main__':
 	
-	#check if I should print documentation
-	q = lambda x: x in sys.argv
-	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
-		print __doc__
-		sys.exit(0)
-
 	#log command line
 	logCmdLine(sys.argv)
 
-        #check auto delete
-        autoDelete = True
-	flag = [ x for x in sys.argv if re.search("noclean", x, flags=re.I) ]
-        if len(flag) > 0:
-                sys.argv.remove(flag[0])
-                autoDelete = False
-
+	arguments = docopt(__doc__)
+	
 	prj_tree  = ProjectFolders(os.getcwd())
 	prj_name  = fullpath2last_folder(prj_tree.home)
 
@@ -460,20 +449,18 @@ if __name__ == '__main__':
 	vlib  = handle.readline().strip()
 	jlib  = handle.readline().strip()
 
-	defaultParams = dict(jmotif = "TGGGG", nterm = "truncate")
-	if "K" in locus or "L" in locus: #it's a light chain!
-                if "H" in locus: #need both motifs
-                        defaultParams['jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
-                else:
-		        defaultParams['jmotif'] = "TT[C|T][G|A]G"
+	if arguments['--jmotif'] is None:
+		arguments['--jmotif'] = "TGGG"
+		if "K" in locus or "L" in locus: #it's a light chain!
+			if "H" in locus: #need both motifs
+				arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
+			else:
+				arguments['--jmotif'] = "TT[C|T][G|A]G"
 
-	dict_args = processParas(sys.argv, jmotif="jmotif", nterm="nterm")
-	jMotif, nterm = getParasWithDefaults(dict_args, defaultParams, "jmotif", "nterm")
-
-        if nterm not in ["truncate", "extend", "germline", "discard"]:
-                sys.exit("Parameter 'nterm' must be one of ('truncate', 'extend', 'germline')")
-        
-	dict_v    =  load_fastas(vlib)
-	dict_j    =  load_fastas(jlib)
+	if arguments['--nterm'] not in ["truncate", "extend", "germline", "discard"]:
+		sys.exit("--nterm must be one of ('truncate', 'extend', 'germline', 'discard')")
+	
+	dict_v	  =  load_fastas(vlib)
+	dict_j	  =  load_fastas(jlib)
 
 	main()
