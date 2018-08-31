@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 removeListFromFasta.py
@@ -6,21 +6,23 @@ removeListFromFasta.py
 This is a simple utility script for efficiently removing a subset of
       sequences from a large fasta file.
 
-Usage: removeListFromFasta.py -l list.txt -f seqs.fa -o output.fa
+Usage: removeListFromFasta.py -l LIST -f SEQS -o OUTPUT
 
-    Invoke with -h or --help to print this documentation.
-
-    l           Text file containing list of sequence identifiers to extract
-    f           Fasta file containing the sequences to be subsetted
-    o           Fasta file in which to save extracted sequences
+Options:
+    -l LIST     Text file containing list of sequence identifiers to extract
+    -f FASTA    Fasta file containing the sequences to be subsetted
+    -o OUTPUT   Fasta file in which to save extracted sequences
 
 Created by Chaim A Schramm on 2015-04-27.
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+Edited to use Py3 and DocOpt by CAS 2018-08-29
+
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
 
 import sys
+from docopt import docopt
 try:
 	from sonar import *
 except ImportError:
@@ -39,33 +41,23 @@ def loadAndAnnotate(seqFile, killList):
 				good += 1
 				yield s
 				if good % 100000 == 0:
-					print "Loaded %d so far..." % good
+					print( "Loaded %d so far..." % good )
 
 def main():
-
-    global listFile, inFile, outFile
-    
-    with open(listFile, "rU") as handle:
-	    remove = [ line.strip().split()[0] for line in handle if line.strip() != ""]
-
-    with open(outFile, "w") as output:
-        SeqIO.write(loadAndAnnotate(inFile, remove), output, "fasta")
+	
+	with open(arguments['-l'], "rU") as handle:
+		remove = [ line.strip().split()[0] for line in handle if line.strip() != ""]
+		
+	with open(arguments['-o'], "w") as output:
+		SeqIO.write(loadAndAnnotate(arguments['-f'], remove), output, "fasta")
 
 
 if __name__ == '__main__':
 
-	#check if I should print documentation
-	q = lambda x: x in sys.argv
-	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
-		print __doc__
-		sys.exit(0)
-
+	arguments = docopt(__doc__)
+	
 	#log command line
 	logCmdLine(sys.argv)
-
-	# get parameters from input
-	dict_args = processParas(sys.argv, l="listFile", f="inFile", o="outFile")
-        listFile, inFile, outFile = getParas(dict_args, "listFile", "inFile", "outFile")
 
 	main()
 

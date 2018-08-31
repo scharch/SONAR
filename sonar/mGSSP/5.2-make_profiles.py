@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 
@@ -12,7 +12,7 @@ This script takes input sequences and generates germline mutability profiles
       and run 2.1-calculate_id-div.pl on the translated sequences to identify and
       remove those with no amino acid substitutions. Then run this program.
 
-Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -m 0 -g germV.fa -a -u ]
+Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -m 0 -g germV.fa -a ]
 
 Options:
    -h --help                    Show this documentation
@@ -37,6 +37,8 @@ Options:
 Created by Chaim Schramm on 2016-05-27.
 Added to SONAR as part of mGSSP on 2017-02-24.
 Changed some options and defaults by CAS 2018-07-10.
+Edited to use Py3 by CAS 2018-08-29.
+
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
@@ -57,194 +59,184 @@ except ImportError:
 	sys.path.append(find_SONAR[0])
 	from sonar.annotate import *
 
-        
+	
 def main():
     
-    #load sequences
-    masterList = defaultdict( list )
-    with open(arguments["<sequences.fa>"], 'rU') as handle:
-        for sequence in SeqIO.parse(handle, "fasta"):
+	#load sequences
+	masterList = defaultdict( list )
+	with open(arguments["<sequences.fa>"], 'rU') as handle:
+		for sequence in SeqIO.parse(handle, "fasta"):
 
-            #start with a special case where IMGT allele is misnamed
-            sequence.description = re.sub("IGHV4-4\*0[78]", "IGHV4-59*11", sequence.description)
+			#start with a special case where IMGT allele is misnamed
+			sequence.description = re.sub("IGHV4-4\*0[78]", "IGHV4-59*11", sequence.description)
 
-            #collapse distal alleles
-            sequence.description = re.sub("(V\d-\d+)D", r'\1', sequence.description)
+			#collapse distal alleles
+			sequence.description = re.sub("(V\d-\d+)D", r'\1', sequence.description)
 
-            gene = re.search("(IG[HKL]V\d-[^*]+)", sequence.description) #breaks all the ORs - don't care
-            if gene:
-                if not arguments["-a"]:
-                    sequence.seq = sequence.seq.translate() #don't care about anything else in this script
-                masterList[ gene.group(1) ].append( sequence )
+			gene = re.search("(IG[HKL]V\d-[^*]+)", sequence.description) #breaks all the ORs - don't care
+			if gene:
+				if not arguments["-a"]:
+					sequence.seq = sequence.seq.translate() #don't care about anything else in this script
+				masterList[ gene.group(1) ].append( sequence )
 
-    #replace list with array
-    #have to build manually because otherwise numpy is turning SeqRecords
-    #            into lists of chars (AAs), which causes random.choice
-    #            to throw an error (non 1-D array)
-    # (weird footnote: this _doesn't_ happen if 1 or more sequences in the
-    #            don't have an even number of codons)
-    # Anyway, only fix I can come up with is to manually place each SeqRecord
-    #            in the array. We have to do it here, afterword, because until
-    #            we've finished loading the sequences, I don't know how many
-    #            there will be of each germline and numpy arrays have to be
-    #            pre-allocated.
+	#replace list with array
+	#have to build manually because otherwise numpy is turning SeqRecords
+	#	     into lists of chars (AAs), which causes random.choice
+	#	     to throw an error (non 1-D array)
+	# (weird footnote: this _doesn't_ happen if 1 or more sequences in the
+	#	     don't have an even number of codons)
+	# Anyway, only fix I can come up with is to manually place each SeqRecord
+	#	     in the array. We have to do it here, afterword, because until
+	#	     we've finished loading the sequences, I don't know how many
+	#	     there will be of each germline and numpy arrays have to be
+	#	     pre-allocated.
 
-    for v in masterList.keys():
-        a = numpy.empty( len(masterList[v]), dtype=object )
-        for i in range(len(masterList[v])):
-            a[i] = masterList[v][i]
-        masterList[v] = a
+	for v in masterList.keys():
+		a = numpy.empty( len(masterList[v]), dtype=object )
+		for i in range(len(masterList[v])):
+			a[i] = masterList[v][i]
+		masterList[v] = a
 
 
-    #load germlines
-    germList = defaultdict( list )
-    with open(arguments["--germline"], 'rU') as handle:
-        for sequence in SeqIO.parse(handle, "fasta"):
-            #start with a special case where IMGT allele is misnamed
-            sequence.id = re.sub("IGHV4-4\*0[78]", "IGHV4-59*11", sequence.id)
-            #collapse distal alleles and remove allele designation
-            gene = re.sub("(V\d-\d+)D?\*.*", r'\1', sequence.id)
-            germList[ gene ].append( sequence )
+	#load germlines
+	germList = defaultdict( list )
+	with open(arguments["--germline"], 'rU') as handle:
+		for sequence in SeqIO.parse(handle, "fasta"):
+			#start with a special case where IMGT allele is misnamed
+			sequence.id = re.sub("IGHV4-4\*0[78]", "IGHV4-59*11", sequence.id)
+			#collapse distal alleles and remove allele designation
+			gene = re.sub("(V\d-\d+)D?\*.*", r'\1', sequence.id)
+			germList[ gene ].append( sequence )
 
-            if gene not in mask:
-                mask[gene] = arguments['--mask']
+			if gene not in mask:
+				mask[gene] = arguments['--mask']
     
     
-    #start output file
-    outHandle = open(arguments["--output"], "w")
-    output = csv.writer(outHandle, delimiter="\t")
-    output.writerow( ["Vgene", "prof#", "pos", "germ", "freq"] + aa_list )
+	#start output file
+	outHandle = open(arguments["--output"], "w")
+	output = csv.writer(outHandle, delimiter="\t")
+	output.writerow( ["Vgene", "prof#", "pos", "germ", "freq"] + aa_list )
 
-    #now let's start building profiles
-    for v in sorted(masterList.keys()):
+	#now let's start building profiles
+	for v in sorted(masterList.keys()):
 
-        if len(masterList[v]) < arguments["--numSequences"]:
-            print "Skipping %s, not enough sequences (%d)..." % ( v, len(masterList[v]) )
-            continue #not enough data for a profile
-
-        if v not in germList:
-            print "Skipping %s, it's not in the germline database..." %v
-            continue
-
-
-        # Take random overlapping subsets to generate multiple profiles
-        #  need to add back a sanity check for capping the number of subsets if there's not enough raw data.
-        numProfiles = arguments['--profiles']
-        if arguments["--profiles"] == 0:
-            numProfiles = 1
-
-        success = 0
-        for i in range(numProfiles):
+		if len(masterList[v]) < arguments["--numSequences"]:
+			print( "Skipping %s, not enough sequences (%d)..." % ( v, len(masterList[v]) ) )
+			continue #not enough data for a profile
+		
+		if v not in germList:
+			print( "Skipping %s, it's not in the germline database..." %v )
+			continue
 
 
-            seqs = [] + germList[v] #force a copy rather than an alias
-            if arguments["--profiles"] == 0:
-                seqs += list(masterList[v])
-                #with open("../log.txt", "a") as handle:
-                #    handle.write( "\t".join([ arguments["<sequences.fa>"], v, str(len(masterList[v])) ]) + "\n" )
-            else:
-                #get our sequence subset, add the germlines, and write them
-                #   to a temporary file for alignment
-                seqs += list(numpy.random.choice(masterList[v], size=arguments["--numSequences"], replace=False))
+		# Take random overlapping subsets to generate multiple profiles
+		#  need to add back a sanity check for capping the number of subsets if there's not enough raw data.
+		numProfiles = arguments['--profiles']
+		if arguments["--profiles"] == 0:
+			numProfiles = 1
 
-            tempFile = "".join(numpy.random.choice(list("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), size=8))
-            with open("%s.fa"%tempFile, "w") as temp:
-                SeqIO.write(seqs,temp,"fasta")
+		success = 0
+		
+		for i in range(numProfiles):
+			seqs = [] + germList[v] #force a copy rather than an alias
+			if arguments["--profiles"] == 0:
+				seqs += list(masterList[v])
+			else:
+				#get our sequence subset, add the germlines, and write them
+				#   to a temporary file for alignment
+				seqs += list(numpy.random.choice(masterList[v], size=arguments["--numSequences"], replace=False))
 
-            clustal_cline = MuscleCommandline(input="%s.fa"%tempFile, out="%s.aln"%tempFile) # ***ADD*** explicit program path as first argument here!
-            try:
-                stdout, stderr = clustal_cline()
-            except:
-                print "Error in alignment #%d for %s (skipping)" % (i+1, v)
-                for f in glob.glob("%s.*"%tempFile): 
-                    os.remove(f)
-                continue
+			tempFile = "".join(numpy.random.choice(list("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), size=8))
+			with open("%s.fa"%tempFile, "w") as temp:
+				SeqIO.write(seqs,temp,"fasta")
 
-            alignment = AlignIO.read("%s.aln"%tempFile, "fasta")#"clustal")
-            success += 1
+			clustal_cline = MuscleCommandline(input="%s.fa"%tempFile, out="%s.aln"%tempFile) # ***ADD*** explicit program path as first argument here!
+			try:
+				stdout, stderr = clustal_cline()
+			except:
+				print( "Error in alignment #%d for %s (skipping)" % (i+1, v) )
+				for f in glob.glob("%s.*"%tempFile): 
+					os.remove(f)
+				continue
 
-            #Input order is not maintained, so we need a little
-            #   kludge to find a germline sequences. Use the 
-            #   first one to remove any insertions from the alignment
-            germRow = 0
-            for n, rec in enumerate(alignment):
-                if rec.id in [g.id for g in germList[v]]:
-                    germRow = n
-                    break
+			alignment = AlignIO.read("%s.aln"%tempFile, "fasta")#"clustal")
+			success += 1
 
-            #look for gaps one at a time so we don't get tripped up by shifting indices
-            gap = re.search( "-+", str(alignment[germRow].seq) )
-            while (gap):
-                alignment = alignment[:, 0:gap.start()] + alignment[:, gap.end():]
-                gap = re.search( "-+", str(alignment[germRow].seq) )
-                
-            #Now we get BioPython to make a PSSM for us. To convert that into
-            #    a mutability profile, we will delete the germline residue[s]
-            #    at each position (but save what they were)
-            germRes = defaultdict(Counter)
-            summary_align = AlignInfo.SummaryInfo(alignment)
-            pssm = summary_align.pos_specific_score_matrix(chars_to_ignore=['-','X'])
+			#Input order is not maintained, so we need a little
+			#   kludge to find a germline sequences. Use the 
+			#   first one to remove any insertions from the alignment
+			germRow = 0
+			for n, rec in enumerate(alignment):
+				if rec.id in [g.id for g in germList[v]]:
+					germRow = n
+					break
 
-            #get number of datapoints at each position (might be different than the number of sequences in the profile if there are gaps or missing data)
-            # do this by using sum(pos.values()) after ignoring missing data (previous line) but before dumping germline residues.
-            denominator = []
-            for p,pos in enumerate(pssm):
-                    denominator.append( sum(pos.values()) - len(germList[v]) )
-            
-            for germ in germList[v]:
-                for pos, residue in enumerate(germ):
-                    if residue == "X":
-                        continue
-                    germRes[pos][residue] += 1
-                    pssm[pos][residue] = 0
+			#look for gaps one at a time so we don't get tripped up by shifting indices
+			gap = re.search( "-+", str(alignment[germRow].seq) )
+			while (gap):
+				alignment = alignment[:, 0:gap.start()] + alignment[:, gap.end():]
+				gap = re.search( "-+", str(alignment[germRow].seq) )
+		
+			#Now we get BioPython to make a PSSM for us. To convert that into
+			#    a mutability profile, we will delete the germline residue[s]
+			#    at each position (but save what they were)
+			germRes = defaultdict(Counter)
+			summary_align = AlignInfo.SummaryInfo(alignment)
+			pssm = summary_align.pos_specific_score_matrix(chars_to_ignore=['-','X'])
 
-            #normalize and save
-            for p, pos in enumerate(pssm):
-                germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-                output.writerow( [ v, i+1, p+1, germAA, "None" if (p < mask[v] or denominator[p] < arguments["--numSequences"]/2) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
-            
-            #clean up
-            for f in glob.glob("%s.*"%tempFile): 
-                os.remove(f)
+			#get number of datapoints at each position (might be different than the number of sequences in the profile if there are gaps or missing data)
+			# do this by using sum(pos.values()) after ignoring missing data (previous line) but before dumping germline residues.
+			denominator = []
+			for p,pos in enumerate(pssm):
+				denominator.append( sum(pos.values()) - len(germList[v]) )
+	    
+			for germ in germList[v]:
+				for pos, residue in enumerate(germ):
+					if residue == "X":
+						continue
+					germRes[pos][residue] += 1
+					pssm[pos][residue] = 0
 
-        print "Successfully built %d/%d profiles for %s using %d sequences!" % ( success, numProfiles, v, len(seqs)-len(germList[v]) )
+			#normalize and save
+			for p, pos in enumerate(pssm):
+				germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
+				output.writerow( [ v, i+1, p+1, germAA, "None" if (p < mask[v] or denominator[p] < arguments["--numSequences"]/2) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+	    
+			#clean up
+			for f in glob.glob("%s.*"%tempFile): 
+				os.remove(f)
 
+		print( "Successfully built %d/%d profiles for %s using %d sequences!" % ( success, numProfiles, v, len(seqs)-len(germList[v]) ) )
+	
 
-    outHandle.close()
+	outHandle.close()
 
 
 
 if __name__ == '__main__':
 
-    aa_list = ["A", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "V", "W", "Y"]
+	aa_list = ["A", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "V", "W", "Y"]
 
-    #save command line
-    cmdLine = sys.argv
+	arguments = docopt(__doc__)
+	arguments['--numSequences'] = int(arguments['--numSequences'])
+	arguments['--profiles'] = int(arguments['--profiles'])
 
-    arguments = docopt(__doc__)
-    arguments['--numSequences'] = int(arguments['--numSequences'])
-    arguments['--profiles'] = int(arguments['--profiles'])
+	if arguments['--germline'] == "sonar/germDB/IgHKLV_cysTruncated.AA.fa":
+		arguments['--germline'] = re.sub("sonar", SCRIPT_FOLDER, arguments['--germline'])
 
-    if arguments['--germline'] == "sonar/germDB/IgHKLV_cysTruncated.AA.fa":
-	find_SONAR = sys.argv[0].split("sonar/mGSSP")
-        arguments['--germline'] = find_SONAR[0] + "/" + arguments['--germline']
+	mask = dict()
+	try:
+		arguments['--mask'] = int( arguments['--mask'] )
+	except ValueError:
+		with open( arguments['--mask'], "rU" ) as handle:
+			reader = csv.reader( handle, delimiter="\t" )
+			for row in reader:
+				mask[ row[0] ] = int( row[1] )
+		arguments['--mask'] = 0 #for all other genes
+	
 
-#    if not os.access("muscle", os.X_OK):
-#            sys.exit("Can't find muscle - please create an alias and I will fix this stupid bug later")
-
-    mask = dict()
-    try:
-        arguments['--mask'] = int( arguments['--mask'] )
-    except ValueError:
-        with open( arguments['--mask'], "rU" ) as handle:
-            reader = csv.reader( handle, delimiter="\t" )
-            for row in reader:
-                mask[ row[0] ] = int( row[1] )
-        arguments['--mask'] = 0 #for all other genes
-        
-
-    #log command line
-    logCmdLine(sys.argv)
+	#log command line
+	logCmdLine(sys.argv)
     
-    main()
+	main()
 

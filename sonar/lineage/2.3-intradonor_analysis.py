@@ -392,7 +392,15 @@ if __name__ == '__main__':
 		print( "Specified germline gene (%s) is not present in the %s library!\n" % (arguments['--v'], arguments['--lib']) )
 		sys.exit(1)
 
+	#create necessary dirs to avoid errors
+	os.makedirs(prj_tree.aa, exist_ok=True)
+	os.makedirs(prj_tree.nt, exist_ok=True)
+	os.makedirs(prj_tree.lineage, exist_ok=True)
+	os.makedirs(prj_tree.last, exist_ok=True)
+	os.makedirs(prj_tree.logs, exist_ok=True)
+	os.makedirs(prj_tree.tables, exist_ok=True)
 
+	
 	#log command line
 	logCmdLine(sys.argv)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 getFastaFromList.py
@@ -6,25 +6,25 @@ getFastaFromList.py
 This is a simple utility script for efficiently extracting a subset of
       sequences from a large fasta file.
 
-Usage: getFastaFromList.py -f seqs.fa [ -o output.fa -l list.txt ]
+Usage: getFastaFromList.py -f <seqs.fa> [ -o <output.fa> -l <list.txt> ]
 
-    Invoke with -h or --help to print this documentation.
-
-    f           Fasta file containing the sequences to be subsetted.
-    o           Fasta file in which to save extracted sequences. Prints to STDOUT
-                   if omitted.
-    l           Text file containing list of sequence identifiers to extract.
-                   Reads from STDIN if omitted.
+Options:
+    -f <seqs.fa>     Fasta file containing the sequences to be subsetted.
+    -o <output.fa>   Fasta file in which to save extracted sequences. [default: STDOUT]
+    -l <list.txt>    Text file containing list of sequence identifiers to extract. [default: STDIN]
 
 Created by Chaim A Schramm on 2015-04-27.
 Added streaming from STDIN on 2016-06-10.
 Added streaming to STDOUT on 2017-03-19.
-Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+Edited to use Py3 and DocOpt by CAS 2018-08-28.
+
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
 
 import sys, fileinput
+from docopt import docopt
 try:
 	from sonar import *
 except ImportError:
@@ -48,35 +48,29 @@ def loadAndAnnotate(seqFile, saveDict):
 
 def main():
 
-    global listFile, inFile, outFile
     toSave = dict()
     
-    for line in fileinput.input(listFile):
+    for line in fileinput.input(arguments['-l']):
 	    # use id as the key and the rest of the line as value to be added to fasta def line
 	    fields = line.strip().split()
 	    if len(fields) == 0:
 		    continue
 	    toSave[ fields[0] ] = " ".join( fields[1:] )
 
-    if outFile is not None:
-	    sys.stdout = open(outFile, "w")
-    SeqIO.write(loadAndAnnotate(inFile, toSave), sys.stdout, "fasta")
+    if arguments['-o'] != "STDOUT":
+	    sys.stdout = open(arguments['-o'], "w")
+    SeqIO.write(loadAndAnnotate(arguments['-f'], toSave), sys.stdout, "fasta")
 
 
 if __name__ == '__main__':
 
-	#check if I should print documentation
-	q = lambda x: x in sys.argv
-	if any([q(x) for x in ["h", "-h", "--h", "help", "-help", "--help"]]):
-		print __doc__
-		sys.exit(0)
+	arguments = docopt(__doc__)
 
+	if arguments['-l'] == "STDIN":
+		arguments['-l'] = "-"
+	
 	#log command line
 	logCmdLine(sys.argv)
-
-	# get parameters from input
-	dict_args = processParas(sys.argv, l="listFile", f="inFile", o="outFile")
-        listFile, inFile, outFile = getParasWithDefaults(dict_args, dict(listFile="-"), "listFile", "inFile", "outFile")
 
 	main()
 
