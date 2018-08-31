@@ -150,9 +150,9 @@ def main():
 		pbs.close()
 		os.system( "%s -t 1-%d %s/vblast.sh"%(qsub,f_ind,folder_tree.vgene) )
 		
-		check = "%s/utilities/checkClusterBlast.py -gene v -big %d -check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
+		check = "%s/utilities/checkClusterBlast.py --gene v --big %d --check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
 		if arguments['--callJ']:
-			check += " -after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, arguments['--jArgs'])
+			check += " --after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, arguments['--jArgs'])
 			monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
 			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
 			monitor.close()

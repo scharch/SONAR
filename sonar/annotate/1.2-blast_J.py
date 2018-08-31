@@ -138,7 +138,7 @@ def main():
 			pbs.close()
 			os.system("%s -t 1-%d %s/cblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-			check = "%s/utilities/checkClusterBlast.py -gene c -big %d -check %s/cmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
+			check = "%s/utilities/checkClusterBlast.py --gene c --big %d --check %s/cmonitor.sh --rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/cmonitor.sh"%prj_tree.jgene, 'w')
 			monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
@@ -153,7 +153,7 @@ def main():
 			pbs.close()
 			os.system("%s -t 1-%d %s/dblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-			check = "%s/utilities/checkClusterBlast.py -gene d -big %d -check %s/dmonitor.sh -rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
+			check = "%s/utilities/checkClusterBlast.py --gene d --big %d --check %s/dmonitor.sh --rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
 			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "2:00:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
@@ -168,9 +168,9 @@ def main():
 		pbs.close()
 		os.system("%s -t 1-%d %s/jblast.sh"%(qsub, f_ind,prj_tree.jgene))
 
-		check = "%s/utilities/checkClusterBlast.py -gene j -big %d -check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
+		check = "%s/utilities/checkClusterBlast.py --gene j --big %d --check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
 		if arguments['--callFinal']:
-			check += " -after %s/annotate/1.3-finalize_assignments.py %s" % (SCRIPT_FOLDER, arguments['--fArgs'])
+			check += " --after %s/annotate/1.3-finalize_assignments.py %s" % (SCRIPT_FOLDER, arguments['--fArgs'])
 		monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
 		monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
 		monitor.close()
