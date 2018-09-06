@@ -32,6 +32,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 
 import sys
 from docopt import docopt
+import itertools
 from collections import OrderedDict
 from Bio import AlignIO
 from Bio.Align import AlignInfo
@@ -47,6 +48,18 @@ except ImportError:
 	from sonar.annotate import *
 
 
+# a utility function to get us a slice of an iterator, as an iterator
+# when working with iterators maximum lazyness is preferred
+# from https://stackoverflow.com/a/44502827
+def iterator_slice(iterator, length):
+        iterator = iter(iterator)
+        while True:
+                res = tuple(itertools.islice(iterator, length))
+                if not res:
+                        break
+                yield res
+
+
 def getHandle( item ):
     
 	if item in handleList:
@@ -59,57 +72,63 @@ def getHandle( item ):
 		return handleList[item]
 
 
-def closestToConsensus(lineage):
-	#save time on singletons (if they weren't excluded by minSeq)
-	if len(lineage['desc']) == 1:
-		with open("%s/%s.fa" % (prj_tree.lineage, lineage['name']), "rU") as handle:
-			return( SeqIO.read(handle,'fasta') )
-	else:
+def closestToConsensus(linIt):
 
-		FNULL = open(os.devnull, 'w') #don't clutter up output with tons of vsearch messages
-		print( "Starting vsearch on lineage %s..." % lineage['name'] )
+	results = []
+	print( "Starting vsearch on a new chunk..." )
 
-		#cluster and rapid align with vsearch
-		subprocess.call([usearch, "-cluster_size", "%s/%s.fa" % (prj_tree.lineage, lineage['name']), 
-				 "-id", "0.97", "-sizein", "-sizeout",
-				 "-msaout", "%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "-clusterout_sort"],
-				stdout=FNULL, stderr=subprocess.STDOUT)
+	for lineage in linIt:
+		#save time on singletons (if they weren't excluded by minSeq)
+		if len(lineage['desc']) == 1:
+			with open("%s/%s.fa" % (prj_tree.lineage, lineage['name']), "rU") as handle:
+				results.append( SeqIO.read(handle,'fasta') )
+		else:
 
-		#extract biggest cluster
-		with open("%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "rU") as allClusters:
-			with open("%s/%s_msaBiggest.fa"%(prj_tree.lineage, lineage['name']), "w") as biggestOnly:
-				blank = next( allClusters )
-				for line in allClusters:
-					if "consensus" in line:
-						break
-					biggestOnly.write(line)
+			FNULL = open(os.devnull, 'w') #don't clutter up output with tons of vsearch messages
+
+			#cluster and rapid align with vsearch
+			subprocess.call([usearch, "-cluster_size", "%s/%s.fa" % (prj_tree.lineage, lineage['name']), 
+					 "-id", "0.97", "-sizein", "-sizeout",
+					 "-msaout", "%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "-clusterout_sort"],
+					stdout=FNULL, stderr=subprocess.STDOUT)
+
+			#extract biggest cluster
+			with open("%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "rU") as allClusters:
+				with open("%s/%s_msaBiggest.fa"%(prj_tree.lineage, lineage['name']), "w") as biggestOnly:
+					blank = next( allClusters )
+					for line in allClusters:
+						if "consensus" in line:
+							break
+						biggestOnly.write(line)
 	    
-		#open the msa
-		with open("%s/%s_msaBiggest.fa" % (prj_tree.lineage, lineage['name']), "rU") as handle:
-			aln = AlignIO.read(handle, "fasta")
+			#open the msa
+			with open("%s/%s_msaBiggest.fa" % (prj_tree.lineage, lineage['name']), "rU") as handle:
+				aln = AlignIO.read(handle, "fasta")
 		
-		#add derep size to alignment as weighting
-		for rec in aln:
-			rec.annotations['weight'] = int( rec.id.split(";")[1].split("=")[1] )
+			#add derep size to alignment as weighting
+			for rec in aln:
+				rec.annotations['weight'] = int( rec.id.split(";")[1].split("=")[1] )
 
-		summary_align = AlignInfo.SummaryInfo(aln)
-		pssm = summary_align.pos_specific_score_matrix()
+			summary_align = AlignInfo.SummaryInfo(aln)
+			pssm = summary_align.pos_specific_score_matrix()
 
-		#score each sequence and save the best one
-		scores = dict()
-		for record in aln:
-			myScore = 0
-			for i,l in enumerate(record):
-				myScore += pssm[i][l]
-			scores[record.id] = myScore
+			#score each sequence and save the best one
+			scores = dict()
+			for record in aln:
+				myScore = 0
+				for i,l in enumerate(record):
+					myScore += pssm[i][l]
+				scores[record.id] = myScore
 				
-		d=sorted(aln, key=lambda rec: scores[rec.id], reverse=True) #reverse -> get max
-		d[0].seq = d[0].seq.ungap("-") #remove gaps
-		d[0].id = d[0].id.split(";")[0] #remove usearch size annotation
-		d[0].id = re.sub("^\*","",d[0].id) #get rid of possible annotation from vsearch
-		d[0].description = lineage['desc'][d[0].id] #restore original info
+			d=sorted(aln, key=lambda rec: scores[rec.id], reverse=True) #reverse -> get max
+			d[0].seq = d[0].seq.ungap("-") #remove gaps
+			d[0].id = d[0].id.split(";")[0] #remove usearch size annotation
+			d[0].id = re.sub("^\*","",d[0].id) #get rid of possible annotation from vsearch
+			d[0].description = lineage['desc'][d[0].id] #restore original info
 
-		return d[0]
+			results.append( d[0] )
+
+	return results
 
 
 def main():
@@ -143,18 +162,23 @@ def main():
 	for h in handleList.values(): h.close()
 	handleList.clear()
 
-
+	
 	#go through each lineage and do the alignment
-	#reps = list()
+	reps = list()
+	
+	if arguments['-t'] > 1:
+		pool = Pool(arguments['-t'])
+		blob = pool.map( closestToConsensus, iterator_slice(lineages.values(), 1000) )
+		pool.close()
+		pool.join()
 
-	pool = Pool(arguments['-t'])
-	reps = pool.map(closestToConsensus, lineages.values())
-	pool.close()
-	pool.join()
+		for result in blob:
+			reps += result
 
+	else:
+		#don't thread
+		reps = closestToConsensus( lineages.values() )
 
-	#for lin in sorted(lineages, key=lambda num: lineages[num]['size'], reverse=True):
-	#		reps.append( d[0] )
 	    
 	#write output
 	with open( arguments['-o'], "w" ) as handle:
