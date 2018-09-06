@@ -95,9 +95,16 @@ def buildGSSP( vgene ):
 		with open("%s.fa"%tempFile, "w") as temp:
 			SeqIO.write(seqs,temp,"fasta")
 
-		clustal_cline = MuscleCommandline(cmd="%s/third-party/muscle"%SCRIPT_FOLDER, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+		muscle_cline = MuscleCommandline(cmd="%s/third-party/muscle"%SCRIPT_FOLDER, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+
+		#try to speed up the process a little bit for large datasets
+		#still going to max out at ~50k seqs per profile (probably)
+		muscle_cline.maxiters	= 2
+		muscle_cline.diags	= True
+		muscle_cline.gapopen	= -100.0 #code requires a float
+
 		try:
-			stdout, stderr = clustal_cline()
+			stdout, stderr = muscle_cline()
 		except:
 			print( "Error in alignment #%d for %s (skipping)" % (i+1, vgene) )
 			for f in glob.glob("%s.*"%tempFile): 
@@ -145,7 +152,7 @@ def buildGSSP( vgene ):
 		#normalize and save
 		for p, pos in enumerate(pssm):
 			germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-			results.append( [ vgene, i+1, p+1, germAA, "None" if (p < mask[vgene] or denominator[p] < arguments["--numSequences"]/2) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+			results.append( [ vgene, i+1, p+1, germAA, "None" if (p < mask[vgene] or denominator[p] < arguments["--numSequences"]) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
 	    
 		#clean up
 		for f in glob.glob("%s.*"%tempFile): 
