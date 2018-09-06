@@ -186,8 +186,10 @@ if __name__ == '__main__':
 	
 	#since we're having to open/close/reopen filehandles to manage system limits
 	#  clear out any old files so we're not double-counting data from multiple runs
+	print("Cleaning up old files...", end="", flush=True)
 	for f in glob.glob("%s/*fa"%prj_tree.lineage):
 		os.remove(f)
+	print("Done")
 	#make dir for msas but ignore error if it already exists
 	os.makedirs("%s/msa"%prj_tree.lineage, exist_ok=True)
 	
