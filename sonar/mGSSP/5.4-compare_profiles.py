@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 '''
-5.3-compare_profiles.py
+5.4-compare_profiles.py
 
 This script reads in GSSPs constructed by 5.2-make_profiles.py and calculates
       the matrix of Jensen-Shannon divergences between all GSSPs, the rarity
@@ -15,7 +15,7 @@ NOTE: GSSP files are assumed to have names of the form "sourceData-info_profile.
       will produce output that compares "Condition" to "Condition", obfuscating which
       one came from which original source.
 
-Usage: 5.3-compare_profiles.py <outHead> GSSP...
+Usage: 5.4-compare_profiles.py <outHead> GSSP...
 
 Options:
     <outHead>   Stem of file name for output. Three files will be generated: 
@@ -26,8 +26,9 @@ Options:
 
 Added to SONAR as part of mGSSP on 2017-02-24.
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
+Renamed as 5.4 by CAS 2018-09-05.
 
-Copyright (c) 2011-20178Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 '''

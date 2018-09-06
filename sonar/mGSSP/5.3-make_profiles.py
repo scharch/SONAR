@@ -2,17 +2,16 @@
 
 """
 
-5.2-make_profiles.py
+5.3-make_profiles.py
 
 This script takes input sequences and generates germline mutability profiles
       for downstream analysis. The recommended workflow is to run the annotation
       module (1.1 through 1.4) followed by 2.4-cluster_into_groups.py and (optionally)
-      5.1-repick_lineage_representatives.py. Then check sequences for frameshifts
-      using utilities/checkForFrameshift.py, translate the sequences (utilties/quickTranslate.py)
-      and run 2.1-calculate_id-div.pl on the translated sequences to identify and
-      remove those with no amino acid substitutions. Then run this program.
+      5.1-repick_lineage_representatives.py. Then filter to remove reads with frameshift
+      errors and those that have no amino acid substitutions using 5.2-filter_sequences.py.
+      Then run this program.
 
-Usage: 5.2-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -m 0 -g germV.fa -a ]
+Usage: 5.3-make_profiles.py <sequences.fa> [ -o profiles.txt -n 300 -p 0 -m 0 -g germV.fa -t 1 -a ]
 
 Options:
    -h --help                    Show this documentation
@@ -32,12 +31,14 @@ Options:
                                    that do not appear in the file will not be masked. [default: 0]
    -g --germline germV.fa       Location of germline V sequences to use for building profiles. 
                                    Expected as trimmed/padded AA sequences. [default: sonar/germDB/IgHKLV_cysTruncated.AA.fa]
+   -t 1                         Number of threads to use. [default: 1]
    -a                           Input sequences are amino acid (don't translate) [default: False]
 
 Created by Chaim Schramm on 2016-05-27.
 Added to SONAR as part of mGSSP on 2017-02-24.
 Changed some options and defaults by CAS 2018-07-10.
 Edited to use Py3 by CAS 2018-08-29.
+Renamed to 5.3 and multithreaded by CAS 2018-09-05.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -45,6 +46,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 """
 
 import sys, numpy, re, csv, glob, os
+from multiprocessing import Pool
 from collections import defaultdict, Counter
 from docopt import docopt
 from Bio import SeqIO
@@ -59,9 +61,104 @@ except ImportError:
 	sys.path.append(find_SONAR[0])
 	from sonar.annotate import *
 
+
+def buildGSSP( vgene ):
+
+	results = []
+
+	if len(masterList[vgene]) < arguments["--numSequences"]:
+		print( "Skipping %s, not enough sequences (%d)..." % ( vgene, len(masterList[vgene]) ) )
+		return []
+		
+	if vgene not in germList:
+		print( "Skipping %s, it's not in the germline database..." %vgene )
+		return []
+
+	# Take random overlapping subsets to generate multiple profiles
+	#  need to add back a sanity check for capping the number of subsets if there's not enough raw data.
+	numProfiles = arguments['--profiles']
+	if arguments["--profiles"] == 0:
+		numProfiles = 1
+
+	success = 0
+		
+	for i in range(numProfiles):
+		seqs = [] + germList[vgene] #force a copy rather than an alias
+		if arguments["--profiles"] == 0:
+			seqs += list(masterList[vgene])
+		else:
+			#get our sequence subset, add the germlines, and write them
+			#   to a temporary file for alignment
+			seqs += list(numpy.random.choice(masterList[vgene], size=arguments["--numSequences"], replace=False))
+
+		tempFile = "%s/work/mGSSP/%s_profileBuilder" % (prj_tree.home, vgene)
+		with open("%s.fa"%tempFile, "w") as temp:
+			SeqIO.write(seqs,temp,"fasta")
+
+		clustal_cline = MuscleCommandline(cmd="%s/third-party/muscle"%SCRIPT_FOLDER, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+		try:
+			stdout, stderr = clustal_cline()
+		except:
+			print( "Error in alignment #%d for %s (skipping)" % (i+1, vgene) )
+			for f in glob.glob("%s.*"%tempFile): 
+				os.remove(f)
+			continue
+
+		alignment = AlignIO.read("%s.aln"%tempFile, "fasta")#"clustal")
+		success += 1
+
+		#Input order is not maintained, so we need a little
+		#   kludge to find a germline sequences. Use the 
+		#   first one to remove any insertions from the alignment
+		germRow = 0
+		for n, rec in enumerate(alignment):
+			if rec.id in [g.id for g in germList[vgene]]:
+				germRow = n
+				break
+
+		#look for gaps one at a time so we don't get tripped up by shifting indices
+		gap = re.search( "-+", str(alignment[germRow].seq) )
+		while (gap):
+			alignment = alignment[:, 0:gap.start()] + alignment[:, gap.end():]
+			gap = re.search( "-+", str(alignment[germRow].seq) )
+		
+		#Now we get BioPython to make a PSSM for us. To convert that into
+		#    a mutability profile, we will delete the germline residue[s]
+		#    at each position (but save what they were)
+		germRes = defaultdict(Counter)
+		summary_align = AlignInfo.SummaryInfo(alignment)
+		pssm = summary_align.pos_specific_score_matrix(chars_to_ignore=['-','X'])
+
+		#get number of datapoints at each position (might be different than the number of sequences in the profile if there are gaps or missing data
+		# do this by using sum(pos.values()) after ignoring missing data (previous line) but before dumping germline residues.
+		denominator = []
+		for p,pos in enumerate(pssm):
+			denominator.append( sum(pos.values()) - len(germList[vgene]) )
+    
+		for germ in germList[vgene]:
+			for pos, residue in enumerate(germ):
+				if residue == "X":
+					continue
+				germRes[pos][residue] += 1
+				pssm[pos][residue] = 0
+
+		#normalize and save
+		for p, pos in enumerate(pssm):
+			germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
+			results.append( [ vgene, i+1, p+1, germAA, "None" if (p < mask[vgene] or denominator[p] < arguments["--numSequences"]/2) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
+	    
+		#clean up
+		for f in glob.glob("%s.*"%tempFile): 
+			os.remove(f)
+
+	print( "Successfully built %d/%d profiles for %s using %d sequences!" % ( success, numProfiles, vgene, len(seqs)-len(germList[vgene]) ) )
+	return results
+
 	
 def main():
-    
+
+	global masterList, germList
+
 	#load sequences
 	masterList = defaultdict( list )
 	with open(arguments["<sequences.fa>"], 'rU') as handle:
@@ -86,7 +183,7 @@ def main():
 	# (weird footnote: this _doesn't_ happen if 1 or more sequences in the
 	#	     don't have an even number of codons)
 	# Anyway, only fix I can come up with is to manually place each SeqRecord
-	#	     in the array. We have to do it here, afterword, because until
+	#	     in the array. We have to do it here, afterward, because until
 	#	     we've finished loading the sequences, I don't know how many
 	#	     there will be of each germline and numpy arrays have to be
 	#	     pre-allocated.
@@ -111,106 +208,21 @@ def main():
 			if gene not in mask:
 				mask[gene] = arguments['--mask']
     
-    
-	#start output file
-	outHandle = open(arguments["--output"], "w")
-	output = csv.writer(outHandle, delimiter="\t")
-	output.writerow( ["Vgene", "prof#", "pos", "germ", "freq"] + aa_list )
 
 	#now let's start building profiles
-	for v in sorted(masterList.keys()):
-
-		if len(masterList[v]) < arguments["--numSequences"]:
-			print( "Skipping %s, not enough sequences (%d)..." % ( v, len(masterList[v]) ) )
-			continue #not enough data for a profile
-		
-		if v not in germList:
-			print( "Skipping %s, it's not in the germline database..." %v )
-			continue
-
-
-		# Take random overlapping subsets to generate multiple profiles
-		#  need to add back a sanity check for capping the number of subsets if there's not enough raw data.
-		numProfiles = arguments['--profiles']
-		if arguments["--profiles"] == 0:
-			numProfiles = 1
-
-		success = 0
-		
-		for i in range(numProfiles):
-			seqs = [] + germList[v] #force a copy rather than an alias
-			if arguments["--profiles"] == 0:
-				seqs += list(masterList[v])
-			else:
-				#get our sequence subset, add the germlines, and write them
-				#   to a temporary file for alignment
-				seqs += list(numpy.random.choice(masterList[v], size=arguments["--numSequences"], replace=False))
-
-			tempFile = "".join(numpy.random.choice(list("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), size=8))
-			with open("%s.fa"%tempFile, "w") as temp:
-				SeqIO.write(seqs,temp,"fasta")
-
-			clustal_cline = MuscleCommandline(input="%s.fa"%tempFile, out="%s.aln"%tempFile) # ***ADD*** explicit program path as first argument here!
-			try:
-				stdout, stderr = clustal_cline()
-			except:
-				print( "Error in alignment #%d for %s (skipping)" % (i+1, v) )
-				for f in glob.glob("%s.*"%tempFile): 
-					os.remove(f)
-				continue
-
-			alignment = AlignIO.read("%s.aln"%tempFile, "fasta")#"clustal")
-			success += 1
-
-			#Input order is not maintained, so we need a little
-			#   kludge to find a germline sequences. Use the 
-			#   first one to remove any insertions from the alignment
-			germRow = 0
-			for n, rec in enumerate(alignment):
-				if rec.id in [g.id for g in germList[v]]:
-					germRow = n
-					break
-
-			#look for gaps one at a time so we don't get tripped up by shifting indices
-			gap = re.search( "-+", str(alignment[germRow].seq) )
-			while (gap):
-				alignment = alignment[:, 0:gap.start()] + alignment[:, gap.end():]
-				gap = re.search( "-+", str(alignment[germRow].seq) )
-		
-			#Now we get BioPython to make a PSSM for us. To convert that into
-			#    a mutability profile, we will delete the germline residue[s]
-			#    at each position (but save what they were)
-			germRes = defaultdict(Counter)
-			summary_align = AlignInfo.SummaryInfo(alignment)
-			pssm = summary_align.pos_specific_score_matrix(chars_to_ignore=['-','X'])
-
-			#get number of datapoints at each position (might be different than the number of sequences in the profile if there are gaps or missing data)
-			# do this by using sum(pos.values()) after ignoring missing data (previous line) but before dumping germline residues.
-			denominator = []
-			for p,pos in enumerate(pssm):
-				denominator.append( sum(pos.values()) - len(germList[v]) )
-	    
-			for germ in germList[v]:
-				for pos, residue in enumerate(germ):
-					if residue == "X":
-						continue
-					germRes[pos][residue] += 1
-					pssm[pos][residue] = 0
-
-			#normalize and save
-			for p, pos in enumerate(pssm):
-				germAA = ",".join([ x[0] for x in germRes[p].most_common() ])
-				output.writerow( [ v, i+1, p+1, germAA, "None" if (p < mask[v] or denominator[p] < arguments["--numSequences"]/2) else "%.5f"%(sum(pos.values())/denominator[p]) ] + [ "%.5f"%(pos.get(r,0)/sum(pos.values())) if sum(pos.values()) > 0 else "0.00" for r in aa_list ] )
-	    
-			#clean up
-			for f in glob.glob("%s.*"%tempFile): 
-				os.remove(f)
-
-		print( "Successfully built %d/%d profiles for %s using %d sequences!" % ( success, numProfiles, v, len(seqs)-len(germList[v]) ) )
+	gsspPool = Pool( arguments['-t'] )
+	profiles = gsspPool.map( buildGSSP, sorted(masterList.keys()) )
+	gsspPool.close()
+	gsspPool.join()
 	
 
-	outHandle.close()
-
+	#save output
+	with open(arguments["--output"], "w") as outHandle:
+		output = csv.writer(outHandle, delimiter="\t")
+		output.writerow( ["Vgene", "prof#", "pos", "germ", "freq"] + aa_list )
+		for blob in profiles:
+			for row in blob:
+				output.writerow( row )
 
 
 if __name__ == '__main__':
@@ -220,6 +232,7 @@ if __name__ == '__main__':
 	arguments = docopt(__doc__)
 	arguments['--numSequences'] = int(arguments['--numSequences'])
 	arguments['--profiles'] = int(arguments['--profiles'])
+	arguments['-t'] = int(arguments['-t'])
 
 	if arguments['--germline'] == "sonar/germDB/IgHKLV_cysTruncated.AA.fa":
 		arguments['--germline'] = re.sub("sonar", SCRIPT_FOLDER, arguments['--germline'])
@@ -238,5 +251,8 @@ if __name__ == '__main__':
 	#log command line
 	logCmdLine(sys.argv)
     
+	prj_tree = ProjectFolders(os.getcwd())
+	os.makedirs("%s/work/mGSSP"%prj_tree.home, exist_ok=True)
+
 	main()
 
