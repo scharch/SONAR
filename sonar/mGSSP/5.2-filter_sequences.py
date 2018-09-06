@@ -133,7 +133,7 @@ def runClustal( fileName ):
 
 			mutCount = 0
 			for a,b in zip( germSeq, str(mySeq.seq) ):
-				if b != 'X' and b != a:
+				if b != 'X' and b != "-" and b != a:
 					mutCount += 1
 
 			if mutCount > 0:

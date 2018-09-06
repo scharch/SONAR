@@ -29,7 +29,7 @@ class GSSP:
 		#read in GSSPs from a text file
 		with open(inFile, "rU") as handle:
 			reader = csv.reader(handle, delimiter = "\t")
-			header = reader.next()
+			header = next(reader)
 			thisV  = None
 			sample = []
 			for row in reader:
@@ -38,7 +38,7 @@ class GSSP:
 						self.vgenes[thisV].append( sample )
 					sample = []
 					thisV = row[0]
-				sample.append( dict( germline=row[3].split(","), freq=eval(row[4]), profile=map(float, row[5:]) ) )
+				sample.append( dict( germline=row[3].split(","), freq=eval(row[4]), profile=list(map(float, row[5:])) ) )
 			if thisV is not None: #relevant for empty profile (no genes with enough seqs)
 				self.vgenes[thisV].append( sample )
 
@@ -162,7 +162,7 @@ def shannon( profile ):
 
 def positionJSD( profile1, profile2, renorm=True ):
 
-	if isinstance(profile2, basestring):
+	if isinstance(profile2, str):
 		profile2 = letter2profile(profile2)
 
 	if renorm:
