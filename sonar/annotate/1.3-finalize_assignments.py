@@ -201,14 +201,14 @@ def main():
 			raw_count += 1
 			while not entry.id == raw_stats[0]:
 				#we found a read that did not meet the length cut-off
-				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "wrong_length", "NA", "NA", "NA", "NA"])
+				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "wrong_length", "NA", "NA", "NA", "NA"])
 				raw_stats = next(raw)
 				raw_count += 1
 
 
 			if not entry.id in dict_vgerm_aln:
 				noV+=1
-				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "noV", "NA", "NA", "NA", "NA"])
+				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "noV", "NA", "NA", "NA", "NA"])
 			elif not entry.id in dict_jgerm_aln:
 				noJ+=1
 				myV = dict_vgerm_aln[entry.id]
@@ -224,7 +224,7 @@ def main():
 				if (len(entry.seq) % 3) > 0:
 					entry.seq = entry.seq [ :  -1 * (len(entry.seq) % 3) ]
 				allV_aa.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq.translate()))
-				seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, "NA", "NA", "NA", "NA", "NA", "noJ", "NA", "NA", "NA", "NA"])
+				seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, "NA", "NA", "NA", "NA", "NA", "NA", "noJ", "NA", "NA", "NA", "NA"])
 			else:
 
 				found += 1
@@ -373,7 +373,7 @@ def main():
 
 					all_cdr3_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, cdr3_seq))
 
-					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "F", "F", status, "%3.1f%%"%(100-myV.identity), "%d"%(len(cdr3_seq)-6), "%d"%(len(cdr3_seq)/3-2), cdr3_seq.translate()])
+					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "T", "F", "F", status, "%3.1f%%"%(100-myV.identity), "%d"%(len(cdr3_seq)-6), "%d"%(len(cdr3_seq)/3-2), cdr3_seq.translate()])
 
 				elif cdr3:
 					#CDR3 but not "good"
