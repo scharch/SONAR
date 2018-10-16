@@ -45,7 +45,7 @@ try:
 except ImportError:
 	find_SONAR = sys.argv[0].split("sonar/mGSSP")
 	sys.path.append(find_SONAR[0])
-	from sonar.annotate import *
+	from sonar.mGSSP import *
 
 
 # a utility function to get us a slice of an iterator, as an iterator

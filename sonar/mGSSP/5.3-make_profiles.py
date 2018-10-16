@@ -101,7 +101,6 @@ def buildGSSP( vgene ):
 		#still going to max out at ~50k seqs per profile (probably)
 		muscle_cline.maxiters	= 2
 		muscle_cline.diags	= True
-		muscle_cline.gapopen	= -100.0 #code requires a float
 
 		try:
 			stdout, stderr = muscle_cline()
