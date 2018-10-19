@@ -310,7 +310,11 @@ def load_fastas(f):
 def generate_read_fasta(f):
 	"""read fasta file and yield one reads per time """
 	
-	reader = SeqIO.parse(open(f, "rU"), "fasta")
+	filetype = "fasta"
+	if re.search("\.(fq|fastq)$", fasta_file) is not None:
+		filetype = "fastq"
+
+	reader = SeqIO.parse(open(f, "rU"), filetype)
 	for entry in reader:
 		yield entry
 

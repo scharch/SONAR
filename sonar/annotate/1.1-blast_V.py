@@ -13,7 +13,7 @@ This script looks for raw NGS data files in the current folder and parses them
       is assigned as the project name, which will be used to identify all
       output files created.
 
-Usage: 1.1-blast-V.py [ options ] [ --locus H | --lib path/to/library.fa ] [ --fasta file1.fa ]... [ --cluster | [--npf 10000 --threads 1] ] 
+Usage: 1.1-blast-V.py [ options ] [ --locus H | --lib path/to/library.fa ] [ --fasta file1.fa ]... [ --derep ] [ --cluster | [--npf 10000 --threads 1] ] 
 
 Options:
     --locus H		 H: heavy chain / K: kappa chain / L: lambda chain / 
@@ -24,6 +24,11 @@ Options:
 			    multiple times. By default, uses all FASTA/FASTQ files (those
 			    with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
 			    .fastq) in the root project directory.
+    --derep              Flag to dereplicate input sequences using vsearch prior to 
+                            processing for blast. The number of reads supporting each
+                            sequence will be saved and output as "duplicate_count."
+                            Results will also be available in 
+                            work/internal/derepAllRawSeqs.uc [default: False]
     --cluster            Flag to indicate that blast jobs should be submitted to the
                             SGE cluster. Throws an error if presence of a cluster was
                             not indicated during setup. [default: False]
@@ -45,6 +50,7 @@ Edited and commented for publication by Chaim A Schramm on 2014-12-22.
 Edited to add queue monitoring by CAS 2015-07-30.
 Added local option with threading CAS 2015-11-13.
 Edited to use Py3 and DocOpt by CAS 2018-08-22.
+Added derep option by CAS 2018-10-19.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
 			 Institutes of Health, USA. All rights reserved.
@@ -68,15 +74,44 @@ except ImportError:
 
 
 
-# global variables
-total, total_good, f_ind = 0, 0, 1
+def getSeqsWithFileName(inFile):
+	#helper function to add source file info to a seqID
+	#  to preserve info through derep
+	filetype = "fasta"
+	if re.search("\.(fq|fastq)$", inFile) is not None:
+		filetype = "fastq"
+		with open(inFile, "rU") as handle:
+			for entry in SeqIO.parse(handle, filetype):
+				entry.id += ";file=%s"%inFile
+				yield entry
+
 
 
 def main():
 
-	global total, total_good, f_ind
-		
-	# open initial output files
+	#if no input files were specified, glob up everything
+	if len(arguments['--fasta'])==0: arguments['--fasta'] = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
+
+	#dereplicate?
+	if arguments['--derep']:
+		with open( "%s/tempForDerep.fa"%prj_tree.internal, "w" ) as tempFile:
+			for myFile in arguments['--fasta']:
+				SeqIO.write( getSeqsWithFileName(myFile), tempFile, "fasta" )
+
+		subprocess.call( [ usearch, "-derep_fulllength", "%s/tempForDerep.fa"%prj_tree.internal,
+				   "-output", "%s/temp_derep.fa"%prj_tree.internal,
+				   "-uc", "derepAllRawSeqs.uc",
+				   "-sizein", "-sizeout" ] )
+
+		arguments['--fasta'] = [ "%s/temp_derep.fa"%prj_tree.internal ]
+		os.remove( "%s/tempForDerep.fa"%prj_tree.internal )
+				
+
+	#initiate counters
+	total, total_good, f_ind = 0, 0, 1
+
+	
+	# open output files
 	fasta	  = open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
 	id_handle = open("%s/id_lookup.txt"  %	folder_tree.internal,		      'w')
 	id_map	  = csv.writer(id_handle, delimiter=sep)
@@ -90,38 +125,47 @@ def main():
 	'''
 
 
-	#iterate through sequences in all raw data files
-	if len(arguments['--fasta'])==0: arguments['--fasta'] = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
+	#iterate over input and split for blast
+	for eachFile in arguments['--fasta']:
+		for sequence in generate_read_fasta( eachFile ):
 
-	for myseq, myqual, file_name in generate_read_fasta_folder(arguments['--fasta']):
+			sourceFile = eachFile
+			fromDerep  = re.search(";file=([^;\s]+)", sequence.id)
+			if fromDerep:
+				sourceFile = fromDerep.group(1)
 
-		total += 1
-		id_map.writerow([ "%08d"%total, file_name, myseq.seq_id, myseq.seq_len])
+			dup_count = 1
+			checkSize = re.search(";size=(\d+)", sequence.id)
+			if checkSize:
+				dup_count = checkSize.group(1)
+				
+			total += 1
+			id_map.writerow([ "%08d"%total, sourceFile, sequence.id, dup_count, len(sequence.seq)])
 
-		if arguments['--minl'] <= myseq.seq_len <= arguments['--maxl']:
-			total_good += 1
-			fasta.write(">%08d\n%s\n" % (total, myseq.seq))
+			if arguments['--minl'] <= len(sequence.seq) <= arguments['--maxl']:
+				total_good += 1
+				fasta.write(">%08d\n%s\n" % (total, sequence.seq))
 
-			#uncomment to re-implement quals
-			'''
-			if arguments['--qual']:
+				#uncomment to re-implement quals
+				'''
+				if arguments['--qual']:
 				if re.search("\.(fq|fastq)$", file_name) is None:
 					myqual = qual_generator.next()
 				qual.write(">%08d\n%s\n" % (total, " ".join(map(str, myqual.qual_list))))
-			'''
-
-			if total_good % arguments['--npf'] == 0: 
-				#close old output files, open new ones, and print progress message
-				fasta.close()
-				f_ind += 1
-				fasta = open("%s/%s_%03d.fasta" % (folder_tree.vgene, prj_name, f_ind), 'w')
-				print( "%d processed, %d good; starting file %s_%03d" %(total, total_good, prj_name, f_ind) )
-
 				'''
-				if arguments['--qual']:
+
+				if total_good % arguments['--npf'] == 0: 
+					#close old output files, open new ones, and print progress message
+					fasta.close()
+					f_ind += 1
+					fasta = open("%s/%s_%03d.fasta" % (folder_tree.vgene, prj_name, f_ind), 'w')
+					print( "%d processed, %d good; starting file %s_%03d" %(total, total_good, prj_name, f_ind) )
+
+					'''
+					if arguments['--qual']:
 					qual.close()
 					qual = open("%s/%s_%03d.qual"%(folder_tree.vgene, prj_name, f_ind), 'w')
-				'''
+					'''
 				
 	print( "TOTAL: %d processed, %d good" %(total, total_good) )
 	
@@ -132,6 +176,12 @@ def main():
 		qual.close()
 	'''
 
+
+	#clean up - but leave the uc file, in case we want to track replicates later
+	if arguments['--derep']:
+		os.remove( "%s/temp_derep.fa"%prj_tree.internal )
+
+		
 	#print log message
 	handle = open("%s/1-split.log" % folder_tree.logs, "w")
 	handle.write("total: %d; good: %d; percentile: %f\n" %(total, total_good, float(total_good)/total * 100))

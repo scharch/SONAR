@@ -208,11 +208,12 @@ def main():
 
 				
 			rearrangement = dict()
-			rearrangement['sequence_id'] = raw_stats[0]
-			rearrangement['source_file'] = raw_stats[1]
-			rearrangement['source_id']   = raw_stats[2]
-			rearrangement['length_raw']  = raw_stats[3]
-			rearrangement['sequence']    = str(entry.seq)
+			rearrangement['sequence_id']     = raw_stats[0]
+			rearrangement['source_file']     = raw_stats[1]
+			rearrangement['source_id']       = raw_stats[2]
+			rearrangement['duplicate_count'] = raw_stats[3]
+			rearrangement['length_raw']      = raw_stats[4]
+			rearrangement['sequence']        = str(entry.seq)
 				
 			if not entry.id in dict_vgerm_aln:
 				noV+=1
