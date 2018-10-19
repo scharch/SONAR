@@ -5,11 +5,13 @@
 
 This script uses CDR3 identity to group unique sequences from a given data set
       into pseudo-lineages that can help define groups of related B cells.
-      Uses output/sequences/nucleotide/<project>_goodCDR3_unique.fa as required
-      input.
+      Uses output/sequences/nucleotide/<project>_goodCDR3_unique.fa and 
+      output/sequences/nucleotide/<project>_goodVJ_unique.fa as default input.
+
       The default threshold of 90% identity with no in-dels is probably useful
-      for most cases, but more stringent or lenient criteria may be
-      more appropriate in many cases.
+      for most cases, but more stringent or lenient criteria may sometimes be
+      more appropriate.
+
       Sequences are first grouped by unique V and J gene assignments and then
       USearch is used to cluster the CDR3 sequences.
 
@@ -18,11 +20,15 @@ Usage: 2.4-cluster_into_groups.py [ --id <90> --gaps <0> --natives FASTA (-v IGH
 Options:
     --id <90>         Clustering threshold (%) for CDR3 sequence identity (nucleotide).
                          [default: 90]
-    --gaps <0>        Maximum number of (amino acid) in-dels to allow between CDR3
-                         sequences in the same group. NOTE: This is implemented in
-                         nucleotide space using vsearch's --maxgaps parameter, so does 
-                         not guarantee an even codon in-del in the alignment used for 
-                         clustering! [default: 0]
+    --gaps <0>        Maximum number of in-dels to allow between CDR3 sequences in the
+                         same group. NOTE: This is implemented in nucleotide space using
+                         vsearch's --maxgaps parameter, which counts gap openings, rather
+                         than gap columns, so probably shouldn't be set to more than 1.
+                         There is no guarantee an even codon in-del in the alignment used for 
+                         for clustering! Also, vsearch will still count the gap columns as
+                         mismatches, so a CDR3 of 20AA will be counted as 95% id to an
+                         identical-other-than-deletion 19AA CDR3. Set your --id
+                         threshold accordingly. [default: 0]
     --natives FASTA   Fasta file with nucleotide CDR3 sequences of known antibodies,
                          to be clustered together with the NGS data. Useful for focusing
                          on a known lineage.
@@ -69,9 +75,6 @@ except ImportError:
 
 
 def main():
-
-	#open logfile
-	log = open("%s/cluster_into_groups.txt" % prj_tree.logs, "w")
 
 	clusterLookup = dict()
 	centroidData = dict()
@@ -157,11 +160,11 @@ def main():
 
 		#cluster with vsearch
 		subprocess.call([usearch, "-cluster_size", vj_partition[group]['file'], 
-				 "-id", str(arguments['--id']/100.0), "-iddef", "1", #iddef=1 excludes gaps from also counting as mismatches
-				 "-maxgaps", str(arguments['--gaps']*3),
+				 "-id", str(arguments['--id']/100.0),
+				 "-maxgaps", str(arguments['--gaps']),
 				 "-sizein", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
-				 "-leftjust", "-rightjust"], #left/right forces our pre-determined CDR3 borders to match 
-				stdout=log, stderr=subprocess.STDOUT)
+				 "-leftjust", "-rightjust"] #left/right forces our pre-determined CDR3 borders to match 
+				)
 
 		#now reconstruct pseudo-lineages
 		myGenes = group.split("_")
