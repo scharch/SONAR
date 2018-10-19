@@ -20,6 +20,7 @@ Created by Larissa K. Ault 2018-07-11.
 Renamed, added functionality, and documented by Chaim A. Schramm 2018-08-30.
 Altered to run before 5.1 and discard bad reads from functional lineages by CAS 2018-08-31.
 Added lineage size correction for functional lineages with discarded bad reads by CAS 2018-09-06.
+Updated for AIRR-format compatibility by CAS 2018-10-18.
 
 Copyright (c) 2011-2018 Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 
@@ -37,8 +38,8 @@ except ImportError:
 
 
 def fixLineageSize( seq ):
-	rep = re.search("lineage_rep=(\\d+)", seq.description)
-	seq.description = re.sub( "lineage_size=\d+", "lineage_size=%d"%lineages[rep.group(1)]['size'], seq.description )
+	rep = re.search("clone_rep=(\\d+)", seq.description)
+	seq.description = re.sub( "clone_count=\d+", "clone_count=%d"%lineages[rep.group(1)]['size'], seq.description )
 	return seq
 
 
@@ -52,7 +53,7 @@ def main():
 	
 	for sequence in SeqIO.parse( open(arguments['--all'], "rU"), "fasta" ):
 
-		info = re.search("status=(\\S+).*size=(\\d+) lineage_num=\d+ lineage_rep=(\\d+) lineage_size=(\\d+)", sequence.description)
+		info = re.search("status=(\\S+).*cluster_count=(\\d+) clone_id=\d+ clone_rep=(\\d+) clone_count=(\\d+)", sequence.description)
 
 		if info:
 			

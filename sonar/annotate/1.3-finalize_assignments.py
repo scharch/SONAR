@@ -38,6 +38,7 @@ Edited to make motif matching case-insensitive and to disable auto-clean-up
 Edited to distinguish between nonproductive junctions and apparent frameshifts
                                within V by CAS 2018-07-23.
 Edited to use Py3 and DocOpt by CAS 2018-08-22.
+Edited to use AIRR datarep convention by CAS 2018-10-12.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -46,6 +47,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 
 import sys, os
 from docopt import docopt
+import airr
 
 try:
 	from sonar.annotate import *
@@ -177,8 +179,7 @@ def main():
 		dWriter.writerow(PARSED_BLAST_HEADER)
 
 
-	seq_stats = csv.writer(open("%s/%s_all_seq_stats.txt"%(prj_tree.tables, prj_name), "w"), delimiter = sep)
-	seq_stats.writerow(["id","source_file","source_id","raw_len","trim_len","V_genes","D_genes","J_genes","Ig_class","productive","indels","stop_codons","status","blast_div","cdr3_nt_len","cdr3_aa_len","cdr3_aa_seq"])
+	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','length_raw','length_trimmed','indels','status','blast_identity'])
 
 	
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
@@ -199,16 +200,24 @@ def main():
 
 			raw_stats = next(raw)
 			raw_count += 1
+			
 			while not entry.id == raw_stats[0]:
 				#we found a read that did not meet the length cut-off
-				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "wrong_length", "NA", "NA", "NA", "NA"])
 				raw_stats = next(raw)
 				raw_count += 1
 
-
+				
+			rearrangement = dict()
+			rearrangement['sequence_id'] = raw_stats[0]
+			rearrangement['source_file'] = raw_stats[1]
+			rearrangement['source_id']   = raw_stats[2]
+			rearrangement['length_raw']  = raw_stats[3]
+			rearrangement['sequence']    = str(entry.seq)
+				
 			if not entry.id in dict_vgerm_aln:
 				noV+=1
-				seq_stats.writerow(raw_stats + ["NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "noV", "NA", "NA", "NA", "NA"])
+				rearrangement['status']	= 'noV'
+				seq_stats.write(rearrangement)
 			elif not entry.id in dict_jgerm_aln:
 				noJ+=1
 				myV = dict_vgerm_aln[entry.id]
@@ -217,16 +226,20 @@ def main():
 				else:
 					entry.seq = entry.seq[	: myV.qend ].reverse_complement()
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
-				entry.description = "V_gene=%s status=noJ" % (myVgenes)
+				entry.description = "v_call=%s status=noJ" % (myVgenes)
 				allV_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
 
 				#prevent BioPython errors
 				if (len(entry.seq) % 3) > 0:
 					entry.seq = entry.seq [ :  -1 * (len(entry.seq) % 3) ]
 				allV_aa.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq.translate()))
-				seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, "NA", "NA", "NA", "NA", "NA", "NA", "noJ", "NA", "NA", "NA", "NA"])
-			else:
 
+				rearrangement['v_call'] = myVgenes
+				rearrangement['status']	= 'noJ'
+				seq_stats.write(rearrangement)
+
+			else:
+				
 				found += 1
 				myV = dict_vgerm_aln[entry.id]
 				myJ = dict_jgerm_aln[entry.id]
@@ -336,25 +349,33 @@ def main():
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
 				myJgenes = ",".join( [myJ.sid] + dict_other_jgerms.get(entry.id,[]) )
 				
-				myDgenes = "NA"
+				myDgenes = ""
 				if d:
 					if entry.id in dict_dgerm_aln:
 						myDgenes = ",".join( [dict_dgerm_aln[entry.id].sid] + dict_other_dgerms.get(entry.id,[]) )
-					else:
-						myDgenes = "not_found"
 
-				myCgenes = "NA"
+				myCgenes = ""
 				if c:
 					if entry.id in dict_cgerm_aln:
 						myCgenes = ",".join( [dict_cgerm_aln[entry.id].sid] + dict_other_cgerms.get(entry.id,[]) )
-					else:
-						myCgenes = "not_found"
-				elif any( x in myV.sid for x in ["LV", "lambda", "Lambda", "LAMBDA"] ):
-					myCgenes = "lambda"
-				elif any( x in myV.sid for x in ["KV", "kappa", "Kappa", "KAPPA"] ):
-					myCgenes = "kappa"
+
+				vlocus = ""
+				if any( x in myV.sid for x in ["HV", "VH", "Vh", "vh", "heavy", "Heavy", "HEAVY"] ):
+					vlocus = "IGH"
+				elif any( x in myV.sid for x in ["LV", "VL", "Vl", "vl", "lambda", "Lambda", "LAMBDA"] ):
+					vlocus = "IGL"
+				elif any( x in myV.sid for x in ["KV", "VK", "Vk", "vk", "kappa", "Kappa", "KAPPA"] ):
+					vlocus = "IGK"
 					
-				entry.description = "V_gene=%s J_gene=%s D_gene=%s constant=%s status=%s est_V_div=%3.1f%% cdr3_nt_len=%d" % (myVgenes, myJgenes, myDgenes, myCgenes, status, 100-myV.identity, len(cdr3_seq)-6)
+				entry.description = "v_call=%s" % myVgenes
+				if myDgenes != "":
+					entry.description += " d_call=%s" % myDgenes
+				entry.description += " j_call=%s" % myJgenes
+				if myCgenes != "":
+					entry.description += " c_call=%s" % myCgenes
+				if vlocus != "":
+					entry.description += " locus=%s" % vlocus
+				entry.description += " status=%s blast_identity=%.3f junction_length=%d junction=%s junction_aa=%s" % ( status, myV.identity/100.0, len(cdr3_seq), cdr3_seq, cdr3_seq.translate() )
 
 				allV_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
 				allV_aa.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq.translate()))
@@ -363,7 +384,6 @@ def main():
 				allJ_aa.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq.translate()))
 
 				if status == "good":
-					entry.description += " cdr3_aa_len=%d cdr3_aa_seq=%s" % ((len(cdr3_seq)/3)-2, cdr3_seq.translate())
 
 					vj_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
 					vj_aa.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq.translate()))
@@ -373,21 +393,44 @@ def main():
 
 					all_cdr3_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, cdr3_seq))
 
-					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "T", "F", "F", status, "%3.1f%%"%(100-myV.identity), "%d"%(len(cdr3_seq)-6), "%d"%(len(cdr3_seq)/3-2), cdr3_seq.translate()])
-
 				elif cdr3:
 					#CDR3 but not "good"
 					all_cdr3_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, cdr3_seq))
-					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "%s"%productive, "%s"%indel, "%s"%stop, status, "%3.1f%%"%(100-myV.identity), "%d"%(len(cdr3_seq)-6), "NA", "NA"])
+
+
+				#do AIRR output
+				if myV.strand == "plus":
+					rearrangement['rev_comp']   = "F"
 				else:
-					seq_stats.writerow(raw_stats + [len(entry.seq), myVgenes, myDgenes, myJgenes, myCgenes, "%s"%productive, "%s"%indel, "%s"%stop, status, "%3.1f%%"%(100-myV.identity), "NA", "NA", "NA"])
-
-
+					rearrangement['rev_comp']   = "T"
+				if status == "good":
+					rearrangement['productive'] = "T"
+				else:
+					rearrangement['productive'] = "F"
+				rearrangement['vj_in_frame']	    = productive
+				rearrangement['stop_codon']	    = stop
+				rearrangement['locus']		    = vlocus
+				rearrangement['v_call']		    = myVgenes
+				rearrangement['j_call']		    = myJgenes
+				rearrangement['d_call']	            = myDgenes
+				rearrangement['c_call']	            = myCgenes
+				rearrangement['sequence_alignment'] = str(entry.seq)
+				rearrangement['junction']	    = cdr3_seq
+				rearrangement['junction_aa']	    = cdr3_seq.translate()
+				rearrangement['junction_length']    = len(cdr3_seq)
+				rearrangement['length_trimmed']	    = len(entry.seq)
+				rearrangement['indels']		    = indel
+				rearrangement['status']		    = status
+				rearrangement['blast_identity']	    = "%.3f" % (myV.identity/100.0)
+				
+				seq_stats.write(rearrangement)
 
 				counts[status] += 1
 
 		print( "%d done, found %d; %d good..." %(total, found, counts['good']) )
 		f_ind += 1
+
+	seq_stats.close()
 
 	#print out some statistics
 	handle = open("%s/%s_jgerm_stat.txt" %(prj_tree.tables, prj_name),'w')

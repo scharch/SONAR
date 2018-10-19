@@ -28,10 +28,12 @@ Options:
                          on a known lineage.
     -v IGHV           V gene used by the known antibodies (without allele, eg: "IGHV1-2").
                          If not supplied, will be extracted from the fasta file by looking
-                         for "V_gene=IG[HKL]V..." in the fasta definition line.
+                         for "v_call=IG[HKL]V..." in the fasta definition line. (The old
+                         format of "V_gene=" will also still work.)
     -j IGHJ           J gene used by the known antibodies (without allele, eg: "IGHJ2").
                          If not supplied, will be extracted from the fasta file by looking
-                         for "J_gene=IG[HKL]J..." in the fasta definition line.
+                         for "j_call=IG[HKL]J..." in the fasta definition line. (The old
+                         format of "J_gene=" will also still work.)
     --full FASTA      Fasta file with full length sequences, if clustering something other
                          than SONAR's "goodVJ_unique" file. Must specify --cdr3, as well.
     --cdr3 FASTA      CDR3 nucleotide sequences extracted from custom sequence file if
@@ -46,6 +48,7 @@ Modified to use VSearch by CAS 2018-07-30.
 Changed regex for V genes and added special case handling for OR and (II)/(III) genes
                          by CAS 2018-08-28.
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
+Updated for AIRR-format compatibility by CAS 2018-10-18.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -55,6 +58,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 import sys
 from docopt import docopt
 from collections import *
+import airr
 
 try:
 	from sonar.lineage import *
@@ -80,12 +84,12 @@ def main():
 	#start off by getting size annotations
 	for read in generate_read_fasta(arguments['--full']):
 		seqSize[read.id] = 1	
-		check = re.search( " size=(\d+)", read.description)
+		check = re.search( "cluster_count=(\d+)", read.description)
 		if check:
 			seqSize[read.id] = int(check.group(1))
 
 			
-	gene_pat = re.compile("V_gene=IG([HKL]V[^*]+).*J_gene=IG([HKL]J\d)")
+	gene_pat = re.compile("(?:v_call|V_gene)=IG([HKL]V[^*]+).*(?:j_call|J_gene)=IG([HKL]J\d)")
 	for sequence in SeqIO.parse(open(arguments['--cdr3'], "rU"), "fasta"):
 		genes = re.search(gene_pat, sequence.description)
 		if genes:
@@ -97,7 +101,7 @@ def main():
 
 			vj_partition[key]['count'] += 1
 			vj_partition[key]['ids'].append(sequence.id)
-			cdr3_info[sequence.id] = { 'cdr3_len' : len(sequence.seq)/3 - 2, 'cdr3_seq' : sequence.seq.translate() }
+			cdr3_info[sequence.id] = { 'cdr3_len' : int(len(sequence.seq)/3), 'cdr3_seq' : sequence.seq.translate() }
 
 			#make sizes available to vsearch
 			sequence.id += ";size=%d" % seqSize[sequence.id] #do this even if there's no label
@@ -131,7 +135,7 @@ def main():
 			s.id += ";size=1"
 			vj_partition[key]['count'] += 1
 			vj_partition[key]['ids'].append( n )
-			cdr3_info[ n ] = { 'cdr3_len' : len(s.seq)/3 - 2, 'cdr3_seq' : s.seq.translate() }
+			cdr3_info[ n ] = { 'cdr3_len' : int(len(s.seq)/3), 'cdr3_seq' : s.seq.translate() }
 			SeqIO.write([ s ], vj_partition[key]['handle'], 'fasta')
 
 	#now go through and cluster each V/J grouping
@@ -192,8 +196,8 @@ def main():
 	#now process all clusters and do tabular output
 	with open( "%s/%s_lineages.txt" % (prj_tree.tables, prj_name), "w" ) as handle:
 		writer = csv.writer(handle, delimiter=sep)
-		writer.writerow([ "lineage_ID", "rep_seq_ID", "V_gene", "J_gene", "cdr3_len", 
-				  "cdr3_aa_seq", "size", "included_mAbs" ])
+		writer.writerow([ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa", 
+				  "junction_aa", "clone_count", "included_mAbs" ])
 		for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
 			centroidData[centroid]['rank'] = rank+1
 			writer.writerow([ "%05d"%(rank+1), centroid, centroidData[centroid]['vgene'], centroidData[centroid]['jgene'], 
@@ -210,7 +214,7 @@ def main():
 				read.id = read.id[0:8] #this is for raw USearch output with size annotations
 						       #shouldn't be relevant in pipeline context
 			if read.id not in clusterLookup: continue
-			read.description += " lineage_num=%05d lineage_rep=%s lineage_size=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 
+			read.description += " clone_id=%05d clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 
 													   clusterLookup[read.id], clusterSizes[clusterLookup[read.id]] )
 			SeqIO.write([read],handle,"fasta")
 			if read.id in centroidData:
@@ -220,8 +224,27 @@ def main():
 		#use a sort to put them out in order of lineage rank (ie size)
 		SeqIO.write( sorted(rep_seqs, key=lambda cent: centroidData[cent.id]['rank']), handle, "fasta" )
 
+	#do AIRR output
+	if os.path.dirname(arguments['--full']) == prj_tree.nt:
+		if os.path.isfile("%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name)):
+			withLin = airr.derive_rearrangement( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name),
+							     fields=["clone_id", "clone_count"])
+			for r in airr.read_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) ):
+				if r['sequence_id'] in clusterLookup:
+					r['clone_id']	 = "%05d"%centroidData[ clusterLookup[ r['sequence_id'] ] ][ 'rank' ]
+					r['clone_count'] = clusterSizes[ clusterLookup[ r['sequence_id'] ] ]
+				else:
+					#prevent mix-and-match data if this gets run multiple times with multiple settings
+					r['clone_id']	 = ""
+					r['clone_count'] = ""
+					
+				withLin.write(r)
+			withLin.close()
+			os.rename( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) )
 
 	log.close()
+
+
 
 if __name__ == '__main__':
 

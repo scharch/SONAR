@@ -36,8 +36,9 @@
  Created by Chaim A. Schramm 2015-06-12.
  Fixed algorithm and added some options 2015-07-22.
  Changed label handling 2017-04-25.
+ Updated for AIRR-format compatibility
 
- Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut
@@ -225,7 +226,7 @@ while (my $seq = $in->next_seq) {
     $outAA->write_seq($seq->translate);
     print TABLE $seq->id."\t$cluster{$seq->id}{'count'}\t$numTimes\t$cluster{$seq->id}{'persist'}\t$cluster{$seq->id}{'latest'}\n";
 
-    if ( $desc =~ /cdr3_aa_seq=([A-Z]+)/ ) { 
+    if ( $desc =~ /junction_aa=([A-Z]+)/ ) { 
 	push @cdr3, Bio::Seq->new( -display_id => $cluster{$seq->id}{'rep'}, -seq=> $1 );
     }
 

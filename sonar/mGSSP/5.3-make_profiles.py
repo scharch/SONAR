@@ -39,6 +39,7 @@ Added to SONAR as part of mGSSP on 2017-02-24.
 Changed some options and defaults by CAS 2018-07-10.
 Edited to use Py3 by CAS 2018-08-29.
 Renamed to 5.3 and multithreaded by CAS 2018-09-05.
+Tweaks for AIRR-formats naming conventions by CAS 2018-10-18.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.

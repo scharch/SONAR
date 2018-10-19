@@ -25,6 +25,7 @@ Options:
 Created by Chaim Schramm on 2015-12-29.
 Minor adjustments 2018-08-21 by CAS.
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
+Updated for AIRR-format compatibility by CAS 2018-10-18.
 
 Copyright (c) 2015-2018 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -69,7 +70,7 @@ reader	    = SeqIO.parse(open(arguments['<in.fa>'], "rU"), "fasta")
 
 for entry in reader:
 	total += 1
-	gene = re.search("V_gene=(IG[HKL]V[^,\s]+)",entry.description)
+	gene = re.search("(?:v_call|V_gene)=(IG[HKL]V[^,\s]+)",entry.description)
 	
 	if gene:
 		germline = gene.groups()[0]

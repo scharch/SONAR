@@ -72,7 +72,7 @@ def runClustal( fileName ):
 	for entry in reader:
 
 		total += 1
-		gene = re.search("V_gene=(IG[HKL]V[^,\s]+)",entry.description)
+		gene = re.search("(?:v_call|V_gene)=(IG[HKL]V[^,\s]+)",entry.description)
 
 		if gene:
 

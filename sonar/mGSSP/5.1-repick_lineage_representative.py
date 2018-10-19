@@ -24,6 +24,7 @@ Added to SONAR as part of mGSSP on 2017-02-24.
 Modified to use VSearch instead of USearch by CAS on 2018-07-30.
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Multithreaded clustering and alignment by CAS 2018-09-05.
+Tweaks for AIRR-formats naming conventions by CAS 2018-10-18.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
 			 Institutes of Health, USA. All rights reserved.
@@ -137,7 +138,7 @@ def main():
 	lineages = dict()
 	count = 0
 	for sequence in SeqIO.parse(open(arguments['-i'], "rU"), "fasta"):
-		info = re.search(" size=(\d+) lineage_num=(\d+).*lineage_size=(\d+)", sequence.description)
+		info = re.search(" cluster_count=(\d+) clone_id=(\d+).*clone_count=(\d+)", sequence.description)
 		if info:
 			if int(info.group(3)) >= arguments['-m']:
 				if info.group(2) not in lineages:

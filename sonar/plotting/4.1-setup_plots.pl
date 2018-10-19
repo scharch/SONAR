@@ -21,13 +21,13 @@
                         * aaraw     [raw read length in amino acids]
                         * nttrim    [trimmed read length in nucleotides]
                         * aatrim    [trimmed read length in amino acids]
-                        * ntcdr3    [cdr3 length in nucleotides]
-                        * aacdr3    [cdr3 length in amino acids]
+                        * ntcdr3    [*junction* length in nucleotides (ie IMGT CDR3 +6)]
+                        * aacdr3    [*junction* length in amino acids (ie IMGT CDR3 +2)]
                         * v         [V gene usage]
                         * j         [J gene usage]
                         * d         [D gene usage, ignores unassigned reads]
                         * c         [subtype usage, ignores unassigned reads]
-                        * div       [germline divergence (nt %) from muscle]
+                        * div       [germline divergence (nt %) from muscle, requires running 1.4 first]
                         * blastdiv  [estimated germline divergence from blast]
                         * charge    [cdr3 charge, not including possible TYS]
                         * features  [presence of indels and stop codons]
@@ -89,8 +89,9 @@
  Created by Chaim A. Schramm 2015-09-01.
  Modified by CAS 2017-06-09 to add plotName option and to fix compatability with
                           docopt usage by 4.2-plot_histograms.R
+ Modified to plot from new AIRR-format rearrangements.tsv file by CAS 2018-10-19.
 
- Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut
@@ -201,139 +202,134 @@ sub chooseSubset {
 	}
     }
 
-    &chooseStatistic($stat, $linesRef, $project, $keepVal, \%lookUp, $subset, $customName )
+    &getPlotData($stat, $linesRef, $project, $keepVal, \%lookUp, $subset, $customName )
 
 }
 
 
-sub chooseStatistic {
+sub getPlotData {
 
     my ($stat, $linesRef, $project, $keepVal, $listRef, $subset, $customName) = @_;
  
-    my $colNum = 3;
+    my $prj_name = basename($project);
+    open DATA, "$project/output/tables/$prj_name\_rearrangements.tsv" or die "Can't read $project/output/tables/$prj_name\_rearrangements.tsv.\nIf this project was started with an older version of SONAR, please use utilities/convertToAIRR.py\n   to convert the old all_seq_stats.txt file to the new format and then try again.\n\n";
+
+    my $header = <DATA>;
+    my @colnames = split(/\t/, $header);
+    my %colFinder;
+    while (my ($pos, $name) = each @colnames) {
+	$colFinder{$name} = $pos;
+    }
+
+    my $colNum = -1;
     my $type = "hist"; 
     my $divide = "";
 
-    switch ($stat) {
-	case /ntraw/    { ; } #default values work
-	case /nttrim/   { $colNum = 4; } 
-	case /ntcdr3/   { $colNum = 13; }
-	case /aaraw/    { $divide = 3; }
-	case /aatrim/   { $colNum = 4; $divide = 3; }
-	case /aacdr3/   { $colNum = 14; }
-	case /^v$/i     { $colNum = 5; $type = "count"; $divide = '\*'; }
-	case /^j$/i     { $colNum = 7; $type = "count"; $divide = '\*'; }
-	case /^d$/i     { $colNum = 6; $type = "count"; $divide = '\*'; }
-	case /^c$/i     { $colNum = 8; $type = "count"; $divide = '\*'; }
-	case /^div/     { $colNum = 18; }
-	case /blast/    { $colNum = 12; }
-	case /charge/   { $colNum = 15; $divide = "charge"; }
-	case /features/ { if ($keepVal != 3) {
+    { no warnings qw(uninitialized);
+      
+      switch ($stat) {
+	  case /ntraw/    { $colNum = $colFinder{"length_raw"}; }
+	  case /nttrim/   { $colNum = $colFinder{"length_trimmed"}; } 
+	  case /ntcdr3/   { $colNum = $colFinder{"junction_length"}; }
+	  case /aaraw/    { $colNum = $colFinder{"length_raw"};      $divide = 3; }
+	  case /aatrim/   { $colNum = $colFinder{"length_trimmed"};  $divide = 3; }
+	  case /aacdr3/   { $colNum = $colFinder{"junction_length"}; $divide = 3; }
+	  case /^v$/i     { $colNum = $colFinder{"v_call"}; $type = "count"; $divide = '\*'; }
+	  case /^j$/i     { $colNum = $colFinder{"j_call"}; $type = "count"; $divide = '\*'; }
+	  case /^d$/i     { $colNum = $colFinder{"d_call"}; $type = "count"; $divide = '\*'; }
+	  case /^c$/i     { $colNum = $colFinder{"c_call"}; $type = "count"; $divide = '\*'; }
+	  case /^div/     { $colNum = $colFinder{"v_identity"}; }
+	  case /blast/    { $colNum = $colFinder{"blast_identity"}; }
+	  case /charge/   { $colNum = $colFinder{"junction_aa"}; $divide = "charge"; }
+	  case /features/ { if ($keepVal != 3) {
 	                           print "Using subset=all to plot features...\n\n";
 				   $keepVal = 0;
-			  }
-			  $colNum = 9; $type = "count"; }
-	case /status/   { if ($keepVal != 3) {
+			    }
+			    $colNum = $colFinder{'indels'}; $type = "count"; }
+	  case /status/   { if ($keepVal != 3) {
 	                           print "Using subset=all to plot read statuses...\n\n";
 				   $keepVal = 0;
-			  }
-			  $colNum = 11; $type = "count"; }
-	case /size/     { if ($keepVal != 3) {
+			    }
+			    $colNum = $colFinder{'status'}; $type = "count"; }
+	  case /size/     { if ($keepVal != 3) {
 	                           print "Using subset=unique to plot read sizes...\n\n";
 				   $keepVal = 2; 
-			  }
-			  $colNum = 17; }
-	else {
-	    print "Sorry, I don't recognize the plot option $stat. Acceptable values are:\n\t";
-	    print join("\n\t", ("ntraw",'aaraw','nttrim','aatrim','ntcdr3','aacdr3','v','j','d','c','div','blastdiv','charge','features','status','size'));
-	    die"\nPlease see program help for more information.\n\n";
-	}
+			    }
+			    $colNum = $colFinder{'cluster_count'}; }
+	  else {
+	      print "Sorry, I don't recognize the plot option $stat. Acceptable values are:\n\t";
+	      print join("\n\t", ("ntraw",'aaraw','nttrim','aatrim','ntcdr3','aacdr3','v','j','d','c','div','blastdiv','charge','features','status','size'));
+	      die"\nPlease see program help for more information.\n\n";
+	  }
+      }
+
+      if ( ! -defined($colNum) || $colNum<0 ) {
+	  die("ERROR: could not find data for $stat in $project/output/tables/$prj_name\_rearrangements.tsv\n\n");
+      }
     }
 
-    push @$linesRef, @{&plot($project, $keepVal, $listRef, $colNum, $type, $divide, $subset, $stat, $customName)}; 
-    #I am passing by reference from the main program so I don't need to return the modified array
 
-}
-
-
-sub plot {
-
-    my ($project, $subset, $listRef, $column, $type, $divide, $subsetType, $statType, $groupName) = @_;
+    #now parse actual data
 
     #for results
     my @values;
     my %categories;
 
-    my $prj_name = basename($project);
-    open DATA, "$project/output/tables/$prj_name\_all_seq_stats.txt" or die "Can't read $project/output/tables/$prj_name\_all_seq_stats.txt: $!\n\n";
-    my $header = <DATA>;
     while (<DATA>) {
 	chomp;
-	my @arr = split;
+	my @arr = split(/\t/, $_);
 	
-	#error checking
-	if ($subset == 2 && $#arr < 17) {
-	    die "Cannot parse unique sequences from $prj_name; please run 1.4-dereplicate_seqeuences.pl and try again\n\n";
-	}
-	if ($column==18 && $#arr<18) {
-	    if ($#arr == 16) {
-		#assume this means that 2.1 was run without running 1.4 first and just roll with it
-		$column = 16;
-	    } else {
-		die "Cannot parse cluster sizes from $prj_name; please run 2.1-calulate_id-div.pl and try again\n\n";
-	    }
-	}
-
 	#don't count things that shouldn't be counted
-	next if $arr[$column] eq "NA";
+	next if $arr[$colNum] eq "NA";
 
 	#check if this sequence matches the subset
-	my $value = 0; $value++ if $arr[11] eq "good"; $value++ if $#arr>=16 && $arr[16] =~ /T/;
-	next unless ($value >= $subset || -defined($listRef->{$arr[0]}));
+	if ($keepVal == 3) {
+	    next unless -defined($listRef->{$arr[0]});
+	} elsif ($keepVal == 2 ) {
+	    next unless $arr[$colFinder{'status'}] eq "unique";
+	} elsif ($keepVal == 1 ) {
+	    next unless $arr[$colFinder{'status'}] =~ /(good|unique)/;
+	}
 	
 	
 	#special cases
-	#features
-	if ($column == 9) {
-	    if ($arr[9] =~ /T/) {
-		if ($arr[10] =~ /T/) {
-		    $arr[9] = "both";
+	if ($stat eq "features") {
+	    if ($arr[$colFinder{'indels'}] =~ /T/) {
+		if ($arr[$colFinder{'stop_codon'}] =~ /T/) {
+		    $arr[$colFinder{'indels'}] = "both";
 		} else {
-		    $arr[9] = "in-del";
+		    $arr[$colFinder{'indels'}] = "in-del";
 		}
 	    } else {
-		if ($arr[10] =~ /T/) {
-		    $arr[9] = "stop";
+		if ($arr[$colFinder{'stop_codon'}] =~ /T/) {
+		    $arr[$colFinder{'indels'}] = "stop";
 		} else {
-		    $arr[9] = "orf";
+		    $arr[$colFinder{'indels'}] = "orf";
 		}
 	    }
-	}
-	#status
-	if ($column == 11 && $#arr>=16 && $arr[16] =~ /T/) { $arr[11] = "unique"; }
-	#divergence
-	if ($column == 12 || $column == 16 || $column ==18) {
-	    ( $arr[$column] ) = $arr[$column] =~ /^(.+?)%?$/;
+	} elsif ($stat =~ /div/) {
+	    #convert fractional identity to percent divergence
+	    $arr[$colNum] = 100 * ( 1 - $arr[$colNum] )
 	}
 	
 	
 	#get data
 	if ($divide =~ /\d+/) { 
-	    $arr[$column] /= $divide;
+	    $arr[$colNum] /= $divide;
 	} elsif ($divide eq "charge") {
-	    my $pos = () = $arr[$column] =~ /[KR]/gi;
-	    my $neg = () = $arr[$column] =~ /[DE]/gi;
-	    $arr[$column] = $pos - $neg;
+	    my $pos = () = $arr[$colNum] =~ /[KR]/gi;
+	    my $neg = () = $arr[$colNum] =~ /[DE]/gi;
+	    $arr[$colNum] = $pos - $neg;
 	} elsif ($divide ne "") {
-	    my @spl = split(/$divide/, $arr[$column]);
-	    $arr[$column] = $spl[0];
+	    my @spl = split(/$divide/, $arr[$colNum]);
+	    $arr[$colNum] = $spl[0];
 	}
 	
 	#put it in the right place
 	if ($type eq "count") {
-	    $categories{$arr[$column]}++;
+	    $categories{$arr[$colNum]}++;
 	} else {
-	    push @values, $arr[$column];
+	    push @values, $arr[$colNum];
 	}
 	
     }
@@ -346,20 +342,20 @@ sub plot {
 	my $max = ceil( max(@values));
 	
 	#choose bins
-	if ($statType =~ /size/ || $logX == 1) {
+	if ($stat =~ /size/ || $logX == 1) {
 	    #size plot, use log-scaled x
 	    $min = floor(log10($min));
 	    $max = ceil( log10($max));
 	    for (my $v=$min; $v<$max+0.2; $v+=0.2) {
 		$categories{sprintf("%d",10**$v)} = 0;
 	    }
-	} elsif ($statType =~ /(ntraw|nttrim|aaraw)/) {
+	} elsif ($stat =~ /(ntraw|nttrim|aaraw)/) {
 	    #nt raw, nt trim, or aa raw read lengths
 	    $min = 25 * floor( $min/25 );
 	    for (my $v=$min; $v<$max+25; $v+=25) {
 		$categories{$v} = 0;
 	    }
-	} elsif ($statType =~ /aatrim/) {
+	} elsif ($stat =~ /aatrim/) {
 	    #aa trim lengths
 	    $min = 10 * floor( $min/10 );
 	    for (my $v=$min; $v<$max+10; $v+=10) {
@@ -385,25 +381,22 @@ sub plot {
 
     }
     
-    my @lines;
-    $groupName = "$prj_name-$subsetType-$statType" unless -defined($groupName);
+    $customName = "$prj_name-$subset-$stat" unless -defined($customName);
     for my $cat ( sort mysort keys %categories ) {
 	#line format: group x y
 	#for status and features, group and x are reversed compared to genes
 	#if ($column == 9 || $column == 11) {
-	#    push @lines, "$cat\t$groupName\t$categories{$cat}";
+	#    push \@linesRef, "$cat\t$customName\t$categories{$cat}";
 	#} else {
-	push @lines, "$groupName\t$cat\t$categories{$cat}";
+	push @$linesRef, "$customName\t$cat\t$categories{$cat}";
 	#}
     }
-    
-    return \@lines;
 
 }
 
 
 sub mysort {
     no warnings qw(numeric uninitialized);
-    my %specificOrder = ( 'orf'=>0, 'wrong_length'=>1, 'noV'=>2, 'noJ'=>3, 'noCDR3'=>4, 'indel'=>5, 'stop'=>6, 'good'=>7, 'unique'=>8, 'both'=>9 );
+    my %specificOrder = ( 'orf'=>0, 'wrong_length'=>1, 'noV'=>2, 'noJ'=>3, 'noCDR3'=>4, 'nonproductive'=>5, 'indel'=>6, 'stop'=>7, 'good'=>8, 'unique'=>9, 'both'=>10 );
     $specificOrder{$a}<=>$specificOrder{$b} || $a<=>$b || $a cmp $b;
 }

@@ -18,7 +18,6 @@ linesep = os.linesep
 
 # patterns
 pat_nuc_cxrk = re.compile("TG[T|C]...(CG.|AG[A|G]|AA[A|G])", flags=re.I)
-v_pattern = re.compile("V_gene=(IG.*?)[,| ]")
 
 
 # databases	
