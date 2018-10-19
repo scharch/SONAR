@@ -110,34 +110,6 @@ atexit.register(logExit)
 #
 # -- BEGIN -- class definition
 #
-
-class MyNode:
-	def __init__(self, parent):
-		self.parent 	= parent
-		self.children 	= []
-	def add_child(self, child):
-		self.children.append(child)
-
-
-class MySeq:
-	def __init__(self, seq_id, seq):
-		self.seq_id 	= seq_id					# sequence ID
-		try:
-			self.seq 	= str(seq)			# sequence in string format
-		except:
-			self.seq	= seq	
-		self.seq_len 	= len(self.seq)				# sequence length
-		
-		
-	
-	def set_desc(self, desc):
-		self.desc = desc
-		
-class MyQual:
-	def __init__(self, qual_id, qual_list):
-		self.qual_id 	= qual_id
-		self.qual_list 	= qual_list
-		self.qual_len	= len(qual_list)
 		
 class MyAlignment:
 	def __init__(self, row):
@@ -169,27 +141,9 @@ class MyAlignment:
 		
 	def set_diversity(self, divergence):
 		self.divergence = divergence
-		
-class MyAlignmentVerbose:
-	def __init__(self, row):
-		self.query_id		= row[0]
-		self.sbjct_id		= row[1]
-		self.strand		= row[2]
-		self.evalue		= float(row[3])
-		self.score		= float(row[4])
-		self.identities		= int(row[5])
-		self.gaps		= int(row[6])
-		self.aln_len		= int(row[7])
-		self.query_start	= int(row[8])
-		self.query_end		= int(row[9])
-		self.query_len		= int(row[10])
-		self.sbjct_start	= int(row[11])
-		self.sbjct_end		= int(row[12])
-		self.sbjct_len		= int(row[13])
-		self.aln_query		= row[14]
-		self.aln_sbjct		= row[15]
-	
-		
+
+
+                
 class ProjectFolders:
 	"""folder structure of a project """
 	
@@ -278,90 +232,8 @@ def create_folders(folder, force=False):
 	os.chdir(old_wd)
 	return ProjectFolders(folder)
 
-
-
-def get_files_format(folder, format = ""):
-	"""return all files in specified folder with particular format; if format is not specified, return all files"""
-
-	files = os.listdir(folder)
-	
-	if len(format) > 0:
-		files = [x for x in files if x.endswith(format)]
-	
-	return sorted(files)
-
-
-
-
-def get_files_format_fullpath(folder, format = ""):
-	"""return all files in specified folder with particular format; if format is not specified, return all files"""
-
-	files = os.listdir(folder)
-	
-	if len(format) > 0:
-		files = [x for x in files if x.endswith(format)]
-	
-	files = ["%s/%s" %(folder, x) for x in files]
-	
-	return sorted(files)
-
-
-def parse_name(s):
-	"""retrieve file name from full path """
-	
-	return s[s.rindex("/") + 1 : s.rindex(".")]
-
 #
 # -- END -- folder and file methods 
-#
-
-
-#
-# -- BEGIN -- qual file methods
-#
-
-def generate_phred_scores(f):
-	"""parse quality file and generate phred scores one read a time"""
-	
-	handle = open(f, "rU")
-	old_id, old_quals = get_454_fasta_id(handle.next()), []
-
-	for line in handle:
-		if line.startswith(">"):					# start of a new entry
-			new_id = get_454_fasta_id(line)
-
-			yield MyQual(old_id, old_quals)
-			old_id, old_quals = new_id, []
-			
-		else:		# quality score lines	
-			line 		= line[ : -1].strip().split(" ")	# remove "\n", remove " " at both ends, split by " "
-			line 		= [x for x in line if x != ""]
-			old_quals 	+= map(int, line)
-			
-	yield MyQual(old_id, old_quals)
-	
-
-def generate_quals_folder(folder):
-	qual_files = glob.glob("%s/*.qual" %folder)
-	for qual_file in qual_files:
-		for myqual in generate_phred_scores(qual_file):
-			yield myqual
-	
-
-
-def load_quals(f):
-	"""reutrn sequence ID and quality scores in dicitonary format"""
-
-	result = dict()
-	
-	for seq_id, quals, seq_len in generate_phred_scores(f):
-		result[seq_id] = quals
-		
-	return result
-		
-
-#
-# -- END -- qual file methods
 #
 
 
@@ -453,11 +325,11 @@ def generate_read_fasta_folder(fastas):
 
 		for entry in SeqIO.parse(open(fasta_file, "rU"), filetype):
 
-			yield MySeq(entry.id, entry.seq), None, fasta_file
+			yield entry, None, fasta_file
 
 			#if we reimplement qual handling uncomment next section
 			#if filetype == "fastq":
-			#	yield MySeq(entry.id, entry.seq, desc), MyQual(entry.id, entry.letter_annotations["phred_quality"]), fasta_file	
+			#	yield entry, MyQual(entry.id, entry.letter_annotations["phred_quality"]), fasta_file	
 			
 	
 	
