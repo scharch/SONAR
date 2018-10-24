@@ -11,6 +11,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 
 import sys, os, csv, shutil, re, glob, string, time, random
 from sonar.paths import *
+from Bio.Data import CodonTable
 
 sep = "\t"
 linesep = os.linesep
@@ -80,3 +81,22 @@ PARSED_BLAST_HEADER = ["qid", "sid", "identity", "align_len", "mismatches", "gap
 PARSED_BLAST_HEADER_VERBOSE = ["query_id", "sbjct_id", "strand", "evalue", "score", "identities", "gaps", "aln_len", 
 								"query_start", "query_end", "query_len", "sbjct_start", "sbjct_end", "aln_query", "aln_sbjct"]
 
+
+#make a codon table that can handle gaps
+#start by getting the standard codon table
+table = CodonTable.standard_dna_table.forward_table
+#add gaps
+for c1 in ["A", "C", "G", "T", "N"]:
+	table["%s--"%c1] = "X"
+	table["-%s-"%c1] = "X"
+	table["--%s"%c1] = "X"
+	for c2 in ["A", "C", "G", "T", "N"]:
+		table["%s%s-"%(c1,c2)] = "X"
+		table["-%s%s"%(c1,c2)] = "X"
+		table["%s-%s"%(c1,c2)] = "X"
+table["---"]="-"
+#now register is and export
+CodonTable.register_ncbi_table(name='gapped',alt_name="CAS0",id=99,table=table, stop_codons=['TAA', 'TAG', 'TGA', ], start_codons=['TTG', 'CTG', 'ATG', ] )
+GAPPED_CODON_TABLE=CodonTable.ambiguous_dna_by_name["gapped"]
+
+    

@@ -2,6 +2,14 @@
 
 =head 1 SUMMARY
 
+ ************
+ * DEPRECATED
+ * Tree building in 3.2 is now done with IgPhyML and all ancestor inference
+ *     and processing is included in that script.
+ * I am leaving this here, for the time being, for use in analyzing old data
+ *     that was generated with DNAML.
+ ************
+
  3.3-pick_intermediates.pl
  
  This script processes the output from DNAML to select developmental intermediates 
@@ -22,8 +30,9 @@
  Created by Chaim A. Schramm 2013-05-27
  Edited and commented for publication with extensive modifications by Chaim A
          Schramm on 2015-07-16
+ Deprecated in favor of consolidated version of 3.2 using IgPhyML by CAS 2018-10-24.
 
- Copyright (c) 2011-2016 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut

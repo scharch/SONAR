@@ -15,12 +15,12 @@ clustalW2 is made available by the Conway Institute UCD Dublin under a GPLv3 lic
 (2007). Clustal W and Clustal X version 2.0. Bioinformatics, 23, 2947-2948.
 	 For more information: http://www.clustal.org/clustal2/
 
-dnaml is a part of the PHYLIP package made available by Joe Felsenstein of the University of Washington under an open source license. Please cite:
-      	 Felsenstein J, Churchill GA. A Hidden Markov Model approach to variation among sites in rate of evolution. Mol Biol Evol. 1996 Jan;13(1):93-104. PubMed PMID: 8583911.
-	 For more information: http://evolution.genetics.washington.edu/phylip/doc/dnaml.html
-
 fastq_quality_boxplot_graph.sh, fastx_quality_stats, and fastx_trimmer are part of the FASTX-Toolkit developed by the Hannon Lab at Cold Spring Harbor Laboratories under the Affero GPLv3 license.
 	 For more information: http://hannonlab.cshl.edu/fastx_toolkit/index.html
+
+IgPhyML and the ancReconstructHLP17.pl script are developed by Kenneth Hoehn and made available under a GPLv2 license. Please cite:
+         Hoehn KB, Lunter G, Pybus OG (2017). A Phylogenetic Codon Substitution Model for Antibody Lineages. Genetics 206(1): 417-427 doi: 10.1534/genetics.116.196303 PMID: 28315836 PMCID: PMC5419485
+	 For more information: https://github.com/kbhoehn/IgPhyML
 
 muscle was developed by Robert Edgar and is in the public domain. Please cite:
          Edgar, R.C. (2004) MUSCLE: multiple sequence alignment with high accuracy and high throughput.Nucleic Acids Res. 32(5):1792-1797. doi:10.1093/nar/gkh340
