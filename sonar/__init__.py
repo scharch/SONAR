@@ -311,7 +311,7 @@ def generate_read_fasta(f):
 	"""read fasta file and yield one reads per time """
 	
 	filetype = "fasta"
-	if re.search("\.(fq|fastq)$", fasta_file) is not None:
+	if re.search("\.(fq|fastq)$", f) is not None:
 		filetype = "fastq"
 
 	reader = SeqIO.parse(open(f, "rU"), filetype)
