@@ -94,17 +94,17 @@ def main():
 
 	#dereplicate?
 	if arguments['--derep']:
-		with open( "%s/tempForDerep.fa"%prj_tree.internal, "w" ) as tempFile:
+		with open( "%s/tempForDerep.fa"%folder_tree.internal, "w" ) as tempFile:
 			for myFile in arguments['--fasta']:
 				SeqIO.write( getSeqsWithFileName(myFile), tempFile, "fasta" )
 
-		subprocess.call( [ usearch, "-derep_fulllength", "%s/tempForDerep.fa"%prj_tree.internal,
-				   "-output", "%s/temp_derep.fa"%prj_tree.internal,
+		subprocess.call( [ usearch, "-derep_fulllength", "%s/tempForDerep.fa"%folder_tree.internal,
+				   "-output", "%s/temp_derep.fa"%folder_tree.internal,
 				   "-uc", "derepAllRawSeqs.uc",
 				   "-sizein", "-sizeout" ] )
 
-		arguments['--fasta'] = [ "%s/temp_derep.fa"%prj_tree.internal ]
-		os.remove( "%s/tempForDerep.fa"%prj_tree.internal )
+		arguments['--fasta'] = [ "%s/temp_derep.fa"%folder_tree.internal ]
+		os.remove( "%s/tempForDerep.fa"%folder_tree.internal )
 				
 
 	#initiate counters
@@ -179,7 +179,7 @@ def main():
 
 	#clean up - but leave the uc file, in case we want to track replicates later
 	if arguments['--derep']:
-		os.remove( "%s/temp_derep.fa"%prj_tree.internal )
+		os.remove( "%s/temp_derep.fa"%folder_tree.internal )
 
 		
 	#print log message
