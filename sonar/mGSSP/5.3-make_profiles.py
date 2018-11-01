@@ -96,7 +96,7 @@ def buildGSSP( vgene ):
 		with open("%s.fa"%tempFile, "w") as temp:
 			SeqIO.write(seqs,temp,"fasta")
 
-		muscle_cline = MuscleCommandline(cmd="%s/third-party/muscle"%SCRIPT_FOLDER, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+		muscle_cline = MuscleCommandline(cmd=muscle, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
 
 		#try to speed up the process a little bit for large datasets
 		#still going to max out at ~50k seqs per profile (probably)

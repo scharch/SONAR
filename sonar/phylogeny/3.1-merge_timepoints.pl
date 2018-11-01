@@ -138,11 +138,11 @@ $all->close();
 
 
 # run USearch
-my $cmd =  ppath('usearch') . " -derep_fulllength work/phylo/all_seqs.fa -uc work/phylo/uc";
+my $cmd =  ppath() . "vsearch -derep_fulllength work/phylo/all_seqs.fa -uc work/phylo/uc";
 if ($clustFast){
     # -maxgaps parameter treats sequences unique except for an indel as distinct
     # need to sort by length because of possible fragments
-    $cmd = ppath('usearch') . " -cluster_fast work/phylo/all_seqs.fa -sort length -id $threshold -uc work/phylo/uc -maxgaps 2";
+    $cmd = ppath() . "vsearch -cluster_fast work/phylo/all_seqs.fa -sort length -id $threshold -uc work/phylo/uc -maxgaps 2";
 }
 print "$cmd\n";
 system($cmd);

@@ -77,9 +77,9 @@ def scoreSeqs( refSeq, querySeq, tempFile):
 	with open("%s.fa"%tempFile, "w") as handle:
 		handle.write(">%s\n%s\n>%s\n%s\n" % ( refSeq.id, refSeq.seq, querySeq.id, querySeq.seq ))
 
-	align_cline = MuscleCommandline(input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+	align_cline = MuscleCommandline(cmd=muscle, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
 	if arguments['--align'] == "clustalo":
-		align_cline = ClustalOmegaCommandline(infile="%s.fa"%tempFile, outfile="%s.aln"%tempFile, force=True)
+		align_cline = ClustalOmegaCommandline(cmd=clustalo, infile="%s.fa"%tempFile, outfile="%s.aln"%tempFile, force=True)
 	try:
 		stdout, stderr = align_cline()
 	except:
@@ -181,7 +181,7 @@ def main():
 	inputFile = arguments['-f']
 	dedup	  = dict()
 	if arguments['-d']:
-		subprocess.call( [ usearch, "-derep_fulllength", arguments['-f'],
+		subprocess.call( [ vsearch, "-derep_fulllength", arguments['-f'],
 				   "-output", "temp_dedup.fa",
 				   "-uc", "temp.uc", "-notrunclabels" ] )
 

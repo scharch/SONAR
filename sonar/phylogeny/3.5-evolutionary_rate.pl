@@ -49,7 +49,7 @@ if(@ARGV%2>0||@ARGV==0){die "$usage"; }
 
 my %para=@ARGV;
 if(!$para{'-f'}){die "No input sequence file\n";}
-$para{'-beast'}=ppath('beast');
+$para{'-beast'}=ppath().'beast';
 if(!$para{'-beast'}){die "Please set up absolute path to beast program\n";}
 if(!$para{'-n'}){$para{'-n'}=25;}
 if(!$para{'-spliter'}){$para{'-spliter'}='_';}

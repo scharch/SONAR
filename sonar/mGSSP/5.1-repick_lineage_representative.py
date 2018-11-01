@@ -88,7 +88,7 @@ def closestToConsensus(linIt):
 			FNULL = open(os.devnull, 'w') #don't clutter up output with tons of vsearch messages
 
 			#cluster and rapid align with vsearch
-			subprocess.call([usearch, "-cluster_size", "%s/%s.fa" % (prj_tree.lineage, lineage['name']), 
+			subprocess.call([vsearch, "-cluster_size", "%s/%s.fa" % (prj_tree.lineage, lineage['name']), 
 					 "-id", "0.97", "-sizein", "-sizeout",
 					 "-msaout", "%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "-clusterout_sort"],
 					stdout=FNULL, stderr=subprocess.STDOUT)
@@ -123,7 +123,7 @@ def closestToConsensus(linIt):
 				
 			d=sorted(aln, key=lambda rec: scores[rec.id], reverse=True) #reverse -> get max
 			d[0].seq = d[0].seq.ungap("-") #remove gaps
-			d[0].id = d[0].id.split(";")[0] #remove usearch size annotation
+			d[0].id = d[0].id.split(";")[0] #remove vsearch size annotation
 			d[0].id = re.sub("^\*","",d[0].id) #get rid of possible annotation from vsearch
 			d[0].description = lineage['desc'][d[0].id] #restore original info
 
@@ -147,12 +147,12 @@ def main():
 				lineages[info.group(2)]['desc'][sequence.id] = sequence.description #because otherwise the alignment loses it
 
 				#derep 'singletons' (seq size and lin size are the same) don't need to 
-				#    be renamed for usearch and don't need saved handles
+				#    be renamed for vsearch and don't need saved handles
 				if info.group(1) == info.group(3):
 					with open("%s/%s.fa"%(prj_tree.lineage ,info.group(2)), "w") as handle:
 						SeqIO.write([sequence], handle, 'fasta')
 				else:
-					#add size notation in a way usearch can understand
+					#add size notation in a way vsearch can understand
 					sequence.id += ";size=%s" % info.group(1) #it's a string because that's what re.search returns
 					SeqIO.write([sequence], getHandle(info.group(2)), 'fasta')
 

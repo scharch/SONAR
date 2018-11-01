@@ -13,7 +13,7 @@ This script uses CDR3 identity to group unique sequences from a given data set
       more appropriate.
 
       Sequences are first grouped by unique V and J gene assignments and then
-      USearch is used to cluster the CDR3 sequences.
+      VSearch is used to cluster the CDR3 sequences.
 
 Usage: 2.4-cluster_into_groups.py [ --id <90> --gaps <0> --natives FASTA (-v IGHV -j IGHJ) (--full FASTA --cdr3 FASTA) ]
 
@@ -159,7 +159,7 @@ def main():
 			continue
 
 		#cluster with vsearch
-		subprocess.call([usearch, "-cluster_size", vj_partition[group]['file'], 
+		subprocess.call([vsearch, "-cluster_size", vj_partition[group]['file'], 
 				 "-id", str(arguments['--id']/100.0),
 				 "-maxgaps", str(arguments['--gaps']),
 				 "-sizein", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
@@ -214,7 +214,7 @@ def main():
 	with open( notationFile, "w" ) as handle:
 		for read in generate_read_fasta(arguments['--full']):
 			if ";" in read.id:
-				read.id = read.id[0:8] #this is for raw USearch output with size annotations
+				read.id = read.id[0:8] #this is for raw VSearch output with size annotations
 						       #shouldn't be relevant in pipeline context
 			if read.id not in clusterLookup: continue
 			read.description += " clone_id=%05d clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 

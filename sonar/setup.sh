@@ -142,15 +142,8 @@ fi
 echo "
 
 SCRIPT_FOLDER  = \"$pipeDir\"
-clustal	       = \"$clustal\"
-blast_cmd      = \"$blast\"
-usearch        = \"$usearch\"
-dnaml          = \"$dnaml\"
-
 clusterExists  = $clusterExists
 qsub           = \"$qsub\"
-cluster_muscle = \"$clustMuscle\"
-cluster_blast  = \"$clustBlast\"
 
 " > paths.py
 
@@ -169,23 +162,8 @@ require Exporter;
 @EXPORT = qw(ppath);
 
 
-
-my %ppath=();
-\$ppath{'usearch'}=\"$usearch\";# absolute path to usearch
-\$ppath{'clustalo'}=\"$clustalo\";# absolute path to clustalo
-\$ppath{'muscle'}=\"$muscle\";# absolute path to neighbor
-\$ppath{'beast'}=\"$beast\";# absolute path to beast
-\$ppath{'sonar'}=\"$pipeDir\";# absolute path to SONAR
-\$ppath{'fastx'}=\"$fastxDir\";# absolute path to FASTX-Toolkit
-\$ppath{'dnaml'}=\"$dnaml\";# absolute path to DNAML
 sub ppath{
-    my \$p=shift;	
-	if(\$ppath{\$p}){
-	  return \$ppath{\$p};	
-	}
-	else{
-	  return '';	
-	}
+	  return \"\$pipedir/third-party/\";	
 }
 
 

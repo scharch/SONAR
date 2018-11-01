@@ -101,7 +101,7 @@ def muscleProcess (threadID, filebase, outbase, treebase):
 
 	print( "Building NJ tree from %s" % fasta )
 
-	run_muscle = MuscleCommandline( input=fasta, out=output )
+	run_muscle = MuscleCommandline( cmd=muscle, input=fasta, out=output )
 	run_muscle.tree1      = treeFile
 	run_muscle.cluster1   = "neighborjoining"
 	run_muscle.maxiters   = 1
@@ -269,7 +269,7 @@ def main():
 			if arguments['--cluster']:
 				# write pbs files and auto submit shell script
 				command = "NUM=`printf \"%%05d\" $SGE_TASK_ID`\n%s -in %s/NJ$NUM.fa -out %s/NJ$NUM.aln -cluster1 neighborjoining -maxiters 1 -tree1 %s/NJ$NUM.tree" % \
-				    (cluster_muscle, prj_tree.lineage, prj_tree.lineage, prj_tree.lineage)
+				    (muscle, prj_tree.lineage, prj_tree.lineage, prj_tree.lineage)
 				pbs = open("%s/intradonor.sh" % prj_tree.lineage, 'w')
 				pbs.write( PBS_STRING%("%s-intradonor"%prj_name, "500M", "1:00:00", "%s > %s/NJ$NUM.out 2> %s/NJ$NUM.err"%(command, prj_tree.lineage, prj_tree.lineage)) )
 				pbs.close()

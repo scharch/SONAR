@@ -85,7 +85,7 @@ def runClustal( fileName ):
 			with open("%s.fa"%tempName, "w") as handle:
 				handle.write(">%s\n%s\n>%s\n%s\n" % ( germline, germs[germline], entry.id, entry.seq ))
 
-			clustal_cline = ClustalwCommandline(infile="%s.fa"%tempName)
+			clustal_cline = ClustalwCommandline(cmd=clustalw, infile="%s.fa"%tempName)
 			try:
 				stdout, stderr = clustal_cline()
 			except:

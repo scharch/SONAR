@@ -8,7 +8,6 @@ use version qw/logCmdLine/;
 
 #########checking parameters#######
 if(@ARGV%2>0||!@ARGV){die "Usage: illumina_filtering.pl 
-	-usearch path to usearch/vsearch program
 	-f forward_read_seq file, either compressed .gz or fastq file 
 	-r reverse_strand, either compressed .gz or fastq file
         -q quality encoding, default 33 (Sanger, Illumina1.8+)
@@ -43,10 +42,6 @@ if(!$para{'-o'}){$para{'-o'}='.';}
 if(!$para{'-ut'}){$para{'-ut'}=3;}
 if(!$para{'-q'}){$para{'-q'}=33;}
 if(!$para{'-maxee'}){$para{'-maxee'}=1;}
-if(!$para{'-usearch'}){$para{'-usearch'}=ppath('usearch');}
-if(!$para{'-fastx_quality_stats'}){$para{'-fastx_quality_stats'}=ppath('fastx') . '/fastx_quality_stats';}
-if(!$para{'-fastq_quality_boxplot_graph.sh'}){$para{'-fastq_quality_boxplot_graph.sh'}=ppath('sonar')."/utilities/fastq_quality_boxplot_graph.sh";}
-if(!$para{'-fastx_trimmer'}){$para{'-fastx_trimmer'}=ppath('fastx').'/fastx_trimmer';}
 if(!$para{'-trimf'}){$para{'-trimf'}=1;}
 if(!$para{'-trimr'}){$para{'-trimr'}=1;}
 if(!$para{'-maxdiff'}){$para{'-maxdiff'}=10;}
@@ -59,6 +54,8 @@ if(!$para{'-phix'}){$para{'-phix'}='no';}
 if(-e "./merge_report.txt"){unlink "./merge_report.txt";}
 my $outputfolder='preprocessed';
 #my $outputfolder='0-original';
+
+my $programDir = ppath()
 
 ##########processing reads##############
 open SAT,">statistics.txt";
@@ -79,18 +76,18 @@ else{
 
 #plot quality
 print "Analyzing sequencing quality\n";
-`$para{'-fastx_quality_stats'} -i forward.fastq -o forward_quality.txt -Q $para{'-q'}`;
-`$para{'-fastx_quality_stats'} -i revers.fastq -o revers_quality.txt -Q $para{'-q'}`;
-`$para{'-fastq_quality_boxplot_graph.sh'} -i forward_quality.txt -o forward_quality.png`;
-`$para{'-fastq_quality_boxplot_graph.sh'} -i revers_quality.txt -o revers_quality.png`;
+`$programDir/fastx_quality_stats -i forward.fastq -o forward_quality.txt -Q $para{'-q'}`;
+`$programDir/fastx_quality_stats -i revers.fastq -o revers_quality.txt -Q $para{'-q'}`;
+`$programDir/fastq_quality_boxplot_graph.sh -i forward_quality.txt -o forward_quality.png`;
+`$programDir/fastq_quality_boxplot_graph.sh -i revers_quality.txt -o revers_quality.png`;
 
 my $lines=`wc -l forward.fastq`;
 $lines=~/(\d+)/;
 print SAT "Total Raw: ",int($1/4),"\n";
 
 print "Trimming low quality segments\n";
-system("$para{'-fastx_trimmer'}  -t $para{'-trimf'} -i forward.fastq -o forward1.fastq");
-system("$para{'-fastx_trimmer'} -t $para{'-trimr'}  -i revers.fastq -o revers1.fastq");
+system("$programDir/fastx_trimmer -t $para{'-trimf'} -i forward.fastq -o forward1.fastq");
+system("$programDir/fastx_trimmer -t $para{'-trimr'}  -i revers.fastq -o revers1.fastq");
 system("mv forward1.fastq forward.fastq");
 system("mv revers1.fastq revers.fastq");
 
@@ -98,10 +95,10 @@ my $lines=`wc -l forward.fastq`;
 $lines=~/(\d+)/;
 print SAT "Total pre-merging quality control: ",int($1/4),"\n";
 
-#Pairing with usearch
+#Pairing with vsearch
 print "Pairing\n";
 
-system("$para{'-usearch'} -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastaout good.fna -fastq_eeout -fastq_maxee $para{'-maxee'} -threads $para{'-threads'} -fastq_minmergelen $para{'-minl'}  -fastq_maxmergelen $para{'-maxl'} -fasta_width 0 2>&1 | tee merge_report.txt");
+system("$programDir/vsearch -fastq_mergepairs forward.fastq -reverse revers.fastq -fastq_maxdiffpct $para{'-maxdiffpct'} -fastq_maxdiffs $para{'-maxdiff'} -fastq_truncqual $para{'-ut'} -fastaout good.fna -fastq_eeout -fastq_maxee $para{'-maxee'} -threads $para{'-threads'} -fastq_minmergelen $para{'-minl'}  -fastq_maxmergelen $para{'-maxl'} -fasta_width 0 2>&1 | tee merge_report.txt");
 
 if($para{'-phix'}=~/y/i){
     warn("PhiX filtering is not currently available in VSearch\n");

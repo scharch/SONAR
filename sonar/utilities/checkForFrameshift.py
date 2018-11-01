@@ -81,7 +81,7 @@ for entry in reader:
 		with open("%s.fa"%fa_head, "w") as handle:
 			handle.write(">%s\n%s\n>%s\n%s\n" % ( germline, germs[germline], entry.id, entry.seq ))
 
-		clustal_cline = ClustalwCommandline(cmd="%s/third-party/clustalw2"%SCRIPT_FOLDER, infile="%s.fa"%fa_head)
+		clustal_cline = ClustalwCommandline(cmd=clustalw, infile="%s.fa"%fa_head)
 		try:
 			stdout, stderr = clustal_cline()
 		except:

@@ -80,7 +80,7 @@ for my $f (@seqFiles) {
     my $prefix = (split(/[_]/, $base))[0];
     $correlated{$prefix} = [];
     
-    my $cmd = ppath('usearch') . " -derep_fulllength $f -output derep-$base -sizein -sizeout -minuniquesize $min";
+    my $cmd = ppath() . "vsearch -derep_fulllength $f -output derep-$base -sizein -sizeout -minuniquesize $min";
     print "\n$cmd\n\n";
     system( $cmd );
 
@@ -111,7 +111,7 @@ $all->close();
 
 
 # run USearch
-my $cmd = ppath('usearch') . " -derep_fulllength all_seqs.fa -uc derep_all.uc";
+my $cmd = ppath() . "vsearch -derep_fulllength all_seqs.fa -uc derep_all.uc";
 print "\n$cmd\n\n";
 system($cmd);
 

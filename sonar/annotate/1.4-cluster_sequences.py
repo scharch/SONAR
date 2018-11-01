@@ -74,7 +74,7 @@ def main():
 		SeqIO.write( reformatInput(arguments['-f']), handle, "fasta" )
 	
 	#first step on higher identity
-	subprocess.call( [ usearch, "-derep_fulllength", "temp.fa",
+	subprocess.call( [ vsearch, "-derep_fulllength", "temp.fa",
 			   "-output", "temp_dedup.fa",
 			   "-uc", "temp.uc",
 			   "-sizein", "-sizeout",
@@ -89,7 +89,7 @@ def main():
 				centroid[row[8]] = row[9]
 
 	#second clustering step
-	subprocess.call( [ usearch, "-cluster_size", "temp_dedup.fa",
+	subprocess.call( [ vsearch, "-cluster_size", "temp_dedup.fa",
 			   "-sizein", "-sizeout", "-maxgaps", "0",
 			   "-id", arguments['--id'],
 			   "-uc", "%s.cluster"%os.path.splitext(arguments['-f'])[0] ] )

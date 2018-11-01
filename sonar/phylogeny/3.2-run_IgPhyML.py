@@ -179,7 +179,7 @@ def main():
 		handle.close()
 
 		#now run muscle
-		run_muscle	      = MuscleCommandline( input="%s/%s_to_align.fa" % (prj_tree.phylo, prj_name), out="%s/%s_aligned.afa" % (prj_tree.phylo, prj_name) )
+		run_muscle	      = MuscleCommandline( cmd=muscle, input="%s/%s_to_align.fa" % (prj_tree.phylo, prj_name), out="%s/%s_aligned.afa" % (prj_tree.phylo, prj_name) )
 		run_muscle.maxiters   = 2
 		run_muscle.diags      = True
 		run_muscle.gapopen    = -5000.0 #code requires a float
