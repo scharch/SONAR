@@ -64,7 +64,7 @@ def main():
 		    
 	if bad == 0:
 		if arguments['--after'] is not None:
-			subprocess.call(arguments['--after'].split(" "))
+			subprocess.call( re.split("\s+",arguments['--after']) )
 		print( "All %s blast jobs finished successfully" % arguments['--gene'] ) #goes to log file when called by monitor script
 	else:
 		p = subprocess.Popen(["qsub", arguments['--check']], stdout=subprocess.PIPE)
