@@ -57,13 +57,16 @@ RUN cpanm \
 
 #now actually install BioPerl
 RUN cpanm -v \
-    https://github.com/bioperl/bioperl-live/archive/master.tar.gz
+    https://github.com/bioperl/bioperl-live/archive/release-1-7-2.tar.gz
 
 #install PyQt and ete3
 RUN apt-get install -y \
     python3-pyqt4 python3-pyqt4.qtopengl python-lxml python-six
 
 RUN pip3 install --upgrade ete3
+
+#install AIRR reference library
+RUN pip3 install airr
 
 #install R
 RUN echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list
