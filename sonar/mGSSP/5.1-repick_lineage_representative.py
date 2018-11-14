@@ -25,6 +25,7 @@ Modified to use VSearch instead of USearch by CAS on 2018-07-30.
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Multithreaded clustering and alignment by CAS 2018-09-05.
 Tweaks for AIRR-formats naming conventions by CAS 2018-10-18.
+Made sequence parsing regex more flexible by CAS 2018-11-14.
 
 Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
 			 Institutes of Health, USA. All rights reserved.
@@ -138,23 +139,26 @@ def main():
 	lineages = dict()
 	count = 0
 	for sequence in SeqIO.parse(open(arguments['-i'], "rU"), "fasta"):
-		info = re.search(" cluster_count=(\d+) clone_id=(\d+).*clone_count=(\d+)", sequence.description)
+		info = re.search("(?: cluster_count=(?P<cluster>\d+))? clone_id=(?P<clone>\d+).*clone_count=(?P<count>\d+)", sequence.description)
 		if info:
-			if int(info.group(3)) >= arguments['-m']:
-				if info.group(2) not in lineages:
-					lineages[info.group(2)] = dict( name=info.group(2), size=int(info.group(3)), desc=dict() )
+			if int(info.group('count')) >= arguments['-m']:
+				if info.group('clone') not in lineages:
+					lineages[info.group('clone')] = dict( name=info.group('clone'), size=int(info.group('count')), desc=dict() )
 
-				lineages[info.group(2)]['desc'][sequence.id] = sequence.description #because otherwise the alignment loses it
+				lineages[info.group('clone')]['desc'][sequence.id] = sequence.description #because otherwise the alignment loses it
 
 				#derep 'singletons' (seq size and lin size are the same) don't need to 
 				#    be renamed for vsearch and don't need saved handles
-				if info.group(1) == info.group(3):
-					with open("%s/%s.fa"%(prj_tree.lineage ,info.group(2)), "w") as handle:
+				if (info.group('cluster') is None and info.group('count') == 1) or (info.group('cluster') is not None and info.group('cluster') == info.group('count')):
+					with open("%s/%s.fa"%(prj_tree.lineage ,info.group('clone')), "w") as handle:
 						SeqIO.write([sequence], handle, 'fasta')
 				else:
 					#add size notation in a way vsearch can understand
-					sequence.id += ";size=%s" % info.group(1) #it's a string because that's what re.search returns
-					SeqIO.write([sequence], getHandle(info.group(2)), 'fasta')
+					if info.group('cluster') is not None:
+						sequence.id += ";size=%s" % info.group('cluster') #it's a string because that's what re.search returns
+					else:
+						sequence.id += ";size=1"
+					SeqIO.write([sequence], getHandle(info.group('clone')), 'fasta')
 
 		count += 1
 		if count % 100000 == 0: print( "Processed %d sequences in %d lineages so far..." % (count, len(lineages)) )

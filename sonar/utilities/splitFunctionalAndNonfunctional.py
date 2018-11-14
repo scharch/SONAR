@@ -21,6 +21,7 @@ Renamed, added functionality, and documented by Chaim A. Schramm 2018-08-30.
 Altered to run before 5.1 and discard bad reads from functional lineages by CAS 2018-08-31.
 Added lineage size correction for functional lineages with discarded bad reads by CAS 2018-09-06.
 Updated for AIRR-format compatibility by CAS 2018-10-18.
+Made sequence parsing regex more flexible by CAS 2018-11-14.
 
 Copyright (c) 2011-2018 Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 
@@ -53,26 +54,29 @@ def main():
 	
 	for sequence in SeqIO.parse( open(arguments['--all'], "rU"), "fasta" ):
 
-		info = re.search("status=(\\S+).*cluster_count=(\\d+) clone_id=\d+ clone_rep=(\\d+) clone_count=(\\d+)", sequence.description)
+		info = re.search("status=(?P<status>\\S+).*(?:cluster_count=(?P<cluster>\\d+))? clone_id=\d+ clone_rep=(?P<rep>\\d+) clone_count=(?P<count>\\d+)", sequence.description)
 
 		if info:
 			
-			reads[sequence.id] = { 'status':info.group(1), 'rep':info.group(3) }
+			reads[sequence.id] = { 'status':info.group('status'), 'rep':info.group('rep') }
 
-			if info.group(3) not in lineages:
-				if info.group(1) == "nonproductive":
-					lineages[info.group(3)] = { 'status':"nonproductive", 'size':int(info.group(4)) }
+			if info.group('rep') not in lineages:
+				if info.group('status') == "nonproductive":
+					lineages[info.group('rep')] = { 'status':"nonproductive", 'size':int(info.group('count')) }
 				else:
-					lineages[info.group(3)] = { 'status':"functional", 'size':int(info.group(4)) }
+					lineages[info.group('rep')] = { 'status':"functional", 'size':int(info.group('count')) }
 
-			if info.group(1) == "nonproductive":
-				if lineages[info.group(3)]['status'] == "functional":
-					lineages[info.group(3)]['status'] = "discard"
+			if info.group('status') == "nonproductive":
+				if lineages[info.group('rep')]['status'] == "functional":
+					lineages[info.group('rep')]['status'] = "discard"
 			else:
-				if lineages[info.group(3)]['status'] == "nonproductive":
-					lineages[info.group(3)]['status'] = "discard"
-				elif info.group(1) != "good":
-					lineages[info.group(3)]['size'] -= int(info.group(2))
+				if lineages[info.group('rep')]['status'] == "nonproductive":
+					lineages[info.group('rep')]['status'] = "discard"
+				elif info.group('status') != "good":
+					if info.group('cluster') is not None:
+						lineages[info.group('rep')]['size'] -= int(info.group('cluster'))
+					else:
+						lineages[info.group('rep')]['size'] -= 1
 		else:
 			#shouldn't happen, but this prevents unexplained KeyErrors from crashing the script
 			print("Warning, could not find status and lineage annotations for sequence %s" % sequence.id)
@@ -93,6 +97,7 @@ if __name__ == "__main__":
 
 	#parse arguments	
 	arguments = docopt(__doc__)
+
 	for arg in arguments:
 		arguments[arg] = re.sub("<project>",fullpath2last_folder(os.getcwd()),arguments[arg])
 
