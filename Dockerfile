@@ -14,6 +14,9 @@ MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 #add docopt
 RUN pip3 install docopt
 
+#add fuzzywuzzy for master script
+RUN pip3 install fuzzywuzzy
+
 #install libraries for bioperl
 RUN apt-get update && apt-get install -y \
   build-essential \
