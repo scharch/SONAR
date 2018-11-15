@@ -25,7 +25,6 @@ pat_nuc_cxrk = re.compile("TG[T|C]...(CG.|AG[A|G]|AA[A|G])", flags=re.I)
 clustalo       = "%s/third-party/clustalo"               % SCRIPT_FOLDER
 clustalw       = "%s/third-party/clustalw2"              % SCRIPT_FOLDER
 muscle         = "%s/third-party/muscle"                 % SCRIPT_FOLDER
-blast_cmd      = "%s/third-party/blastn"                 % SCRIPT_FOLDER
 vsearch        = "%s/third-party/vsearch"                % SCRIPT_FOLDER
 igphyml        = "%s/third-party/igphyml_blas_omp"       % SCRIPT_FOLDER
 igphyml_slow   = "%s/third-party/igphyml_no_libraries"   % SCRIPT_FOLDER
