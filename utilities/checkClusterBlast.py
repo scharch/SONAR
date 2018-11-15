@@ -67,7 +67,7 @@ def main():
 			subprocess.call( re.split("\s+",arguments['--after']) )
 		print( "All %s blast jobs finished successfully" % arguments['--gene'] ) #goes to log file when called by monitor script
 	else:
-		p = subprocess.Popen(["qsub", arguments['--check']], stdout=subprocess.PIPE)
+		p = subprocess.Popen(["qsub", arguments['--check']], universal_newlines=True, stdout=subprocess.PIPE)
 		output, err = p.communicate()
 		print( err )
 		print( output )
