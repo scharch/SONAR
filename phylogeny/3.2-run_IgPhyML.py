@@ -232,6 +232,8 @@ def main():
 	opts = ["-s", "SPR"]
 	if arguments['--quick']:
 		opts=[]
+	#set an environmental variable so that IgPhyML can find its libraries
+	os.environ.update( { 'IGPHYML_PATH' : '%s/third-party/src/motifs'%SCRIPT_FOLDER } )
 	s = subprocess.Popen([igphyml, "-i", "%s/infile" % prj_tree.phylo,
 			      "-m", "GY", "-w", "MO", "-t", "e", "--run_id", "gy94"] + opts,
 			     universal_newlines=True, stderr=subprocess.PIPE)
@@ -286,7 +288,7 @@ def main():
 		handle.write( "ambigfile\t%s/ambigfile.txt\n" % prj_tree.phylo )
 		handle.write( "stem\t%s\n" % prj_name )
 
-	s = subprocess.Popen( ["perl", reconstruct, "%s/ar.config"%prj_tree.phylo], universal_newlines=True, stderr=subprocess.PIPE )
+	s = subprocess.Popen( ["perl", "-I", "%s/third-party"%SCRIPT_FOLDER, reconstruct, "%s/ar.config"%prj_tree.phylo], universal_newlines=True, stderr=subprocess.PIPE )
 	o,e = s.communicate()
 	if e != "" or s.returncode != 0:
 		sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )

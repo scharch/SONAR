@@ -41,6 +41,7 @@ RUN cpanm \
   Algorithm::Combinatorics \
   Statistics::Basic \
   List::Util \
+  PDL::LinearAlgebra::Trans \
   Array::Compare \
   Convert::Binary::C \
   Error \

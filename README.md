@@ -40,6 +40,7 @@ $root@1abcde234> sonar 1.1
 
 #### Optional Prerequisites:
 * For using the master script: fuzzywuzzy python package
+* For inferring ancestor sequences with IgPhyML: PDL::LinearAlgebra::Trans perl package
 * For displaying trees: ete3, PyQT4, and PyQt4.QtOpenGL python packages
 * For comparing GSSPs: pandas python package
 

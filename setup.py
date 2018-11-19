@@ -65,6 +65,10 @@ check = subprocess.call(["perldoc", '-lm', "Algorithm::Combinatorics"],stdout=su
 if check == 1:
     sys.exit("Algorithm::Combinatorics is a required library for SONAR. Please run `cpanm Algorithm::Combinatorics`")
 
+check = subprocess.call(["perldoc", '-lm', "PDL::LinearAlgebra::Trans"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+if check == 1:
+    sys.warn("PDL::LinearAlgebra::Trans is not installed - ancestor inference will not work.\nYou can fix this later by running `cpanm PDL::LinearAlgebra::Trans`.\nProceeding with install...\n\n")
+
 
 #R library checks
 for lib in ["docopt","ggplot2","MASS","grid"]:
