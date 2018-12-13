@@ -62,18 +62,21 @@ def loadAndAnnotate(seqFile, saveDict):
 
 def main():
 
-    toSave = dict()
+	toSave = dict()
     
-    for line in fileinput.input(arguments['-l']):
-	    # use id as the key and the rest of the line as value to be added to fasta def line
-	    fields = line.strip().split()
-	    if len(fields) == 0:
-		    continue
-	    toSave[ fields[0] ] = " ".join( fields[1:] )
+	for line in fileinput.input(arguments['-l']):
+		# use id as the key and the rest of the line as value to be added to fasta def line
+		fields = line.strip().split()
+		if len(fields) == 0:
+			continue
+		toSave[ fields[0] ] = " ".join( fields[1:] )
 
-    if arguments['-o'] != "STDOUT":
-	    sys.stdout = open(arguments['-o'], "w")
-    SeqIO.write(loadAndAnnotate(arguments['-f'], toSave), sys.stdout, "fasta")
+	outMode = "fasta"
+	if arguments['-o'] != "STDOUT":
+		sys.stdout = open(arguments['-o'], "w")
+		if ".fq" in arguments['-o'] or ".fastq" in arguments['-o']:
+			outMode="fastq"
+	SeqIO.write(loadAndAnnotate(arguments['-f'], toSave), sys.stdout, outMode)
 
 
 if __name__ == '__main__':
