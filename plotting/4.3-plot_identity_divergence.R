@@ -260,9 +260,11 @@ if (! is.null(opts$reference) && ! file.exists(opts$reference)) { stop("Cannot f
 
 
 if (dir.exists("output/logs")) { 
-    saveCommandLine( cmd.line )
-    options("error"=my.error.fun)
-} else { print("SONAR log directory not found; command line and output will not be saved") }
+  saveCommandLine( "output/logs/command_history.log", cmd.line )
+} else {
+  saveCommandLine( "SONAR_command_history.log", cmd.line )
+}
+options("error"=my.error.fun)
 
 lds(opts$idDivFile, opts$plot, opts$sieve1, opts$sieve2, opts$mab, opts$xaxis, opts$outdir, opts$output, opts$title, opts$labels, opts$reference, opts$showNames, opts$transpose)
 

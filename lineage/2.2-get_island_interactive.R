@@ -84,7 +84,7 @@ gglocator <- function (n = 1, message = FALSE, xexpand = c(0.05, 0), yexpand = c
     
     # get the position relative to that viewport
     loc <- as.numeric(grid.locator("npc"))
-    
+
     # get the x.range and y.range from ggplot
     plot_info <- ggplot_build(object)
 
@@ -93,14 +93,24 @@ gglocator <- function (n = 1, message = FALSE, xexpand = c(0.05, 0), yexpand = c
     } else{
         ranges <- plot_info$panel$ranges[[1]]
     }
+
     xrng <- ranges$x.range
     yrng <- ranges$y.range
+
+    if(is.null(ranges)) {
+    	#ggplot has changed this yet again
+	# https://gist.github.com/tomhopper/9076152 seems like a good resource to keep track of
+	xrng <- plot_info$layout$panel_params[[1]]$x.range
+	yrng <- plot_info$layout$panel_params[[1]]$y.range
+    }
     
     xrng <- expand_range(range = xrng, mul = xexpand[1], add = xexpand[2])
     yrng <- expand_range(range = yrng, mul = yexpand[1], add = yexpand[2])
-    point <- data.frame(xrng[1] + loc[1] * diff(xrng), yrng[1] + 
-        loc[2] * diff(yrng))
-    names(point) <- with(object, c(deparse(mapping$x), deparse(mapping$y)))
+    point <- data.frame(x = xrng[1] + loc[1] * diff(xrng), y = yrng[1] + loc[2] * diff(yrng))
+
+    #this is more general, but it's now returning '~x' instead of x, so just fixing it manually
+    #names(point) <- with(object, c(deparse(mapping$x), deparse(mapping$y)))
+
     point
 }
 
@@ -163,17 +173,17 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
     refData <- read.table( refPointsData, h=T )
   }
 
-  #specify the "ID" column as "character" so that we don't have to worry about mismatches between strings and ints
-  bigdata   <- read.table( dataFile, h=T, colClasses=c("ID"="character") )
+  #specify the ID column as "character" so that we don't have to worry about mismatches between strings and ints
+  bigdata   <- read.table( dataFile, h=T, colClasses=c("sequence_id"="character") )
   smalldata <- bigdata
   if ( ! is.null(subsetFile) ) {
     subset    <- scan(subsetFile, what='character', quiet=T)
-    smalldata <- bigdata[which(bigdata$ID %in% subset),]
+    smalldata <- bigdata[which(bigdata$sequence_id %in% subset),]
   }
   
   #get a default reference antibody if one was not provided
-  if ( is.null(natAbList) )  natAbList <- c( names(bigdata)[3] )
-  if ( "=a" %in% natAbList ) natAbList <- c( names(bigdata)[3:length(names(bigdata))] )
+  if ( is.null(natAbList) )  natAbList <- c( names(bigdata)[4] )
+  if ( "=a" %in% natAbList ) natAbList <- c( names(bigdata)[4:length(names(bigdata))] )
   
   lineageReads          <- smalldata[ 0, ] #just get column headers
   lineageReads$referent <- factor(levels=natAbList)
@@ -240,9 +250,9 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
         }
 	
         included           <- smalldata[ which(pip2d( as.matrix(point_list), as.matrix(cbind(smalldata$germ_div,smalldata[[mab.R]])) )==1), ]
-	included$referent  <- rep( mab, length(included$ID) )
-	included$round     <- as.factor( rep( "current", length(included$ID) ) )
-	lineageReads$round <- rep( "previous", length(lineageReads$ID) )
+	included$referent  <- rep( mab, length(included$sequence_id) )
+	included$round     <- as.factor( rep( "current", length(included$sequence_id) ) )
+	lineageReads$round <- rep( "previous", length(lineageReads$sequence_id) )
 	tempLineageReads   <- rbind( included, lineageReads )
 
 
@@ -261,14 +271,14 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
 
 
 	#pick appropriate title
-	if ( length(included$ID)==0 ) {
+	if ( length(included$sequence_id)==0 ) {
 	    print( pp + labs( title="WARNING: NO POINTS FOUND IN CURRENT REGION\nLeft click to accept anyway, right click to reselect region" ) + 
                         theme( plot.title=element_text(colour="red") ) )
 	} else if( length(idsOnly)==0 ) {
-	    print( pp + labs( title=sprintf("Found %d transcripts in region\nLeft click to accept, right click to reselect region for %s",length(included$ID), mab) ) +
+	    print( pp + labs( title=sprintf("Found %d transcripts in region\nLeft click to accept, right click to reselect region for %s",length(included$sequence_id), mab) ) +
 	      	        guides(colour=F) )
 	} else {
-	    print( pp + labs( title=sprintf("%d transcripts previously identified\nFound %d transcripts (%d new) in current region\nLeft click to accept, right click to re-select region for %s", length(idsOnly), length(included$ID), sum( ! included$ID %in% idsOnly ), mab) ) )
+	    print( pp + labs( title=sprintf("%d transcripts previously identified\nFound %d transcripts (%d new) in current region\nLeft click to accept, right click to re-select region for %s", length(idsOnly), length(included$sequence_id), sum( ! included$sequence_id %in% idsOnly ), mab) ) )
 	}
 	
 	#getGraphicsEvent doesn't work because it checks interactive() which is always FALSE when using Rscript
@@ -279,7 +289,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
 
     # Add current selection to total and remove duplicates (for multiple Abs)
     lineageReads<-tempLineageReads
-    idsOnly <- unique( c(idsOnly, included$ID) )
+    idsOnly <- unique( c(idsOnly, included$sequence_id) )
 
   }
 
@@ -302,7 +312,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
       for( i in seq_along(allPlots) ) {
       	   thisAb  <- natAbList[i]
 	   current <- which( lineageReads$referent == thisAb )	   
-	   lineageReads$round <- rep( "previous", length(lineageReads$ID) )
+	   lineageReads$round <- rep( "previous", length(lineageReads$sequence_id) )
 	   lineageReads$round[current] <- rep( "current", length(current) )
 	   lineageReads <- lineageReads[ order(lineageReads$round, decreasing=T), ] #put reads from current mAb at the bottom so they plot on top
 	   pl[[i+1]] <- allPlots[[i]] + geom_point( inherit.aes=F, data=lineageReads, aes_string(x="germ_div",y=make.names(thisAb),colour="referent"), size=0.5 ) +
@@ -358,9 +368,11 @@ if ( ! is.null(opts$reference) && ! file.exists(opts$reference) ) stop("Cannot f
 
 
 if (dir.exists("output/logs")) { 
-  saveCommandLine( cmd.line )
-  options("error"=my.error.fun)
-} else { print("SONAR log directory not found; command line and output will not be saved") }
+  saveCommandLine( "output/logs/command_history.log", cmd.line )
+} else {
+  saveCommandLine( "SONAR_command_history.log", cmd.line )
+}
+options("error"=my.error.fun)
 
 getIsland(opts$idDivFile, opts$plot, opts$mab, opts$outdir, opts$output, opts$reference)
 

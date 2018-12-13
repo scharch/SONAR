@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+/bin/env Rscript
 
 "4.2-plot_histogram.R
 
@@ -221,10 +221,12 @@ if( is.null(opts$ylab) ) {
 
 
 
-if (dir.exists("output/logs")) {
-    saveCommandLine( cmd.line )
-    options("error"=my.error.fun)
-} else { print("SONAR log directory not found; command line and output will not be saved") }
+if (dir.exists("output/logs")) { 
+  saveCommandLine( "output/logs/command_history.log", cmd.line )
+} else {
+  saveCommandLine( "SONAR_command_history.log", cmd.line )
+}
+options("error"=my.error.fun)
 
 main(opts$data.txt, opts$outfile.png, opts$title, opts$bars, opts$percent, opts$xlab, opts$ylab, opts$xlim, opts$ylim, opts$logx, opts$logy, opts$mids, opts$magnify, opts$showlegend, opts$legendpos, opts$height, opts$width, opts$dpi)
 

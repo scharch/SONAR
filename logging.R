@@ -6,7 +6,7 @@ my.error.fun <- function() {
     q("no", status = 1, runLast = FALSE)
 }
 
-saveCommandLine <- function( args ) {
+saveCommandLine <- function( logFile, args ) {
     file.arg.name <- "--file="
     script.name <- sub(file.arg.name, "", args[grep(file.arg.name, args)])
     script.basename <- dirname(script.name)
@@ -17,7 +17,7 @@ saveCommandLine <- function( args ) {
 
     commandLine <- paste(c(script.name,tail(args, -1*args.positions)),collapse=' ')
     message     <- paste0("\n",time.stamp," -- SONAR ",version," run with command:\n\t",commandLine,"\n")
-    cat(message,  file="output/logs/command_history.log", append=T)
+    cat(message,  file=logFile, append=T)
 }
 
 
