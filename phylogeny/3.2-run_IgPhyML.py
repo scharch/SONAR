@@ -80,8 +80,7 @@ except ImportError:
 
 
 def deleteGap( start, end, name, tree, gaps ):
-
-	for i,g in gaps[name]:
+	for i,g in enumerate(gaps[name]):
 		if g['start']<= start and g['end']>=end:
 			if g['value'] > .5:
 				return #wasn't provisional this far down
@@ -98,7 +97,7 @@ def deleteGap( start, end, name, tree, gaps ):
 
 	#iterate down the tree
 	for child in tree[name]['children']:
-		deleteGap(start,stop,child,tree,gaps)
+		deleteGap(start,end,child,tree,gaps)
 
 
 
@@ -109,6 +108,7 @@ def assignGaps( name, tree, gaps ):
 		assignGaps(child, tree, gaps)
 		for g in gaps[child]:
 			provisional.append(g.copy())
+			provisional[-1]['value'] /= 2 #assume strict bifurcation, support (currently) comes from 1 of 2 children
 
 	sortProv = sorted( provisional, key=lambda k: (k['start'], k['end']) )
 	ind = 0
@@ -120,10 +120,10 @@ def assignGaps( name, tree, gaps ):
 				s2, e2, v2 = sortProv[ind+1]['start'], sortProv[ind+1]['end'], sortProv[ind]['value']
 
 				if s2>s1:
-					gaps[name].append( { 'start':s1, 'end':s2, 'value':(v1+v2)/2 } )
-				gaps[name].append( { 'start':s2, 'end':e1, 'value':(v1+v2)/2 } )
+					gaps[name].append( { 'start':s1, 'end':s2, 'value':v1 } )
+				gaps[name].append( { 'start':s2, 'end':e1, 'value':v1+v2 } ) #this is also basic case of identical gaps in both children
 				if e2>e1:
-					gaps[name].append( { 'start':e1, 'end':e2, 'value':(v1+v2)/2 } )
+					gaps[name].append( { 'start':e1, 'end':e2, 'value':v2 } )
 				
 				ind += 2 #skip the overlapping one we just processed
 
@@ -214,7 +214,7 @@ def main():
 			
 		for g in re.finditer("-+", str(seq.seq)):
 			#save gap. value is a field to help me determine what's real in assignGaps
-			gaps[ seq.id ].append( {'start':g.start(), 'end':g.end(), 'value':1} )
+			gaps[ seq.id.upper() ].append( {'start':g.start(), 'end':g.end(), 'value':1} )
 			  
 	if arguments['--root'] is not None:
 		germ_id = arguments['--root']

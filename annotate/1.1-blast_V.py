@@ -80,10 +80,10 @@ def getSeqsWithFileName(inFile):
 	filetype = "fasta"
 	if re.search("\.(fq|fastq)$", inFile) is not None:
 		filetype = "fastq"
-		with open(inFile, "rU") as handle:
-			for entry in SeqIO.parse(handle, filetype):
-				entry.id += ";file=%s"%inFile
-				yield entry
+	with open(inFile, "rU") as handle:
+		for entry in SeqIO.parse(handle, filetype):
+			entry.id += ";file=%s"%inFile
+			yield entry
 
 
 
