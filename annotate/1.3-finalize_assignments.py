@@ -179,7 +179,7 @@ def main():
 		dWriter.writerow(PARSED_BLAST_HEADER)
 
 
-	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','length_raw','length_trimmed','indels','status','blast_identity'])
+	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','duplicate_count','length_raw','length_trimmed','indels','status','blast_identity'])
 
 	
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
@@ -214,6 +214,8 @@ def main():
 			rearrangement['duplicate_count'] = raw_stats[3]
 			rearrangement['length_raw']      = raw_stats[4]
 			rearrangement['sequence']        = str(entry.seq)
+
+                        entry.description = "duplicate_count=%s" % raw_stats[3]
 				
 			if not entry.id in dict_vgerm_aln:
 				noV+=1
@@ -227,7 +229,7 @@ def main():
 				else:
 					entry.seq = entry.seq[	: myV.qend ].reverse_complement()
 				myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
-				entry.description = "v_call=%s status=noJ" % (myVgenes)
+				entry.description += " v_call=%s status=noJ" % (myVgenes)
 				allV_nt.write(">%s %s\n%s\n" %(entry.id, entry.description, entry.seq))
 
 				#prevent BioPython errors
@@ -368,7 +370,7 @@ def main():
 				elif any( x in myV.sid for x in ["KV", "VK", "Vk", "vk", "kappa", "Kappa", "KAPPA"] ):
 					vlocus = "IGK"
 					
-				entry.description = "v_call=%s" % myVgenes
+				entry.description += " v_call=%s" % myVgenes
 				if myDgenes != "":
 					entry.description += " d_call=%s" % myDgenes
 				entry.description += " j_call=%s" % myJgenes
