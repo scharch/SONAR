@@ -134,13 +134,13 @@ def main():
 			if fromDerep:
 				sourceFile = fromDerep.group(1)
 
-			dup_count = 1
+			dup_count = "NA"
 			checkSize = re.search(";size=(\d+)", sequence.id)
 			if checkSize:
 				dup_count = checkSize.group(1)
 				
 			total += 1
-			id_map.writerow([ "%08d"%total, sourceFile, sequence.id, dup_count, len(sequence.seq)])
+			id_map.writerow([ "%08d"%total, sourceFile, re.sub(";file=.+","",sequence.id), dup_count, len(sequence.seq)])
 
 			if arguments['--minl'] <= len(sequence.seq) <= arguments['--maxl']:
 				total_good += 1
