@@ -214,11 +214,11 @@ def main():
 			rearrangement['length_raw']      = raw_stats[4]
 			rearrangement['sequence']        = str(entry.seq)
 
-                        if not raw_stats[3] == "NA":
-			        rearrangement['duplicate_count'] = raw_stats[3]
-                                entry.description = "duplicate_count=%s" % raw_stats[3]
-                        else:
-                                entry.description = "" #just in case
+			if not raw_stats[3] == "NA":
+				rearrangement['duplicate_count'] = raw_stats[3]
+				entry.description = "duplicate_count=%s" % raw_stats[3]
+			else:
+				entry.description = "" #just in case
 				
 			if not entry.id in dict_vgerm_aln:
 				noV+=1
