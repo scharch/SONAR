@@ -53,7 +53,7 @@ def reformatInput(seqFile):
 		for s in SeqIO.parse(seqs, "fasta"):
 			mySize = re.search( "duplicate_count=(\d+)", s.description )
 			if mySize:
-				s.id += ";size=%d"
+				s.id += ";size=%s" % mySize.group(1)
 			yield s
 
 
