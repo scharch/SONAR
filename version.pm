@@ -28,7 +28,7 @@ sub logCmdLine() {
 
     my $command = shift;
     foreach(@_) { $command .= /(\s|\*)/ ? " \'$_\'" : " $_"; }
-    my $VERSION = `git --git-dir $FindBin::Bin/../../.git --work-tree=$FindBin::Bin/../ describe --always --dirty --tags`;
+    my $VERSION = `git --git-dir $FindBin::Bin/../.git --work-tree=$FindBin::Bin/../ describe --always --dirty --tags`;
     chomp $VERSION;
 
     our $LOGFILE = "SONAR_command_history.log";

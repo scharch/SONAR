@@ -4,7 +4,7 @@
 
  3.1-merge_timepoints.pl
 
- This script uses USearch to recluster selected sequences from multiple timepoints
+ This script uses vsearch to recluster selected sequences from multiple timepoints
        to determine "birthdays" and persistence times. It is recommended to use
        custom prefixes that correspond to actual time points from longitudinal
        samples, whether relative (weeks or months post infection) or absolute
@@ -24,7 +24,7 @@
                      Defaults to "01", "02", etc and will be prepended with a
                      dash separating it from the orginal sequence name. Dashes
                      are not allowed in the labels themselves, to ease processing.
-      -c      => Use USearch's cluster_fast command instead of derep_fulllength.
+      -c      => Use vsearch's cluster_fast command instead of derep_fulllength.
                      Allows fragments missing a few AA at either end to be
                      counted as the same as a full-length sequence.
      --t      => Clustering threshold to use. Not setable when using the 
@@ -137,25 +137,25 @@ $all->close();
 
 
 
-# run USearch
+# run vsearch
 my $cmd =  ppath() . "vsearch -derep_fulllength work/phylo/all_seqs.fa -uc work/phylo/uc";
 if ($clustFast){
     # -maxgaps parameter treats sequences unique except for an indel as distinct
-    # need to sort by length because of possible fragments
-    $cmd = ppath() . "vsearch -cluster_fast work/phylo/all_seqs.fa -sort length -id $threshold -uc work/phylo/uc -maxgaps 2";
+    # vsearch automatically sorts by length, accountign for possible fragments
+    $cmd = ppath() . "vsearch -cluster_fast work/phylo/all_seqs.fa -id $threshold -uc work/phylo/uc -maxgaps 2";
 }
 print "$cmd\n";
 system($cmd);
 
 
 
-#Parse USearch output (sample lines below)
+#Parse vsearch output (sample lines below)
 #S       0       348     *       .       *       *       *       00-000154        *
 #H       0       348     100.0   .       0       348     =       00-000180        00-000154
 #C       0       18258   *       *       *       *       *       00-000154        *
 
 my %cluster;
-open UC, "work/phylo/uc" or die "Can't find output from USearch: $!. Please check parameters.\n";
+open UC, "work/phylo/uc" or die "Can't find output from vsearch: $!. Please check parameters.\n";
 while (<UC>) {
     last if /^C/; #speed processing by skipping summary lines
 
