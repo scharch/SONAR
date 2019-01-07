@@ -192,7 +192,10 @@ def main():
 	if arguments['--cluster']:
 
 		# write pbs files and auto submit shell script
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, arguments['--lib'], 
+		mode = "-db"
+		if not os.path.isfile(arguments['--lib'] + ".nhr"):
+			mode = "-subject"
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--lib'], 
 									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
 									      "%s/%s_$NUM.txt"	 % (folder_tree.vgene, prj_name), V_BLAST_WORD_SIZE) )
 		pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')

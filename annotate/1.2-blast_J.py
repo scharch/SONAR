@@ -130,7 +130,10 @@ def main():
 
 		# write pbs files and auto submit shell script
 		if not arguments['--noC']:
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s -perc_identity 100" % ( "%03d", CMD_BLAST % (blast_cmd, arguments['--clib'], 
+			mode = "-db"
+			if not os.path.isfile(arguments['--clib'] + ".nhr"):
+				mode = "-subject"
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s -perc_identity 100" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--clib'], 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
@@ -145,7 +148,10 @@ def main():
 			os.system( "%s %s/cmonitor.sh"%(qsub,prj_tree.jgene) )
 
 		if not arguments['--noD']:
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, arguments['--dlib'], 
+			mode = "-db"
+			if not os.path.isfile(arguments['--dlib'] + ".nhr"):
+				mode = "-subject"
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--dlib'], 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
@@ -160,7 +166,10 @@ def main():
 			os.system( "%s %s/dmonitor.sh"%(qsub,prj_tree.jgene) )
 
 		#now basic J (do last so the holds work properly -at least for the first round)
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, arguments['--jlib'], 
+		mode = "-db"
+		if not os.path.isfile(arguments['--jlib'] + ".nhr"):
+			mode = "-subject"
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--jlib'], 
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"	 % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 		pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
