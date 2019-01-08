@@ -179,7 +179,7 @@ def main():
 
 		check = "%s/utilities/checkClusterBlast.py --gene j --big %d --check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
 		if arguments['--callFinal']:
-			check += " --after %s/annotate/1.3-finalize_assignments.py %s" % (SCRIPT_FOLDER, arguments['--fArgs'])
+			check += " --after '%s/annotate/1.3-finalize_assignments.py %s'" % (SCRIPT_FOLDER, arguments['--fArgs'])
 		monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
 		monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
 		monitor.close()
@@ -216,9 +216,6 @@ def main():
 
 if __name__ == '__main__':
 	
-	#log command line
-	logCmdLine(sys.argv)
-
 	arguments = docopt(__doc__)
 	arguments['--threads'] = int(arguments['--threads'])
 	
@@ -278,6 +275,9 @@ if __name__ == '__main__':
 		else:
 			arguments['--noC'] = True #light chains only
 
+                        
+	#log command line
+	logCmdLine(sys.argv)
 
 	# save J/D/C library locations for next step
 	# overwrite the file to avoid errors in 1.3 in case we are experimenting with multiple germline databases
