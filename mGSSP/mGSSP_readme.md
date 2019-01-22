@@ -3,10 +3,10 @@ Suggested workflow for generating GSSPs using SONAR
 
 1. Run Module 1 (annotation) on NGS data. In this case, we only want to dereplicate sequences without clustering, as we will do error control _within_ lineages.
    ```
-   $> 1.1-blast_V.py -fasta ngs.fq
+   $> 1.1-blast_V.py --fasta ngs.fq
    $> 1.2-blast_J.py
    $> 1.3-finalize_assignments.py
-   $> 1.4-cluster_sequences.py -id 1 -min1 0 -min2 1
+   $> 1.4-cluster_sequences.py --id 1 --min1 0 --min2 1
    ```
 1. Now that we have assigned V and J, we can cluster sequences into pseudolineages.
    ```
@@ -35,10 +35,10 @@ Suggested workflow for generating GSSPs using SONAR
    ```
 1. Note that GSSPs can be constructed from repertoires of nonproductive rearrangements, as well. To do so, run 1.4 on all sequences with an assigned J gene, and use splitFunctionalAndNonfunctional.py in the sonar/utilities folder to get only those lineages made up entirely of nonproductive sequences.
    ```
-   $> 1.4-cluster_sequences.py -f output/sequences/nucleotide/<project>_allJ.fa -id 1 -min1 0 -min2 1 -s 2
+   $> 1.4-cluster_sequences.py -f output/sequences/nucleotide/<project>_allJ.fa --id 1 --min1 0 --min2 1
    $> getListFromFasta.py -f output/sequences/nucleotide/<project>_allJ_unique.fa | \
       getFastaFromList.py -f output/sequences/nucleotide/<project>_allCDR3.fa -o output/sequences/nucleotide/<project>_allCDR3_unique.fa
-   $> 2.4-cluster_into_groups.py -full output/sequences/nucleotide/<project>_allJ_unique.fa -cdr3 output/sequences/nucleotide/<project>_allCDR3_unique.fa
+   $> 2.4-cluster_into_groups.py --full output/sequences/nucleotide/<project>_allJ_unique.fa --cdr3 output/sequences/nucleotide/<project>_allCDR3_unique.fa
    $> splitFunctionalAndNonfunctional.py
    ```
 At this point, the rest of the mGSSP pipeline (5.1-5.3) can be run separately for the functional and nonfunctional repertoires. Note that the --keep flag should be passed to 5.2-filter_sequences.py when applied to nonfunctional repertoires:

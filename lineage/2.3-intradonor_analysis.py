@@ -80,7 +80,6 @@ from docopt import docopt
 from multiprocessing import Pool
 from functools import partial
 from io import StringIO
-from sonar.lineage import *
 from Bio import Phylo
 from Bio.Align.Applications import MuscleCommandline
 

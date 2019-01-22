@@ -163,7 +163,9 @@ def main():
 				 "-id", str(arguments['--id']/100.0),
 				 "-maxgaps", str(arguments['--gaps']),
 				 "-sizein", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
-				 "-leftjust", "-rightjust"] #left/right forces our pre-determined CDR3 borders to match 
+				 "-minseqlength", "15", #lets us capture CDR3s down to 3 aa
+				 "-leftjust", "-rightjust", #left/right forces our pre-determined CDR3 borders to match
+				 "-quiet"] #supress screen clutter
 				)
 
 		#now reconstruct pseudo-lineages
@@ -244,8 +246,6 @@ def main():
 				withLin.write(r)
 			withLin.close()
 			os.rename( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) )
-
-	log.close()
 
 
 
