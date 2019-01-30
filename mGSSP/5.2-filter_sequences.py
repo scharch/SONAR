@@ -68,7 +68,7 @@ def runClustal( fileName ):
 	print( "Starting work on %s..." % fileName )
 
 	#load sequences and preprocess to align:
-	reader = SeqIO.parse(open(fileName, "rU"), "fasta")
+	reader = SeqIO.parse(open(fileName, "r"), "fasta")
 	for entry in reader:
 
 		total += 1
@@ -152,7 +152,7 @@ def main():
 
 	global germs
 	germs	    = dict()
-	for entry in SeqIO.parse(open(arguments['--db'], "rU"), "fasta"):
+	for entry in SeqIO.parse(open(arguments['--db'], "r"), "fasta"):
 		germs[entry.id] = entry.seq
 
 
@@ -161,7 +161,7 @@ def main():
 		index	= 0
 		counter = 0
 		chunk	= []
-		reader	= SeqIO.parse(open(arguments['IN'], "rU"), "fasta")
+		reader	= SeqIO.parse(open(arguments['IN'], "r"), "fasta")
 		for entry in reader:
 			chunk.append(entry)
 			counter += 1

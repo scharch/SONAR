@@ -82,7 +82,7 @@ def closestToConsensus(linIt):
 	for lineage in linIt:
 		#save time on singletons (if they weren't excluded by minSeq)
 		if len(lineage['desc']) == 1:
-			with open("%s/%s.fa" % (prj_tree.lineage, lineage['name']), "rU") as handle:
+			with open("%s/%s.fa" % (prj_tree.lineage, lineage['name']), "r") as handle:
 				results.append( SeqIO.read(handle,'fasta') )
 		else:
 
@@ -95,7 +95,7 @@ def closestToConsensus(linIt):
 					stdout=FNULL, stderr=subprocess.STDOUT)
 
 			#extract biggest cluster
-			with open("%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "rU") as allClusters:
+			with open("%s/%s_msa.fa"%(prj_tree.lineage, lineage['name']), "r") as allClusters:
 				with open("%s/%s_msaBiggest.fa"%(prj_tree.lineage, lineage['name']), "w") as biggestOnly:
 					blank = next( allClusters )
 					for line in allClusters:
@@ -104,7 +104,7 @@ def closestToConsensus(linIt):
 						biggestOnly.write(line)
 	    
 			#open the msa
-			with open("%s/%s_msaBiggest.fa" % (prj_tree.lineage, lineage['name']), "rU") as handle:
+			with open("%s/%s_msaBiggest.fa" % (prj_tree.lineage, lineage['name']), "r") as handle:
 				aln = AlignIO.read(handle, "fasta")
 		
 			#add derep size to alignment as weighting
@@ -138,7 +138,7 @@ def main():
 	#first, open the input file and parse into pseudo-lineages
 	lineages = dict()
 	count = 0
-	for sequence in SeqIO.parse(open(arguments['-i'], "rU"), "fasta"):
+	for sequence in SeqIO.parse(open(arguments['-i'], "r"), "fasta"):
 		info = re.search("(?: cluster_count=(?P<cluster>\d+))? clone_id=(?P<clone>\d+).*clone_count=(?P<count>\d+)", sequence.description)
 		if info:
 			if int(info.group('count')) >= arguments['-m']:

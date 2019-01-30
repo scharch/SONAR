@@ -49,7 +49,7 @@ except ImportError:
 
 	
 def reformatInput(seqFile):
-	with open(seqFile, "rU") as seqs:
+	with open(seqFile, "r") as seqs:
 		for s in SeqIO.parse(seqs, "fasta"):
 			mySize = re.search( "duplicate_count=(\d+)", s.description )
 			if mySize:
@@ -59,7 +59,7 @@ def reformatInput(seqFile):
 
 
 def getUniques(seqFile, size_dict):
-	with open(seqFile, "rU") as seqs:
+	with open(seqFile, "r") as seqs:
 		for s in SeqIO.parse(seqs, "fasta"):
 			if s.id in size_dict:
 				s.description += " cluster_count=%d" % size_dict[s.id]
@@ -82,7 +82,7 @@ def main():
 
 	#process the uc file
 	centroid = dict()
-	with open("temp.uc" ,"rU") as handle:
+	with open("temp.uc" ,"r") as handle:
 		uc = csv.reader(handle, delimiter="\t")
 		for row in uc:
 			if row[0] == "H":
@@ -96,7 +96,7 @@ def main():
 
 	#process the uc file
 	size = dict()
-	with open("%s.cluster"%os.path.splitext(arguments['-f'])[0], "rU") as handle:
+	with open("%s.cluster"%os.path.splitext(arguments['-f'])[0], "r") as handle:
 		uc = csv.reader(handle, delimiter="\t")
 		for row in uc:
 			if row[0] == "H":

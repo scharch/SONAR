@@ -27,7 +27,7 @@ class GSSP:
 		self.entropy = []
 
 		#read in GSSPs from a text file
-		with open(inFile, "rU") as handle:
+		with open(inFile, "r") as handle:
 			reader = csv.reader(handle, delimiter = "\t")
 			header = next(reader)
 			thisV  = None

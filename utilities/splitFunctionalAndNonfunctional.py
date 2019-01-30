@@ -52,7 +52,7 @@ def main():
 	lineages = dict()
 	reads	 = dict()
 	
-	for sequence in SeqIO.parse( open(arguments['--all'], "rU"), "fasta" ):
+	for sequence in SeqIO.parse( open(arguments['--all'], "r"), "fasta" ):
 
 		info = re.search("status=(?P<status>\\S+).*(?:cluster_count=(?P<cluster>\\d+))? clone_id=\d+ clone_rep=(?P<rep>\\d+) clone_count=(?P<count>\\d+)", sequence.description)
 
@@ -86,10 +86,10 @@ def main():
 		
 	#now do output
 	with open(arguments['--func'], "w") as fHandle:
-		SeqIO.write( [ fixLineageSize(s) for s in SeqIO.parse(open(arguments['--all'], "rU"), "fasta") if reads[s.id]['status']=="good" and lineages[reads[s.id]['rep']]['status']=="functional" ], fHandle, "fasta" )
+		SeqIO.write( [ fixLineageSize(s) for s in SeqIO.parse(open(arguments['--all'], "r"), "fasta") if reads[s.id]['status']=="good" and lineages[reads[s.id]['rep']]['status']=="functional" ], fHandle, "fasta" )
 
 	with open(arguments['--nonf'], "w") as nHandle:
-		SeqIO.write( [ s for s in SeqIO.parse(open(arguments['--all'], "rU"), "fasta") if lineages[reads[s.id]['rep']]['status']=="nonproductive" ], nHandle, "fasta" )
+		SeqIO.write( [ s for s in SeqIO.parse(open(arguments['--all'], "r"), "fasta") if lineages[reads[s.id]['rep']]['status']=="nonproductive" ], nHandle, "fasta" )
 
 	
 

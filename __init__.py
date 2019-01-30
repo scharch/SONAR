@@ -254,7 +254,7 @@ def load_seqs_in_dict(f, ids):
 	load all sequences in file f is their id is in ids (list or set or dictionary)
 	"""
 	result = dict()
-	for entry in SeqIO.parse(open(f, "rU"), "fasta"):
+	for entry in SeqIO.parse(open(f, "r"), "fasta"):
 		if entry.id in ids:
 			result[entry.id] = entry
 			
@@ -264,7 +264,7 @@ def load_seqs_in_dict(f, ids):
 def load_fastas_in_list(f, l):
 	
 	print( "loading reads from %s as in given list..." %f )
-	reader, result, good = SeqIO.parse(open(f, "rU"), "fasta"), dict(), 0
+	reader, result, good = SeqIO.parse(open(f, "r"), "fasta"), dict(), 0
 
 	for entry in reader:
 		if entry.id in l:
@@ -284,7 +284,7 @@ def load_fastas_in_list(f, l):
 
 def load_fastas_with_Vgene(f, v):
 	print( "loading reads from %s assigned to %s..." %(f,v) )
-	reader, dict_reads = SeqIO.parse(open(f, "rU"), "fasta"), dict()
+	reader, dict_reads = SeqIO.parse(open(f, "r"), "fasta"), dict()
 	for entry in reader:
 		if re.search(v, entry.description):
 			dict_reads[entry.id] = entry
@@ -297,7 +297,7 @@ def load_fastas(f):
 	"""return gene ID and sequences in a dictionary"""
 	print( "loading sequence info from %s..." %f )
 
-	reader, result = SeqIO.parse(open(f, "rU"), "fasta"), dict()
+	reader, result = SeqIO.parse(open(f, "r"), "fasta"), dict()
 
 	for entry in reader:
 		#myseq = MySeq(entry.id, entry.seq)
@@ -314,7 +314,7 @@ def generate_read_fasta(f):
 	if re.search("\.(fq|fastq)$", f) is not None:
 		filetype = "fastq"
 
-	reader = SeqIO.parse(open(f, "rU"), filetype)
+	reader = SeqIO.parse(open(f, "r"), filetype)
 	for entry in reader:
 		yield entry
 
@@ -327,7 +327,7 @@ def generate_read_fasta_folder(fastas):
 		if re.search("\.(fq|fastq)$", fasta_file) is not None:
 			filetype = "fastq"
 
-		for entry in SeqIO.parse(open(fasta_file, "rU"), filetype):
+		for entry in SeqIO.parse(open(fasta_file, "r"), filetype):
 
 			yield entry, None, fasta_file
 

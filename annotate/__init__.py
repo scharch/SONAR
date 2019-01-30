@@ -46,7 +46,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 	old_id		 =  ""
 
 
-	reader = csv.reader(open(infile, "rU"), delimiter = sep)
+	reader = csv.reader(open(infile, "r"), delimiter = sep)
 	for row in reader:
 
 		if len(row) != 13:

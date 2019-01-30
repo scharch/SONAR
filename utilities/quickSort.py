@@ -33,7 +33,7 @@ except ImportError:
 
 def main():
 	seqs = []
-	with open( sys.argv[1], "rU" ) as inFile:
+	with open( sys.argv[1], "r" ) as inFile:
 		for s in SeqIO.parse(inFile, "fasta"):
 			seqs.append(s)
 	with open( sys.argv[2], "w" ) as output:

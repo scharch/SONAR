@@ -191,7 +191,7 @@ def main():
 
 
 	#open the alignment to rename everything and find germline sequence
-	with open(arguments['-i'], "rU") as handle:
+	with open(arguments['-i'], "r") as handle:
 		try:
 			aln = AlignIO.read(handle, arguments['--format'])
 		except:
@@ -300,7 +300,7 @@ def main():
 		tree	= dict()
 		stack	= list()
 		seqDict = OrderedDict()
-		with open("%s/%s.MLcodons.fa"%(prj_tree.phylo,prj_name), "rU") as infer:
+		with open("%s/%s.MLcodons.fa"%(prj_tree.phylo,prj_name), "r") as infer:
 			for seq in SeqIO.parse(infer, "fasta"):
 				name = seq.id.split(";")[1]
 				seqDict[name] = seq

@@ -130,7 +130,7 @@ def main():
 		for idx, tf in enumerate(tree_files):
 			
 			#read in the tree as a string
-			tree_string = open(tf, "rU").read().strip()
+			tree_string = open(tf, "r").read().strip()
 			
 			#get rid of possible negative branch lengths and then parse
 			tree_string, num = re.subn(":-\d+\.\d+",":0", tree_string)

@@ -152,7 +152,7 @@ def main():
 
 
 	#get raw seq stats from temp table
-	raw = csv.reader(open("%s/id_lookup.txt" % prj_tree.internal,'rU'), delimiter=sep)
+	raw = csv.reader(open("%s/id_lookup.txt" % prj_tree.internal,'r'), delimiter=sep)
 
 
 	raw_count, total, found, noV, noJ, f_ind  = 0, 0, 0, 0, 0, 1
@@ -493,7 +493,7 @@ if __name__ == '__main__':
 	prj_name  = fullpath2last_folder(prj_tree.home)
 
 	#load saved locus and library information
-	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "rU")
+	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "r")
 	locus = handle.readline().strip()
 	vlib  = handle.readline().strip()
 	jlib  = handle.readline().strip()

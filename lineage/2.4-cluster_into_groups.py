@@ -93,7 +93,7 @@ def main():
 
 			
 	gene_pat = re.compile("(?:v_call|V_gene)=IG([HKL]V[^*]+).*(?:j_call|J_gene)=IG([HKL]J\d)")
-	for sequence in SeqIO.parse(open(arguments['--cdr3'], "rU"), "fasta"):
+	for sequence in SeqIO.parse(open(arguments['--cdr3'], "r"), "fasta"):
 		genes = re.search(gene_pat, sequence.description)
 		if genes:
 			key = genes.group(1) + "_" + genes.group(2)
@@ -170,7 +170,7 @@ def main():
 
 		#now reconstruct pseudo-lineages
 		myGenes = group.split("_")
-		with open("%s/%s.uc"%(prj_tree.lineage, group), "rU") as handle:
+		with open("%s/%s.uc"%(prj_tree.lineage, group), "r") as handle:
 			uc = csv.reader( handle, delimiter=sep )
 			for row in uc:
 				#first get rid of size annotations

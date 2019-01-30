@@ -136,7 +136,7 @@ def runAlign( fileName ):
 	print( "Starting work on %s..." % fileName )
 
 	#load sequences and preprocess to align:
-	reader = SeqIO.parse(open(fileName, "rU"), "fasta")
+	reader = SeqIO.parse(open(fileName, "r"), "fasta")
 	for entry in reader:
 		results[entry.id] = dict()
 		gene = re.search("(v_call|V_gene)=((IG[HKL]V[^*]+)[^,\s]+)",entry.description)
@@ -168,13 +168,13 @@ def main():
 	
 	global germs
 	germs = dict()
-	for entry in SeqIO.parse(open(arguments['-g'], "rU"), "fasta"):
+	for entry in SeqIO.parse(open(arguments['-g'], "r"), "fasta"):
 		germs[entry.id] = entry
 
 	global mature
 	mature = dict()
 	if arguments['-a'] is not None:
-		for entry in SeqIO.parse(open(arguments['-a'], "rU"), "fasta"):
+		for entry in SeqIO.parse(open(arguments['-a'], "r"), "fasta"):
 			mature[entry.id] = entry
 
 			
@@ -188,7 +188,7 @@ def main():
 		inputFile = "temp_dedup.fa"
 
 		#process the uc file
-		with open("temp.uc" ,"rU") as handle:
+		with open("temp.uc" ,"r") as handle:
 			uc = csv.reader(handle, delimiter="\t")
 			for row in uc:
 				if row[0] == "S":
@@ -203,7 +203,7 @@ def main():
 		index	= 0
 		counter = 0
 		chunk	= []
-		reader	= SeqIO.parse(open(inputFile, "rU"), "fasta")
+		reader	= SeqIO.parse(open(inputFile, "r"), "fasta")
 		for entry in reader:
 			chunk.append(entry)
 			counter += 1

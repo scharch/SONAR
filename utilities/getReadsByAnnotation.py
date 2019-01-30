@@ -53,7 +53,7 @@ def checkAnnotation(seqFile, annotationList):
 	read_format="fasta"
 	if re.search("\.(fq|fastq)$", seqFile) is not None:
 		read_format="fastq"
-	with open(seqFile, "rU") as seqs:
+	with open(seqFile, "r") as seqs:
 		for s in SeqIO.parse(seqs, read_format):
 			if annotationInList( s.description, annotationList ):
 				good += 1

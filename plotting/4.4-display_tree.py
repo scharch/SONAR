@@ -121,7 +121,7 @@ def parseNatives(infile):
 	nats = dict()
 	times = []
 
-	reader	= csv.reader(open(infile, "rU"), delimiter = sep)
+	reader	= csv.reader(open(infile, "r"), delimiter = sep)
 	for row in reader:
 		if len(row )== 3:
 			date, name, show = row
@@ -151,7 +151,7 @@ def parseInternalNodes(infile):
 
 	iNodes = dict()
 
-	reader	= csv.reader(open(infile, "rU"), delimiter = sep)
+	reader	= csv.reader(open(infile, "r"), delimiter = sep)
 	for row in reader:
 		if len(row)==2:
 			name, show = row
@@ -175,7 +175,7 @@ def parsePrettyDates(infile, unformatted):
 
 	dates	= dict()
 
-	reader	= csv.reader(open(infile, "rU"), delimiter = sep)
+	reader	= csv.reader(open(infile, "r"), delimiter = sep)
 	for row in reader:
 		if len(row)==2:
 			name, show = row
@@ -370,7 +370,7 @@ def main():
 
 	#annotations?
 	if arguments['-a'] is not None:
-		reader	= csv.reader(open(arguments['-a'], "rU"), delimiter = sep)
+		reader	= csv.reader(open(arguments['-a'], "r"), delimiter = sep)
 		for row in reader:
 			if len(row)==2:
 				try:

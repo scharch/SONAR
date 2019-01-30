@@ -32,7 +32,7 @@ except ImportError:
 
 
 def loadAndTranslate():
-	with open( sys.argv[1], "rU" ) as inFile:
+	with open( sys.argv[1], "r" ) as inFile:
 		for seq in SeqIO.parse(inFile, "fasta"):
 			seq.seq = seq.seq.translate()
 			yield seq

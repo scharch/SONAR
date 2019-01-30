@@ -59,14 +59,14 @@ if arguments['<db.fa>'] is None:
 all_letters = list("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 fa_head	    = "".join(numpy.random.choice(all_letters,size=8))
 germs	    = dict()
-for entry in SeqIO.parse(open(arguments['<db.fa>'], "rU"), "fasta"):
+for entry in SeqIO.parse(open(arguments['<db.fa>'], "r"), "fasta"):
 	germs[entry.id] = entry.seq
 
 
 #load sequences and preprocess to align:
 sequences   = []
 total, good = 0, 0
-reader	    = SeqIO.parse(open(arguments['<in.fa>'], "rU"), "fasta")
+reader	    = SeqIO.parse(open(arguments['<in.fa>'], "r"), "fasta")
 
 for entry in reader:
 	total += 1

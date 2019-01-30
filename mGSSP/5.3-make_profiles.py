@@ -168,7 +168,7 @@ def main():
 
 	#load sequences
 	masterList = defaultdict( list )
-	with open(arguments["<sequences.fa>"], 'rU') as handle:
+	with open(arguments["<sequences.fa>"], 'r') as handle:
 		for sequence in SeqIO.parse(handle, "fasta"):
 
 			#start with a special case where IMGT allele is misnamed
@@ -204,7 +204,7 @@ def main():
 
 	#load germlines
 	germList = defaultdict( list )
-	with open(arguments["--germline"], 'rU') as handle:
+	with open(arguments["--germline"], 'r') as handle:
 		for sequence in SeqIO.parse(handle, "fasta"):
 			#start with a special case where IMGT allele is misnamed
 			sequence.id = re.sub("IGHV4-4\*0[78]", "IGHV4-59*11", sequence.id)
@@ -248,7 +248,7 @@ if __name__ == '__main__':
 	try:
 		arguments['--mask'] = int( arguments['--mask'] )
 	except ValueError:
-		with open( arguments['--mask'], "rU" ) as handle:
+		with open( arguments['--mask'], "r" ) as handle:
 			reader = csv.reader( handle, delimiter="\t" )
 			for row in reader:
 				mask[ row[0] ] = int( row[1] )

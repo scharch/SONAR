@@ -49,7 +49,7 @@ def main():
 
 
 	#do the conversion
-	with open( "%s/%s_all_seq_stats.txt"%(prj_tree.tables, prj_name), "rU" ) as handle:
+	with open( "%s/%s_all_seq_stats.txt"%(prj_tree.tables, prj_name), "r" ) as handle:
 		oldFile = csv.reader( handle, delimiter="\t" )
 		header = next(oldFile)
 		for row in oldFile:
