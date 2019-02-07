@@ -505,6 +505,10 @@ if __name__ == '__main__':
 				arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
 			else:
 				arguments['--jmotif'] = "TT[C|T][G|A]G"
+		elif "C" in locus:
+			#custom library, but default to looking for both motifs
+			sys.stderr.write("Custom gene libraries used but no J motif specified; defaulting to human heavy+light...\n")
+			arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
 
 	if arguments['--nterm'] not in ["truncate", "extend", "germline", "discard"]:
 		sys.exit("--nterm must be one of ('truncate', 'extend', 'germline', 'discard')")
