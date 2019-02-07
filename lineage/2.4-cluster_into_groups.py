@@ -15,7 +15,7 @@ This script uses CDR3 identity to group unique sequences from a given data set
       Sequences are first grouped by unique V and J gene assignments and then
       VSearch is used to cluster the CDR3 sequences.
 
-Usage: 2.4-cluster_into_groups.py [ --id <90> --gaps <0> --natives FASTA (-v IGHV -j IGHJ) (--full FASTA --cdr3 FASTA) ]
+Usage: 2.4-cluster_into_groups.py [ --id <90> --gaps <0> --natives FASTA (-v IGHV -j IGHJ) (--full FASTA --cdr3 FASTA) -t 1 ]
 
 Options:
     --id <90>         Clustering threshold (%) for CDR3 sequence identity (nucleotide).
@@ -44,6 +44,7 @@ Options:
                          than SONAR's "goodVJ_unique" file. Must specify --cdr3, as well.
     --cdr3 FASTA      CDR3 nucleotide sequences extracted from custom sequence file if
                          not using SONAR's "goodVJ_unique" file. Must specify --full, too.
+    -t 1              Number of threads used [default: 1]
 
 
 Created by Chaim A Schramm on 2015-04-27.
@@ -55,8 +56,9 @@ Changed regex for V genes and added special case handling for OR and (II)/(III) 
                          by CAS 2018-08-28.
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Updated for AIRR-format compatibility by CAS 2018-10-18.
+Added multithreading by CAS 2019-02-05.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -64,6 +66,8 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 import sys
 from docopt import docopt
 from collections import *
+from multiprocessing import Pool
+import itertools
 import airr
 
 try:
@@ -74,10 +78,89 @@ except ImportError:
 	from sonar.lineage import *
 
 
-def main():
+# a utility function to get us a slice of an iterator, as an iterator
+# when working with iterators maximum lazyness is preferred
+# from https://stackoverflow.com/a/44502827
+def iterator_slice(iterator, length):
+	iterator = iter(iterator)
+	slice = 0
+	while True:
+		res = tuple(itertools.islice(iterator, length))
+		if not res:
+			break
+		slice += 1
+		yield slice, res
 
+
+
+def processClusters( iter_tuple ):
+
+	count, chunk = iter_tuple
+	print("Processing chunk #%d..."%count)
+
+	global natives
+	
 	clusterLookup = dict()
 	centroidData = dict()
+	clusterSizes = Counter()
+
+	for cluster in chunk:
+
+		#save a bit of time for obvious singletons
+		if cluster['count'] == 1:
+			single = cluster['ids'][0]
+			myGenes = cluster['group'].split("_")
+			clusterLookup[ single ] = single
+			centroidData[ single ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
+			if single in natives: centroidData[single]['nats'] = [single] #this shouldn't be possible, given we skipped natives with unique V/J combos above...
+			clusterSizes[ single ] = 1#seqSize[ single ]
+			continue
+
+		#cluster with vsearch
+		subprocess.call([vsearch, "-cluster_size", cluster['file'], 
+				 "-id", str(arguments['--id']/100.0),
+				 "-maxgaps", str(arguments['--gaps']),
+				 "-sizein", "-uc", "%s/%s.uc"%(prj_tree.lineage, cluster['group']),
+				 "-minseqlength", "15", #lets us capture CDR3s down to 3 aa
+				 "-leftjust", "-rightjust", #left/right forces our pre-determined CDR3 borders to match
+				 "-quiet"] #supress screen clutter
+				)
+
+		#now reconstruct pseudo-lineages
+		myGenes = cluster['group'].split("_")
+		with open("%s/%s.uc"%(prj_tree.lineage, cluster['group']), "r") as handle:
+			uc = csv.reader( handle, delimiter=sep )
+			for row in uc:
+				#first get rid of size annotations
+				hit  = re.sub(";size=\d+.*","",row[8])
+				cent = re.sub(";size=\d+.*","",row[9]) # just a * for S rows, use hit as cent
+
+				if cent in natives:
+					#I am excluding clusters with natives as centroids because they only contain other natives
+					#Since I've assigned them a size of 1, cluster_size will try them last, and since I added them
+					# to the bottom of the file after all the NGs sequences, they should also be the last of any
+					# other singletons to be tried, as well.
+					continue
+				elif row[0] == "S":
+					if hit in natives:
+						continue
+					centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
+					clusterLookup[ hit ] = hit
+					clusterSizes[ hit ] = 1#seqSize[ hit ]
+				elif row[0] == "H":
+					clusterLookup[ hit ] = cent
+					if hit in natives:
+						centroidData[ cent ][ 'nats' ].append( hit )
+					else:
+						#don't want to count natives in NGS clone size
+						clusterSizes[ cent ] += 1#seqSize[ hit ]
+				else:
+					break #skip "C" lines
+
+	return { 'cl':clusterLookup, 'cd':centroidData, 'cs':clusterSizes }
+
+	
+def main():
 
 	#first, open the input file and parse into groups with same V/J
 	vj_partition = dict()
@@ -100,7 +183,7 @@ def main():
 			key = re.sub("[()/]","",key) #so /OR or (II) genes don't screw up the file system
 			if key not in vj_partition:
 				temp = "%s/%s.fa"%(prj_tree.lineage, key) 
-				vj_partition[key] = { 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+				vj_partition[key] = { 'group':key, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
 
 			vj_partition[key]['count'] += 1
 			vj_partition[key]['ids'].append(sequence.id)
@@ -115,6 +198,7 @@ def main():
 			print("Couldn't find V and J genes for %s %s, skipping..." % (sequence.id, sequence.description))
 
 
+	global natives
 	natives = dict()
 	if arguments['--natives'] is not None:
 		natives = load_fastas(arguments['--natives'])
@@ -141,62 +225,31 @@ def main():
 			cdr3_info[ n ] = { 'cdr3_len' : int(len(s.seq)/3), 'cdr3_seq' : s.seq.translate() }
 			SeqIO.write([ s ], vj_partition[key]['handle'], 'fasta')
 
+	#close the file handles and delete the reference, so dict can be pickled for multithreading
+	for cluster in vj_partition:
+		vj_partition[cluster]['handle'].close()
+		del vj_partition[cluster]['handle']
+		
 	#now go through and cluster each V/J grouping
+	clusterLookup = dict()
+	centroidData = dict()
 	clusterSizes = Counter()
-	for group in vj_partition:
+	if arguments['-t'] > 1:
+		pool = Pool(arguments['-t'])
+		blob = pool.map( processClusters, iterator_slice(vj_partition.values(), 25) ) #number per slice needs optimization
+		pool.close()
+		pool.join()
 
-		#close the file handle
-		vj_partition[group]['handle'].close()
-
-		#save a bit of time for obvious singletons
-		if vj_partition[group]['count'] == 1:
-			single = vj_partition[group]['ids'][0]
-			myGenes = group.split("_")
-			clusterLookup[ single ] = single
-			centroidData[ single ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
-			if single in natives: centroidData[single]['nats'] = [single] #this shouldn't be possible, given we skipped natives with unique V/J combos above...
-			clusterSizes[ single ] = seqSize[ single ]
-			continue
-
-		#cluster with vsearch
-		subprocess.call([vsearch, "-cluster_size", vj_partition[group]['file'], 
-				 "-id", str(arguments['--id']/100.0),
-				 "-maxgaps", str(arguments['--gaps']),
-				 "-sizein", "-uc", "%s/%s.uc"%(prj_tree.lineage, group),
-				 "-minseqlength", "15", #lets us capture CDR3s down to 3 aa
-				 "-leftjust", "-rightjust", #left/right forces our pre-determined CDR3 borders to match
-				 "-quiet"] #supress screen clutter
-				)
-
-		#now reconstruct pseudo-lineages
-		myGenes = group.split("_")
-		with open("%s/%s.uc"%(prj_tree.lineage, group), "r") as handle:
-			uc = csv.reader( handle, delimiter=sep )
-			for row in uc:
-				#first get rid of size annotations
-				hit  = re.sub(";size=\d+.*","",row[8])
-				cent = re.sub(";size=\d+.*","",row[9]) # just a * for S rows, use hit as cent
-
-				if cent in natives:
-					#I am excluding clusters with natives as centroids because they only contain other natives
-					#Since I've assigned them a size of 1, cluster_size will try them last, and since I added them
-					# to the bottom of the file after all the NGs sequences, they should also be the last of any
-					# other singletons to be tried, as well.
-					continue
-				elif row[0] == "S":
-					if hit in natives:
-						continue
-					centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
-					clusterLookup[ hit ] = hit
-					clusterSizes[ hit ] = seqSize[ hit ]
-				elif row[0] == "H":
-					clusterLookup[ hit ] = cent
-					clusterSizes[ cent ] += seqSize[ hit ]
-					if hit in natives:
-						centroidData[ cent ][ 'nats' ].append( hit )
-				else:
-					break #skip "C" lines
-	
+		for d in blob:
+			clusterLookup.update(d['cl'])
+			centroidData.update(d['cd'])
+			clusterSizes.update(d['cs'])
+	else:
+		#don't thread
+		d = processClusters( (0, vj_partition.values()) )
+		clusterLookup.update(d['cl'])
+		centroidData.update(d['cd'])
+		clusterSizes.update(d['cs'])
 
 	#now process all clusters and do tabular output
 	with open( "%s/%s_lineages.txt" % (prj_tree.tables, prj_name), "w" ) as handle:
@@ -253,8 +306,9 @@ if __name__ == '__main__':
 
 	arguments = docopt(__doc__)
 
-	arguments['--id']  = int( arguments['--id'] )
+	arguments['--id']   = int( arguments['--id'] )
 	arguments['--gaps'] = int( arguments['--gaps'] )
+	arguments['-t']     = int( arguments['-t'] )
 	
 	if arguments['--natives'] is not None:
 		if os.path.isfile( arguments['--natives'] ):
