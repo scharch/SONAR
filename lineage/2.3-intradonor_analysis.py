@@ -119,8 +119,7 @@ def main():
 	while not converged:
 		
 		# parse tree files and get all reads clustered with native antibodies
-		# start total at 1 so good/total < .95 when we start a new analysis
-		tree_files, good, total, retained_reads = sorted(glob.glob("%s/NJ*.tree" %prj_tree.lineage)), 0.0, 1.0, []
+		tree_files, good, total, retained_reads = sorted(glob.glob("%s/NJ*.tree" %prj_tree.lineage)), 0.0, 0.0, []
 								 
 		if arguments['-f']:
 			tree_files = [] #no need to process the files since we will be starting over
@@ -167,7 +166,10 @@ def main():
 					all_leaves = [node.name for node in subtree.get_terminals()]
 			except IndexError:
 				sys.exit( "Can't find a subtree with all native sequences in file %s" % tf )
-		
+
+			#check if germline sequence is in the subtree to keep counts correct
+			if arguments['--v'] in all_leaves:
+				all_leaves.remove(arguments['--v'])
 				
 			# save sequences in subtree and print progress message
 			retained_reads += all_leaves
@@ -208,7 +210,7 @@ def main():
 		random.shuffle(shuffled_reads)
 			
 		# Check for convergence before starting a new round
-		if good/total < 0.95:
+		if total == 0 or good/total < 0.95: #total == 0 would be round 1, so don't want to quit early
 			
 			if currentIter >= arguments['--maxIters']:
 				log.write( "%s - Maximum number of iterations reached without convergence. Current round: %d reads, %5.2f%% of input\n" % (time.strftime("%H:%M:%S"), good, 100*good/total) )
@@ -318,9 +320,9 @@ def main():
 				out_list.write( "%s\n" % r.id )
 			out_list.close()
 			
-			log.write( "%s - Tree has converged with %d reads!\n" % (time.strftime("%H:%M:%S"), good) )
+			log.write( "%s - After round #%d: tree has converged with %d reads!\n" % (time.strftime("%H:%M:%S"), currentIter, good) )
 			log.close()
-			print( "Tree has converged with %d reads!" % good )
+			print( "After round #%d: tree has converged with %d reads!" % (currentIter,good) )
 			converged = True
 
 	
@@ -342,8 +344,8 @@ if __name__ == '__main__':
 	converged = False #keep track of convergence when running locally
 	
 	
-	arguments['--maxIters'] = int( arguments['--threads'] )
-	arguments['--threads']	= int( arguments['--maxIters'] )
+	arguments['--maxIters'] = int( arguments['--maxIters'] )
+	arguments['--threads']	= int( arguments['--threads'] )
 	
 	if arguments['--npf'] is not None:
 		arguments['--npf'] = int( arguments['--npf'] )
