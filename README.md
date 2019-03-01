@@ -50,13 +50,13 @@ Then clone the github repo and run the setup utility:
 ```
 $> git clone https://github.com/scharch/SONAR.git
 $> cd sonar
-$> ./setup.sh
+$> ./setup.py
 $> cp sonar ~/bin
 ```
 
 Using SONAR
 -----
-To see a summary of all SONAR scripts and what they do, simply run `sonar -h`. Alternatively, take advantange of the fuzzy matching to find the scripts in a particular module, eg `sonar annotate`. All sonar scripts will print detailed options and usage when passed the `-h` flag. For a detailed summary, please see [the vignette](vignette.pdf).
+To see a summary of all SONAR scripts and what they do, simply run `sonar -h`. Alternatively, take advantange of the fuzzy matching to find the scripts in a particular module, eg `sonar annotate`. All sonar scripts will print detailed options and usage when passed the `-h` flag. For a detailed summary, please see [the vignette](vignette.html).
 
 Change Log
 -----
