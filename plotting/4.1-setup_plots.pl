@@ -215,6 +215,7 @@ sub getPlotData {
     open DATA, "$project/output/tables/$prj_name\_rearrangements.tsv" or die "Can't read $project/output/tables/$prj_name\_rearrangements.tsv.\nIf this project was started with an older version of SONAR, please use utilities/convertToAIRR.py\n   to convert the old all_seq_stats.txt file to the new format and then try again.\n\n";
 
     my $header = <DATA>;
+    chomp $header;
     my @colnames = split(/\t/, $header);
     my %colFinder;
     while (my ($pos, $name) = each @colnames) {
@@ -280,7 +281,7 @@ sub getPlotData {
 	my @arr = split(/\t/, $_);
 	
 	#don't count things that shouldn't be counted
-	next if $arr[$colNum] eq "NA";
+	next if ! -defined($arr[$colNum]) || $arr[$colNum] eq "" || $arr[$colNum] eq "NA";
 
 	#check if this sequence matches the subset
 	if ($keepVal == 3) {
@@ -307,7 +308,7 @@ sub getPlotData {
 		    $arr[$colFinder{'indels'}] = "orf";
 		}
 	    }
-	} elsif ($stat =~ /div/) {
+	} elsif ($stat =~ /(blast|div)/) {
 	    #convert fractional identity to percent divergence
 	    $arr[$colNum] = 100 * ( 1 - $arr[$colNum] )
 	}

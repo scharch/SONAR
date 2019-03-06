@@ -1,4 +1,4 @@
-/bin/env Rscript
+#!/usr/bin/env Rscript
 
 "4.2-plot_histogram.R
 
