@@ -27,8 +27,10 @@ Options:
 Created by Zizhang Sheng.
 Edited to switch to VSearch by Chaim A Schramm 2018-07-30.
 Ported to Python to handle AIRR-format data by CAS 2018-10-16.
+Added self-reference for centroid sequences and deprecated use of 'unique' status
+    by CA Schramm 2019-03-07.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National 
+Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National 
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -101,8 +103,12 @@ def main():
 		for row in uc:
 			if row[0] == "H":
 				centroid[ re.sub(";size=\d+","",row[8]) ] = re.sub(";size=\d+","",row[9])
-			elif row[0] == "C" and int(row[2]) >= arguments['--min2']:
-				size[ re.sub(";size=\d+","",row[8]) ] = int(row[2])
+			elif row[0] == "C":
+				#have the centroids point to themselves for more uniform dowsntream processing
+				centroid[ re.sub(";size=\d+","",row[8]) ] = re.sub(";size=\d+","",row[8])
+				#but only save them if they meet the threshold
+				if int(row[2]) >= arguments['--min2']:
+					size[ re.sub(";size=\d+","",row[8]) ] = int(row[2])
 
 	#clean up
 	os.remove("temp.fa")
@@ -138,21 +144,27 @@ def main():
 			print( "Can't find %s to extract unique sequences..."%aa_file, file=sys.stderr )
 
 	#now do AIRR output
-	if arguments['-f'] == "output/sequences/nucleotide/%s_goodVJ.fa"%prj_name:
+	if "output/sequences/nucleotide" in arguments['-f']:
 		if os.path.isfile("%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name)):
 			clustered = airr.derive_rearrangement( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name),
 							       fields=['centroid', 'cluster_count'] )
 			for r in airr.read_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) ):
+				#clear old annotations in case we ran 1.4 previously
+				r['centroid'] = ""
+				r['cluster_count'] = ""
+
+				#now add back current annotations
+				#two rounds of clustering means we start by looking for the centroid of the centroid,
+				#    falling back to the first level centroid (second clustering step only) if appropriate
 				r['centroid'] = centroid.get( centroid.get(r['sequence_id'],""), centroid.get(r['sequence_id'],"") )
+
+				#add cluster size information for final centroids. I am doing away with changing the 'status' of
+				#    the centroids to 'unique' because I've started using this script in a lot of cases where it
+				#    doesn't make sense to treat 'unique' as a subset of 'good', and I therefore need to preserve
+				#    the original status designation. To find centroids, look for a non-null 'cluster_count' field
 				if r['sequence_id'] in size:
 					r['cluster_count'] = size[ r['sequence_id'] ]
-					r['status'] = "unique"
-				elif r['sequence_id'] in centroid:
-					#prevent mix-and-match data if this gets run multiple times with multiple settings
-                                        #I can get away with this because rearrangements.tsv only gets edited when clustering
-                                        #   the goodVJ file
-					r['cluster_count'] = ""
-					r['status'] = "good"
+
 				clustered.write(r)
 			clustered.close()
 			os.rename( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) )

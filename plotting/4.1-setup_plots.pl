@@ -90,8 +90,9 @@
  Modified by CAS 2017-06-09 to add plotName option and to fix compatability with
                           docopt usage by 4.2-plot_histograms.R
  Modified to plot from new AIRR-format rearrangements.tsv file by CAS 2018-10-19.
+ Changed detection of unique sequences based on changes to 1.4 by CAS 2019-03-07.
 
- Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
+ Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
                           Institutes of Health, USA. All rights reserved.
 
 =cut
@@ -287,7 +288,8 @@ sub getPlotData {
 	if ($keepVal == 3) {
 	    next unless -defined($listRef->{$arr[0]});
 	} elsif ($keepVal == 2 ) {
-	    next unless $arr[$colFinder{'status'}] eq "unique";
+	    die("No unique sequences defined, please run 1.4-cluster_sequences.py and then try again.\n") unless -defined($colFinder{'cluster_count'});
+	    next unless $arr[$colFinder{'cluster_count'}] ne "";
 	} elsif ($keepVal == 1 ) {
 	    next unless $arr[$colFinder{'status'}] =~ /(good|unique)/;
 	}
