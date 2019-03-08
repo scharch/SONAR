@@ -88,7 +88,7 @@ def main():
 		uc = csv.reader(handle, delimiter="\t")
 		for row in uc:
 			if row[0] == "H":
-				centroid[row[8]] = row[9]
+				centroid[ re.sub(";size=\d+","",row[8]) ] = re.sub(";size=\d+","",row[9])
 
 	#second clustering step
 	subprocess.call( [ vsearch, "-cluster_size", "temp_dedup.fa",
