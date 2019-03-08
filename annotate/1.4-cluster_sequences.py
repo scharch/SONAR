@@ -11,7 +11,7 @@ This script is a mostly a simple wrapper for vsearch that performs two steps
      identity, preferentially using reads with higher coverage as centroids.
 Output stats will also be added to the AIRR-formatted rearrangements file.
 
-Usage: 1.4-cluster_sequences.py [ -f input.fa --min1 1 --min2 3 --id .99 ]
+Usage: 1.4-cluster_sequences.py [ -f input.fa --min1 1 --min2 3 --id .99 --maxgaps 0 ]
 
 Options:
     -f input.fa   Input sequence file in fasta format. 
@@ -23,12 +23,16 @@ Options:
                      sequence in the second step of clustering. [default: 3]
     --id .99      Percent sequence identity used for the second step of
                      clustering. [default: 0.99]
+    --maxgaps 0   vsearch parameter specifying how many (non-terminal) gaps are
+                     allowed in an alignment for two sequences to cluster together.
+                     Should not be changed, in most cases. [default: 0]
 
 Created by Zizhang Sheng.
 Edited to switch to VSearch by Chaim A Schramm 2018-07-30.
 Ported to Python to handle AIRR-format data by CAS 2018-10-16.
 Added self-reference for centroid sequences and deprecated use of 'unique' status
     by CA Schramm 2019-03-07.
+Added manual maxgaps option by CA Schramm 2019-03-08.
 
 Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National 
                          Institutes of Health, USA. All rights reserved.
@@ -92,7 +96,8 @@ def main():
 
 	#second clustering step
 	subprocess.call( [ vsearch, "-cluster_size", "temp_dedup.fa",
-			   "-sizein", "-sizeout", "-maxgaps", "0",
+			   "-sizein", "-sizeout",
+			   "-maxgaps", arguments['--maxgaps'],
 			   "-id", arguments['--id'],
 			   "-uc", "%s.cluster"%os.path.splitext(arguments['-f'])[0] ] )
 
