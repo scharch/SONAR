@@ -137,7 +137,7 @@ clustalw  = '%s/third-party/%s'
 muscle    = '%s/third-party/%s'
 vsearch   = '%s/third-party/%s'
 %s
-""" % (SONAR_HOME, SONAR_HOME, blast, SONAR_HOME, clustal, SONAR_HOME, clustalw, SONAR_HOME, muscle, SONAR_HOME, vsearch, print_cluster))
+""" % (SONAR_HOME, SONAR_HOME, blast, SONAR_HOME, clustalo, SONAR_HOME, clustalw, SONAR_HOME, muscle, SONAR_HOME, vsearch, print_cluster))
 ##################################################################
 with open("%s/sonar"%SONAR_HOME, "w") as sonar:
     sonar.write("""#!/usr/bin/env python3
