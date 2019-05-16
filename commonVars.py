@@ -11,7 +11,7 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 
 import sys, os, csv, shutil, re, glob, string, time, random
 try:
-	from sonar.paths import *
+	from SONAR.paths import *
 except ImportError:
 	sys.exit("Can't find paths.py. Have you run setup yet?")
 from Bio.Data import CodonTable

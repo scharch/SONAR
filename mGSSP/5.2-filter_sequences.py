@@ -23,7 +23,7 @@ Options
     --db germ.fa   Fasta file containing germline V gene sequences to align to.
                        Truncation of 3' end of V gene is recommended to avoid the
                        introduction of spurious gaps into the alignment due to SHM
-                       in CDR3. [default: <sonar>/germDB/IgHKLV_cysTruncated.fa]
+                       in CDR3. [default: <SONAR>/germDB/IgHKLV_cysTruncated.fa]
     --keep         Flag to indicate that sequences with apparent frameshifts should
                        be retained (ie for passenger repertoires). [default: False]
 
@@ -49,11 +49,11 @@ from Bio import Alphabet
 import numpy
 
 try:
-	from sonar.mGSSP import *
+	from SONAR.mGSSP import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/mGSSP")
+	find_SONAR = sys.argv[0].split("SONAR/mGSSP")
 	sys.path.append(find_SONAR[0])
-	from sonar.mGSSP import *
+	from SONAR.mGSSP import *
 
 
 def runClustal( fileName ):
@@ -204,7 +204,7 @@ if __name__ == '__main__':
 
 	arguments = docopt(__doc__)
 
-	arguments['--db'] = re.sub( "<sonar>", SCRIPT_FOLDER, arguments['--db'] )
+	arguments['--db'] = re.sub( "<SONAR>", SCRIPT_FOLDER, arguments['--db'] )
 	arguments['-t']	  = int( arguments['-t'] )
 
 	#log command line

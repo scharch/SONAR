@@ -71,11 +71,11 @@ from Bio import AlignIO
 from Bio.Align.Applications import MuscleCommandline
 
 try:
-	from sonar.phylogeny import *
+	from SONAR.phylogeny import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/phylogeny")
+	find_SONAR = sys.argv[0].split("SONAR/phylogeny")
 	sys.path.append(find_SONAR[0])
-	from sonar.phylogeny import *
+	from SONAR.phylogeny import *
 
 
 

@@ -43,11 +43,11 @@ from multiprocessing import Pool
 
 
 try:
-	from sonar.mGSSP import *
+	from SONAR.mGSSP import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/mGSSP")
+	find_SONAR = sys.argv[0].split("SONAR/mGSSP")
 	sys.path.append(find_SONAR[0])
-	from sonar.mGSSP import *
+	from SONAR.mGSSP import *
 
 
 # a utility function to get us a slice of an iterator, as an iterator

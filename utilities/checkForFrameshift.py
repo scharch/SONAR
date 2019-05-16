@@ -40,11 +40,11 @@ from Bio import AlignIO
 import numpy
 
 try:
-	from sonar.annotate import *
+	from SONAR.annotate import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/utilities")
+	find_SONAR = sys.argv[0].split("SONAR/utilities")
 	sys.path.append(find_SONAR[0])
-	from sonar.annotate import *
+	from SONAR.annotate import *
 
 
 arguments = docopt(__doc__)

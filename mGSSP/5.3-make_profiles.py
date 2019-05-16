@@ -30,7 +30,7 @@ Options:
                                    column as the number of positions to mask. In this case, genes
                                    that do not appear in the file will not be masked. [default: 0]
    -g --germline germV.fa       Location of germline V sequences to use for building profiles. 
-                                   Expected as trimmed/padded AA sequences. [default: sonar/germDB/IgHKLV_cysTruncated.AA.fa]
+                                   Expected as trimmed/padded AA sequences. [default: SONAR/germDB/IgHKLV_cysTruncated.AA.fa]
    -t 1                         Number of threads to use. [default: 1]
    -a                           Input sequences are amino acid (don't translate) [default: False]
 
@@ -56,11 +56,11 @@ from Bio import AlignIO
 from Bio.Align import AlignInfo
 
 try:
-	from sonar.mGSSP import *
+	from SONAR.mGSSP import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/mGSSP")
+	find_SONAR = sys.argv[0].split("SONAR/mGSSP")
 	sys.path.append(find_SONAR[0])
-	from sonar.annotate import *
+	from SONAR.annotate import *
 
 
 def buildGSSP( vgene ):
@@ -241,8 +241,8 @@ if __name__ == '__main__':
 	arguments['--profiles'] = int(arguments['--profiles'])
 	arguments['-t'] = int(arguments['-t'])
 
-	if arguments['--germline'] == "sonar/germDB/IgHKLV_cysTruncated.AA.fa":
-		arguments['--germline'] = re.sub("sonar", SCRIPT_FOLDER, arguments['--germline'])
+	if arguments['--germline'] == "SONAR/germDB/IgHKLV_cysTruncated.AA.fa":
+		arguments['--germline'] = re.sub("SONAR", SCRIPT_FOLDER, arguments['--germline'])
 
 	mask = dict()
 	try:

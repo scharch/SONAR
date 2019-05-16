@@ -25,11 +25,11 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 import sys
 from docopt import docopt
 try:
-	from sonar import *
+	from SONAR import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/utilities")
+	find_SONAR = sys.argv[0].split("SONAR/utilities")
 	sys.path.append(find_SONAR[0])
-	from sonar import *
+	from SONAR import *
 
 
 def main():

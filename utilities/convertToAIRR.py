@@ -21,11 +21,11 @@ from docopt import docopt
 import airr
 
 try:
-	from sonar import *
+	from SONAR import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/utilities")
+	find_SONAR = sys.argv[0].split("SONAR/utilities")
 	sys.path.append(find_SONAR[0])
-	from sonar import *
+	from SONAR import *
 
 
 

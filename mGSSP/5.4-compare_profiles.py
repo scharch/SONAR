@@ -38,11 +38,11 @@ from docopt import docopt
 import pandas
 
 try:
-	from sonar.mGSSP import *
+	from SONAR.mGSSP import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/mGSSP")
+	find_SONAR = sys.argv[0].split("SONAR/mGSSP")
 	sys.path.append(find_SONAR[0])
-	from sonar.mGGSP import *
+	from SONAR.mGGSP import *
 
 
 def main():

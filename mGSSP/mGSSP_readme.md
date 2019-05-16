@@ -23,7 +23,7 @@ Suggested workflow for generating GSSPs using SONAR
    ```
 1. Now we are ready to construct the GSSPs. We recommend using at least 300 sequences per GSSP for robust results, but sometimes use 100 for rarer V genes. Here we calculate profiles just using the standard IMGT database, however we strongly recommend using a personalized germline allele database constructed using [TIgGER](http://tigger.readthedocs.io/en/0.2.8/), [partis](https://github.com/psathyrella/partis), or [IgDiscover](https://bitbucket.org/igdiscover/igdiscover). Incomplete sequences should be masked using the -m argument.
    ```
-   $> 5.3-make_profiles.py output/sequences/amino_acid/<project>_finalForProfiles.fa -o <project>_profiles.txt -n 300 -p 0 -g /<path-to-sonar>/germDB/IgHKLV_cysTruncated.AA.fa -a
+   $> 5.3-make_profiles.py output/sequences/amino_acid/<project>_finalForProfiles.fa -o <project>_profiles.txt -n 300 -p 0 -g /<path-to-SONAR>/germDB/IgHKLV_cysTruncated.AA.fa -a
    ```
 1. We can generate logo plots of the GSSPs. (Many programs seem to have problems opening the resulting EPS files; [This site](http://convertepstojpg.com/) can be used to convert them to standard image formats.)
    ```
@@ -33,7 +33,7 @@ Suggested workflow for generating GSSPs using SONAR
    ```
    $> 5.4-compare_profiles.py GSSP-comparisons <project1>_profiles.txt <project2>_profiles.txt <project3>_profiles.txt ...
    ```
-1. Note that GSSPs can be constructed from repertoires of nonproductive rearrangements, as well. To do so, run 1.4 on all sequences with an assigned J gene, and use splitFunctionalAndNonfunctional.py in the sonar/utilities folder to get only those lineages made up entirely of nonproductive sequences.
+1. Note that GSSPs can be constructed from repertoires of nonproductive rearrangements, as well. To do so, run 1.4 on all sequences with an assigned J gene, and use splitFunctionalAndNonfunctional.py in the SONAR/utilities folder to get only those lineages made up entirely of nonproductive sequences.
    ```
    $> 1.4-cluster_sequences.py -f output/sequences/nucleotide/<project>_allJ.fa --id 1 --min1 0 --min2 1
    $> getListFromFasta.py -f output/sequences/nucleotide/<project>_allJ_unique.fa | \

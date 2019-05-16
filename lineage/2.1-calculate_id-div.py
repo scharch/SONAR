@@ -21,7 +21,7 @@ Options:
                            (the old format of "V_gene=" will also still work).
                            [default: output/sequences/nucleotide/<project>_goodVJ_unique.fa]
      -g germline.fa     File with germline genes used in annotation step.
-                           [default: <sonar>/germDB/IgHKLV.fa]
+                           [default: <SONAR>/germDB/IgHKLV.fa]
      -a antibodies.fa   Fasta file with the sequences of known antibodies that the
                            NGS data should be compared to.
      -o output          Specify directory and file stem for output; "_coverage.tab"
@@ -60,11 +60,11 @@ import airr
 
 
 try:
-	from sonar.lineage import *
+	from SONAR.lineage import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/lineage")
+	find_SONAR = sys.argv[0].split("SONAR/lineage")
 	sys.path.append(find_SONAR[0])
-	from sonar.lineage import *
+	from SONAR.lineage import *
 
 
 
@@ -307,7 +307,7 @@ if __name__ == '__main__':
 	if arguments['--gap'] not in ['mismatch', 'ignore']:
 		sys.exit( "Error: recognized gap options are 'mismatch' and 'ignore' only" )	
 	
-	arguments['-g'] = re.sub( "<sonar>", SCRIPT_FOLDER, arguments['-g'] )
+	arguments['-g'] = re.sub( "<SONAR>", SCRIPT_FOLDER, arguments['-g'] )
 
 	prj_tree = ProjectFolders(os.getcwd())
 	prj_name = fullpath2last_folder(prj_tree.home)

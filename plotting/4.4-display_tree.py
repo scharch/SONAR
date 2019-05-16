@@ -109,11 +109,11 @@ from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, Q
 import string, random
 
 try:
-	from sonar.plotting import *
+	from SONAR.plotting import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/plotting")
+	find_SONAR = sys.argv[0].split("SONAR/plotting")
 	sys.path.append(find_SONAR[0])
-	from sonar.plotting import *
+	from SONAR.plotting import *
 
 
 def parseNatives(infile):
@@ -270,7 +270,7 @@ def layout(node):
 						rf = RectFace(fontSize-1, fontSize-1, 'black', thisFill)
 						faces.add_face_to_node(rf, node, whichCol)
 			else:
-				tf = TextFace(" %s"%node.annotation,ftype='Arial',fsize=fontSize)
+				tf = TextFace(" %s"%node.annotation,ftype='Arial',fsize=fontSize*.66)
 				if node.is_leaf():
 					faces.add_face_to_node(tf, node, 0, position='aligned')
 				else:

@@ -83,11 +83,11 @@ from multiprocessing import Pool
 from collections import Counter
 
 try:
-	from sonar.annotate import *
+	from SONAR.annotate import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/annotate")
+	find_SONAR = sys.argv[0].split("SONAR/annotate")
 	sys.path.append(find_SONAR[0])
-	from sonar.annotate import *
+	from SONAR.annotate import *
 	
 def callParser(chunk):
 	cmd = "%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk %03d" % \

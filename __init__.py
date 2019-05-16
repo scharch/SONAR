@@ -28,7 +28,7 @@ import atexit
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
-from sonar.commonVars import *
+from SONAR.commonVars import *
 
 
 ########## COMMAND LOGGING ############

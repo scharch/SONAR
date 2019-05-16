@@ -84,11 +84,11 @@ from Bio import Phylo
 from Bio.Align.Applications import MuscleCommandline
 
 try:
-	from sonar.lineage import *
+	from SONAR.lineage import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/lineage")
+	find_SONAR = sys.argv[0].split("SONAR/lineage")
 	sys.path.append(find_SONAR[0])
-	from sonar.lineage import *
+	from SONAR.lineage import *
 
 
 

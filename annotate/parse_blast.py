@@ -27,11 +27,11 @@ from docopt import docopt
 import airr
 
 try:
-	from sonar.annotate import *
+	from SONAR.annotate import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/annotate")
+	find_SONAR = sys.argv[0].split("SONAR/annotate")
 	sys.path.append(find_SONAR[0])
-	from sonar.annotate import *
+	from SONAR.annotate import *
 
 
 def find_cdr3_borders(v_id,vgene,vlength,vstart,vend,jgene,jstart,j_start_on_read,jgaps,read_sequence):

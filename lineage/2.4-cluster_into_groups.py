@@ -71,11 +71,11 @@ import itertools
 import airr
 
 try:
-	from sonar.lineage import *
+	from SONAR.lineage import *
 except ImportError:
-	find_SONAR = sys.argv[0].split("sonar/lineage")
+	find_SONAR = sys.argv[0].split("SONAR/lineage")
 	sys.path.append(find_SONAR[0])
-	from sonar.lineage import *
+	from SONAR.lineage import *
 
 
 # a utility function to get us a slice of an iterator, as an iterator
