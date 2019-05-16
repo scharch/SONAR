@@ -53,19 +53,19 @@ try:
 except ImportError:
     print("pandas is not installed - comparison of GSSPs (5.4) will not work.\nYou can fix this later by running `pip3 install pandas --user`.\nProceeding with install...\n\n",file=sys.stderr)
 
-check = subprocess.call(["perldoc", '-lm', "Bio::SeqIO"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+check = subprocess.call(["perl", "-MBio::SeqIO", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
     sys.exit("BioPerl is a required for SONAR. Please run `cpanm Bio::Perl`")
 
-check = subprocess.call(["perldoc", '-lm', "List::Util"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+check = subprocess.call(["perl", "-MList::Util", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
     sys.exit("List::Util is a required library for SONAR. Please run `cpanm List::Util`")
 
-check = subprocess.call(["perldoc", '-lm', "Algorithm::Combinatorics"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+check = subprocess.call(["perl", "-MAlgorithm::Combinatorics", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
     sys.exit("Algorithm::Combinatorics is a required library for SONAR. Please run `cpanm Algorithm::Combinatorics`")
 
-check = subprocess.call(["perldoc", '-lm', "PDL::LinearAlgebra::Trans"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+check = subprocess.call(["perl", "-MPDL::LinearAlgebra::Trans", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
     sys.warn("PDL::LinearAlgebra::Trans is not installed - ancestor inference will not work.\nYou can fix this later by running `cpanm PDL::LinearAlgebra::Trans`.\nProceeding with install...\n\n")
 
