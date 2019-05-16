@@ -11,21 +11,28 @@ This script is a mostly a simple wrapper for vsearch that performs two steps
      identity, preferentially using reads with higher coverage as centroids.
 Output stats will also be added to the AIRR-formatted rearrangements file.
 
-Usage: 1.4-cluster_sequences.py [ -f input.fa --min1 1 --min2 3 --id .99 --maxgaps 0 ]
+Usage: 1.4-cluster_sequences.py [ --file input.fa --min1 1 --min2 3 --id .99 --maxgaps 0 ] [ options ]
 
 Options:
-    -f input.fa   Input sequence file in fasta format. 
-                     [default: output/sequences/nucleotide/<project>_goodVJ.fa]
-    --min1 1      Minimum identical replicates needed to keep a read in the first
-                     step of clustering. [default: 1]
-    --min2 3      Minimum number of total reads (ie counting exact replicates
-                     from step 1 separately) in a cluster needed to keep a
-                     sequence in the second step of clustering. [default: 3]
-    --id .99      Percent sequence identity used for the second step of
-                     clustering. [default: 0.99]
-    --maxgaps 0   vsearch parameter specifying how many (non-terminal) gaps are
-                     allowed in an alignment for two sequences to cluster together.
-                     Should not be changed, in most cases. [default: 0]
+    --file input.fa       Input sequence file in fasta format. 
+                              [default: output/sequences/nucleotide/<project>_goodVJ.fa]
+    --min1 1              Minimum identical replicates needed to keep a read in the first
+                              step of clustering. [default: 1]
+    --min2 3              Minimum number of total reads (ie counting exact replicates
+                              from step 1 separately) in a cluster needed to keep a
+                              sequence in the second step of clustering. [default: 3]
+    --id .99              Percent sequence identity used for the second step of
+                              clustering. [default: 0.99]
+    --maxgaps 0           vsearch parameter specifying how many (non-terminal) gaps are
+                              allowed in an alignment for two sequences to cluster together.
+                              Should not be changed, in most cases. [default: 0]
+    --runCellStatistics   Flag to call 1.5 script when finished. Additional options to that
+                              script are listed below. This script will not check the validity
+                              of options passed downstream, so user beware. [default: False]
+ 
+Options for other annotation scripts (see those help messages for details):
+   --rearrangements rearrangements.tsv
+   --save OPT
 
 Created by Zizhang Sheng.
 Edited to switch to VSearch by Chaim A Schramm 2018-07-30.
@@ -33,6 +40,7 @@ Ported to Python to handle AIRR-format data by CAS 2018-10-16.
 Added self-reference for centroid sequences and deprecated use of 'unique' status
     by CA Schramm 2019-03-07.
 Added manual maxgaps option by CA Schramm 2019-03-08.
+Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 
 Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National 
                          Institutes of Health, USA. All rights reserved.
@@ -77,7 +85,7 @@ def main():
 
 	#start by making possible "duplicate_count" info available to vsearch
 	with open("temp.fa", "w") as handle:
-		SeqIO.write( reformatInput(arguments['-f']), handle, "fasta" )
+		SeqIO.write( reformatInput(arguments['--file']), handle, "fasta" )
 	
 	#first step on higher identity
 	subprocess.call( [ vsearch, "-derep_fulllength", "temp.fa",
@@ -99,11 +107,11 @@ def main():
 			   "-sizein", "-sizeout",
 			   "-maxgaps", arguments['--maxgaps'],
 			   "-id", arguments['--id'],
-			   "-uc", "%s.cluster"%os.path.splitext(arguments['-f'])[0] ] )
+			   "-uc", "%s.cluster"%os.path.splitext(arguments['--file'])[0] ] )
 
 	#process the uc file
 	size = dict()
-	with open("%s.cluster"%os.path.splitext(arguments['-f'])[0], "r") as handle:
+	with open("%s.cluster"%os.path.splitext(arguments['--file'])[0], "r") as handle:
 		uc = csv.reader(handle, delimiter="\t")
 		for row in uc:
 			if row[0] == "H":
@@ -121,12 +129,12 @@ def main():
 	os.remove("temp.uc")
 
 	#do sequence outputs
-	with open("%s_unique.fa"%os.path.splitext(arguments['-f'])[0], "w") as handle:
-		SeqIO.write( getUniques(arguments['-f'], size), handle, 'fasta' )
+	with open("%s_unique.fa"%os.path.splitext(arguments['--file'])[0], "w") as handle:
+		SeqIO.write( getUniques(arguments['--file'], size), handle, 'fasta' )
 		  
 	#retrieve unique CDR3s (and do AA seqs as appropriate)
-	if "goodVJ" in arguments['-f']:
-		cdr3_file = re.sub("goodVJ","goodCDR3", arguments['-f'])
+	if "goodVJ" in arguments['--file']:
+		cdr3_file = re.sub("goodVJ","goodCDR3", arguments['--file'])
 		if os.path.isfile(cdr3_file):
 			with open("%s_unique.fa"%os.path.splitext(cdr3_file)[0], "w") as handle:
 				SeqIO.write( getUniques(cdr3_file, size), handle, 'fasta' )
@@ -140,8 +148,8 @@ def main():
 					SeqIO.write( getUniques(cdr3_file, size), handle, 'fasta' )
 			else:
 				print( "Can't find %s to extract unique sequences..."%cdr3_file, file=sys.stderr )
-	if "nucleotide" in arguments['-f']:
-		aa_file = re.sub("nucleotide","amino_acid", arguments['-f'])
+	if "nucleotide" in arguments['--file']:
+		aa_file = re.sub("nucleotide","amino_acid", arguments['--file'])
 		if os.path.isfile(aa_file):
 			with open("%s_unique.fa"%os.path.splitext(aa_file)[0], "w") as handle:
 				SeqIO.write( getUniques(aa_file, size), handle, 'fasta' )
@@ -149,7 +157,7 @@ def main():
 			print( "Can't find %s to extract unique sequences..."%aa_file, file=sys.stderr )
 
 	#now do AIRR output
-	if "output/sequences/nucleotide" in arguments['-f']:
+	if "output/sequences/nucleotide" in arguments['--file']:
 		if os.path.isfile("%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name)):
 			clustered = airr.derive_rearrangement( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name),
 							       fields=['centroid', 'cluster_count'] )
@@ -176,6 +184,16 @@ def main():
 		else:
 			print( "Can't find the rearrangements file, not saving data in AIRR format", file=sys.stderr )
 
+	# call 1.5 if requested
+	if arguments['--runCellStatistics']:
+		cmd = "%s/annotate/1.5-single_cell_statistics.py" % SCRIPT_FOLDER
+		if arguments['--rearrangements'] is not None:
+			cmd += " --rearrangements %s" % arguments['--rearrangements']
+		if arguments['--save'] is not None:
+			cmd += " --save %s" % arguments['--save']
+
+		print( "Calling 1.5 with command line: %s" % cmd )
+		os.system( cmd )
 
 
 if __name__ == '__main__':
@@ -187,10 +205,10 @@ if __name__ == '__main__':
 	prj_tree = ProjectFolders(os.getcwd())
 	prj_name = fullpath2last_folder(prj_tree.home)
 
-	arguments['-f'] = re.sub("<project>", prj_name, arguments['-f'])
+	arguments['--file'] = re.sub("<project>", prj_name, arguments['--file'])
 
-	if not os.path.isfile(arguments['-f']):
-		sys.exit( "Can't find input file %s" % arguments['-f'] )
+	if not os.path.isfile(arguments['--file']):
+		sys.exit( "Can't find input file %s" % arguments['--file'] )
 
 	       
 	#log command line

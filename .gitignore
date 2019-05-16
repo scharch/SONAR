@@ -1,6 +1,12 @@
 *.pyc
 *~
+*bak
+*old
 PPvars.pm
 paths.py
+sonar
 local/
 *.#*
+#*#
+germDB/*all*
+germDB/*gapped*.fasta

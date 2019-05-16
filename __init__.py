@@ -13,9 +13,12 @@ Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, Nationa
 
 from Bio import SeqIO
 from Bio import Seq
+from Bio.Align.Applications import MuscleCommandline
 from Bio import AlignIO
 from Bio.SeqRecord import SeqRecord
+
 from math import log
+from io import StringIO
 
 import glob
 import re
@@ -147,13 +150,14 @@ class MyAlignment:
 class ProjectFolders:
 	"""folder structure of a project """
 	
-	def __init__(self, proj_home):
+	def __init__(self, proj_home, create=True):
 
 		self.home       = proj_home
 		self.work       = "%s/work"        %  proj_home
 		self.out        = "%s/output"      %  proj_home
 
 		#working folders
+		self.preprocess = "%s/preprocess"  %  self.work
 		self.annotate   = "%s/annotate"    %  self.work
 		self.lineage    = "%s/lineage"     %  self.work
 		self.phylo      = "%s/phylo"       %  self.work
@@ -176,9 +180,21 @@ class ProjectFolders:
 		self.aa         = "%s/amino_acid"  %  self.seq
 		self.nt         = "%s/nucleotide"  %  self.seq
 
-
+		if create:
+		    os.makedirs( self.preprocess, exist_ok=True )
+		    os.makedirs( self.internal,   exist_ok=True )
+		    os.makedirs( self.vgene,      exist_ok=True )
+		    os.makedirs( self.jgene,      exist_ok=True )
+		    os.makedirs( self.last,       exist_ok=True )
+		    os.makedirs( self.beast,      exist_ok=True )
+		    os.makedirs( self.aa,         exist_ok=True )
+		    os.makedirs( self.nt,         exist_ok=True )
+		    os.makedirs( self.tables,     exist_ok=True )
+		    os.makedirs( self.plots,      exist_ok=True )
+		    os.makedirs( self.logs,       exist_ok=True )
+		    os.makedirs( self.rates,      exist_ok=True )
 #
-# -- END -- class defination
+# -- END -- class definition
 #
 
 
@@ -191,46 +207,6 @@ def fullpath2last_folder(s):
 	
 	return s[s.rindex("/") + 1 :]
 
-
-def create_folders(folder, force=False):
-
-	old_wd = os.getcwd()
-	os.chdir(folder)
-
-	if (os.path.isdir("work")):
-		if not force:
-			sys.exit("Working directory already exists. Please use the -f option to re-intiate an analysis from scratch.\n")
-		else:
-			try:
-				shutil.rmtree("work")
-			except:
-				sys.exit("Cannot remove old working directory, please delete manually and restart.\n")
-			
-	if (os.path.isdir("output")):
-		if not force:
-			sys.exit("Output directory already exists. Please use the -f(orce) option to re-intiate an analysis from scratch.\n")
-		else:
-			try:
-				shutil.rmtree("output")
-			except:
-				sys.exit("Cannot remove old output directory, please delete manually and restart.\n")
-			
-
-	os.mkdir("work")
-	os.mkdir("output")
-
-		
-	# Create working folders
-	for subfolder in ALL_FOLDERS:
-		try:
-			os.mkdir(subfolder)
-			
-		except:		# may need to delete old folders
-			print( "FOLDER EXISTS: %s"%subfolder )
-			
-	
-	os.chdir(old_wd)
-	return ProjectFolders(folder)
 
 #
 # -- END -- folder and file methods 
@@ -355,3 +331,67 @@ def translate_a_sequence(s):
 #
 
 
+#
+# -- BEGIN -- alignment functions
+#
+
+def quickAlign( refseq, testseq, maxiters=None, diags=None, gapopen=None ):
+    
+	#sanity check
+	refseq	= re.sub( "-", "", str(refseq) )
+	testseq = re.sub( "-", "", str(testseq) )
+
+	handle = StringIO()
+	handle.write( ">ref\n%s\n>test\n%s\n"%(refseq,testseq) )
+	data = handle.getvalue()
+
+	muscle_cline = MuscleCommandline(cmd=muscle, quiet=True)
+	if maxiters is not None: muscle_cline.maxiters = maxiters
+	if diags    is not None: muscle_cline.diags    = diag
+	if gapopen  is not None: muscle_cline.gapopen  = gapopen
+
+	stdout, stderr = muscle_cline(stdin=data)
+
+	aligned = dict()
+	for p in SeqIO.parse(StringIO(stdout), "fasta"):
+		aligned[ p.id ] = str(p.seq)
+	return aligned
+	
+
+def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=False, countInternalGaps=True, skip=0 ):
+
+	refLen = len( re.sub("-", "", alignDict[reference]) )
+    
+	if not countTerminalGaps:
+		leftGap = re.match( "-+", alignDict[reference] )
+		if not leftGap:
+			leftGap = re.match( "-+", alignDict[query] )
+		if leftGap:
+			alignDict = { s:alignDict[s][leftGap.end():] for s in [reference,query] }
+		rightGap = re.search( "-+$", alignDict[reference] )
+		if not rightGap:
+			rightGap = re.search( "-+$", alignDict[query] )
+		if rightGap:
+			alignDict = { s:alignDict[s][0:rightGap.start()] for s in [reference,query] }
+
+	position = 0
+	alignLen = 0.0
+	matches	 = 0
+	for r,t in zip(alignDict[reference], alignDict[query]):
+		if (not countInternalGaps) and (r == "-" or t == "-"):
+			continue
+		elif position < skip:
+			position += 1
+			continue
+		else:
+			alignLen += 1
+			if r == t:
+				matches += 1
+		    
+		coverage = len( re.sub("-", "", alignDict[query]) )  / refLen
+
+	return matches/alignLen, coverage
+    
+#
+# -- END -- alignment functions
+#

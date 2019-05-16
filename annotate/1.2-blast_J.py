@@ -9,29 +9,44 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       of the J gene. Will also try to assign the D gene if relevant and the 
       constant region class. 
 
-Usage: 1.2-blast-J.py [options]
+Usage: 1.2-blast-J.py [ options ]
 
 Options:
     --jlib LIB          Fasta file containing germline J gene sequences. Required only
-                           if a custom V gene library was specificied when running
-                           to 1.1-blast-V_assignment.py, otherwise the program will use
-                           the default libraries matching the V gene locus.
+                            if a custom V gene library was specificied when running
+                            to 1.1-blast-V_assignment.py, otherwise the program will use
+                            the default libraries matching the V gene locus.
     --dlib LIB          Optional fasta file containing germline D gene sequences, for 
-                           custom libraries.
+                            custom libraries.
     --clib LIB          Optional fasta file containing CH1 gene sequences, for custom
-                           libraries.
+                            libraries.
     --threads 1         Number of threads to use when running locally. [default: 1]
     --cluster           Flag to indicate that blast jobs should be submitted to the
-                           SGE cluster. Throws an error if presence of a cluster was
-                           not indicated during setup. [default: False]
+                            SGE cluster. Throws an error if presence of a cluster was
+                            not indicated during setup. [default: False]
     --noD               Flag to indicate that blast jobs should be submitted for a
-                           D gene library. [default: False]
+                            D gene library. [default: False]
     --noC               Flag to indicate that no blast jobs should be submitted for a
-                           constant region  gene library. [default: False]
-    --callFinal         Optional flag to call 1.3-finalize_assignments.py when done.
-                           [default: False]
-    --fArgs <options>   Optional arguments to be provided to 1.3-finalize_assignments.py
-                           If provided, forces callFinal flag to True.
+                            constant region  gene library. [default: False]
+    --runFinalize       Flag to call 1.3 script when finished. Additional options to that
+                            script (including the ability to automatically call 1.4 and
+                            1.5) are listed below. This script will not check the validity
+                            of options passed downstream, so user beware. [default: False]
+
+Options for other annotation scripts (see those help messages for details):
+    --jmotif TGGGG
+    --nterm OPT   
+    --noclean
+    --noFallBack
+    --runClustering 
+    --file FILE
+    --min1 1
+    --min2 3
+    --id .99
+    --maxgaps 0
+    --runCellStatistics
+    --rearrangements rearrangements.tsv
+    --save OPT
 
 Created by Zhenhai Zhang on 2011-04-14.
 Modified by Chaim A Schramm 2013-07-03 to include j assignment.
@@ -41,8 +56,9 @@ Edited and commented for publication by Chaim A Schramm on 2015-02-09.
 Edited to add queue monitoring by CAS 2015-08-03.
 Added local option with threading CAS 2015-11-13.
 Edited to use Py3 and DocOpt by CAS 2018-08-22
+Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -141,7 +157,7 @@ def main():
 			pbs.close()
 			os.system("%s -t 1-%d %s/cblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-			check = "%s/utilities/checkClusterBlast.py --gene c --big %d --check %s/cmonitor.sh --rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
+			check = "%s/utilities/checkClusterBlast.py --gene c --big %d --check %s/cmonitor.sh --rehold jMonitor-%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/cmonitor.sh"%prj_tree.jgene, 'w')
 			monitor.write( PBS_STRING%("cMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid cBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
@@ -159,7 +175,7 @@ def main():
 			pbs.close()
 			os.system("%s -t 1-%d %s/dblast.sh"%(qsub,f_ind,prj_tree.jgene))
 
-			check = "%s/utilities/checkClusterBlast.py --gene d --big %d --check %s/dmonitor.sh --rehold jMonitor%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
+			check = "%s/utilities/checkClusterBlast.py --gene d --big %d --check %s/dmonitor.sh --rehold jMonitor-%s" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene, prj_name)
 			monitor = open("%s/dmonitor.sh"%prj_tree.jgene, 'w')
 			monitor.write( PBS_STRING%("dMonitor-%s"%prj_name, "2G", "2:00:00", "#$ -hold_jid dBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, prj_tree.logs)))
 			monitor.close()
@@ -178,8 +194,18 @@ def main():
 		os.system("%s -t 1-%d %s/jblast.sh"%(qsub, f_ind,prj_tree.jgene))
 
 		check = "%s/utilities/checkClusterBlast.py --gene j --big %d --check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
-		if arguments['--callFinal']:
-			check += " --after '%s/annotate/1.3-finalize_assignments.py %s'" % (SCRIPT_FOLDER, arguments['--fArgs'])
+		if arguments['--runFinalize']:
+			check += " --after '%s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
+			for opt in [ '--jmotif', '--nterm', '--file', '--min1', '--min2', 
+				     '--id', '--maxgaps', '--rearrangements', '--save', '--threads']: 
+				if arguments[opt] is not None:
+					check += " %s '%s'" % (opt, arguments[opt])
+			for flag in ['--cluster', '--noclean', '--noFallBack',
+				 '--runClustering', '--runCellStatistics']:
+				if arguments[flag]:
+					check += " %s" % flag
+			check += "'"
+
 		monitor = open("%s/jmonitor.sh"%prj_tree.jgene, 'w')
 		monitor.write( PBS_STRING%("jMonitor-%s"%prj_name, "2G", "0:30:00", "#$ -hold_jid jBlast-%s,cMonitor-%s,dMonitor-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, prj_name, prj_name, check, prj_tree.logs))) #wait for C and D to finish before calling 1.3 (if relevant)
 		monitor.close()
@@ -208,8 +234,19 @@ def main():
 			blast_pool.close()
 			blast_pool.join()
 
-		if arguments['--callFinal']:
-			os.system( "%s/annotate/1.3-finalize_assignments.py %s" % (SCRIPT_FOLDER, arguments['--fArgs']) )
+		if arguments['--runFinalize']:
+			cmd = "%s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
+			for opt in [ '--jmotif', '--nterm', '--file', '--min1', '--min2', 
+			             '--id', '--maxgaps', '--rearrangements', '--save', '--threads']: 
+				if arguments[opt] is not None:
+					cmd += " %s '%s'" % (opt, arguments[opt])
+			for flag in ['--cluster', '--noclean', '--noFallBack', 
+		             	 '--runClustering', '--runCellStatistics']:
+				if arguments[flag]:
+					cmd += " %s" % flag
+
+			print( "Calling 1.3 with command line: %s" % cmd )
+			os.system( cmd )
 
 
 
@@ -222,14 +259,6 @@ if __name__ == '__main__':
 	if arguments['--cluster']:
 		if not clusterExists:
 			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
-
-	#check if call Final
-	if arguments['--fArgs'] is not None:
-		arguments['--callFinal'] = True
-	elif arguments['--callFinal']:
-		arguments['--fArgs'] = "" #kludge to prevent errors
-
-
 	      
 	#load saved locus information
 	prj_tree	= ProjectFolders(os.getcwd())

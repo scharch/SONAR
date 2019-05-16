@@ -289,7 +289,7 @@ sub getPlotData {
 	    next unless -defined($listRef->{$arr[0]});
 	} elsif ($keepVal == 2 ) {
 	    die("No unique sequences defined, please run 1.4-cluster_sequences.py and then try again.\n") unless -defined($colFinder{'cluster_count'});
-	    next unless $arr[$colFinder{'cluster_count'}] ne "";
+	    next unless -defined($arr[$colFinder{'cluster_count'}]) && $arr[$colFinder{'cluster_count'}] ne "";
 	} elsif ($keepVal == 1 ) {
 	    next unless $arr[$colFinder{'status'}] =~ /(good|unique)/;
 	}

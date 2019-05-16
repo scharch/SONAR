@@ -13,37 +13,60 @@ This script looks for raw NGS data files in the current folder and parses them
       is assigned as the project name, which will be used to identify all
       output files created.
 
-Usage: 1.1-blast-V.py [ options ] [ --locus H | --lib path/to/library.fa ] [ --fasta file1.fa ]... [ --derep ] [ --cluster | [--npf 10000 --threads 1] ] 
+Usage: 1.1-blast-V.py [ --locus H | --lib path/to/library.fa ] [ --fasta file1.fa ]... [ --derep ] [ --cluster | [--npf 10000 --threads 1] ] [ options ]
 
 Options:
-    --locus H		 H: heavy chain / K: kappa chain / L: lambda chain / 
-			    KL: kappa OR lambda / HKL: any. [default: H]
+    --locus H		     H: heavy chain / K: kappa chain / L: lambda chain / 
+			                 KL: kappa OR lambda / HKL: any. [default: H]
     --lib LIB            Location of file containing custom library (e.g. for use with
-			    non-human genes). Mutually exclusive with  --locus.
-    --fasta <input.fa>	 File(s) containing the input reads to process. May be specified
-			    multiple times. By default, uses all FASTA/FASTQ files (those
-			    with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
-			    .fastq) in the root project directory.
+			                 non-human genes). Mutually exclusive with  --locus.
+    --fasta <input.fa>   File(s) containing the input reads to process. May be specified
+			                 multiple times. By default, uses all FASTA/FASTQ files (those
+			                 with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
+			                 .fastq) in the root project directory.
     --derep              Flag to dereplicate input sequences using vsearch prior to 
-                            processing for blast. The number of reads supporting each
-                            sequence will be saved and output as "duplicate_count."
-                            Results will also be available in 
-                            work/internal/derepAllRawSeqs.uc [default: False]
+                             processing for blast. The number of reads supporting each
+                             sequence will be saved and output as "duplicate_count."
+                             Results will also be available in 
+                             work/internal/derepAllRawSeqs.uc [default: False]
     --cluster            Flag to indicate that blast jobs should be submitted to the
-                            SGE cluster. Throws an error if presence of a cluster was
-                            not indicated during setup. [default: False]
-    --npf <10000>	 Number of sequences in each split file when running locally. 
-			    (Resource requests for a cluster are calibrated to groups
-			    of 50K sequences, and cannot be changed.) [default: 10000]
+                             SGE cluster. Throws an error if presence of a cluster was
+                             not indicated during setup. [default: False]
+    --npf <10000>	     Number of sequences in each split file when running locally. 
+			                 (Resource requests for a cluster are calibrated to groups
+			                 of 50K sequences, and cannot be changed.) [default: 10000]
     --threads <1>        Number of threads to use when running locally. [default: 1]
-    --callJ              Flag to call 1.2-blast_J.py when done. [default: False]
-    --jArgs <options>	 Optional arguments to be provided to 1.2-blast_j.py. If provided,
-			    forces callJ flag to True.
     --minl <300>         Minimum length for read filtering (inclusive). [default: 300]
     --maxl <600>         Maximum length for read filtering (inclusive). [default: 600]
     -f                   Force new analysis and overwrite existing working directories.
-                            [default: False]
-    --qual		 CURRENTLY DEPRECATED! Use PHRED scores for QC. [default: False]
+                             [default: False]
+    --qual		         CURRENTLY DEPRECATED! Use PHRED scores for QC. [default: False]
+    --runJBlast          Flag to call 1.2 script when finished. Additional options to that
+                             script (including the ability to automatically call 1.3 and
+                             further scripts in Module 1) are listed below. This script
+                             will not check the validity of options passed downstream, so
+                             user beware. [default: False]
+
+Options for other annotation scripts (see those help messages for details):
+    --jlib LIB
+    --dlib LIB
+    --clib LIB
+    --noD
+    --noC
+    --runFinalize
+    --jmotif TGGGG
+    --nterm OPT
+    --noclean
+    --noFallBack
+    --runClustering 
+    --file FILE
+    --min1 1
+    --min2 3
+    --id .99
+    --maxgaps 0
+    --runCellStatistics
+    --rearrangements rearrangements.tsv
+    --save OPT
 
 Created by Zhenhai Zhang on 2011-04-12.
 Edited and commented for publication by Chaim A Schramm on 2014-12-22.
@@ -51,8 +74,12 @@ Edited to add queue monitoring by CAS 2015-07-30.
 Added local option with threading CAS 2015-11-13.
 Edited to use Py3 and DocOpt by CAS 2018-08-22.
 Added derep option by CAS 2018-10-19.
+Changed definition of forcing a new analysis to avoid clobbering
+    ouput from new 1.0 script by CA Schramm 2019-02-26.
+Added checks to pull cell/umi information through annotate module by CA Schramm 2019-03-01.
+Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
 			 Institutes of Health, USA. All rights reserved.
 
 """
@@ -113,7 +140,7 @@ def main():
 	
 	# open output files
 	fasta	  = open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
-	id_handle = open("%s/id_lookup.txt"  %	folder_tree.internal,		      'w')
+	id_handle = open("%s/lookup_%03d.txt"  % (folder_tree.internal, f_ind),	      'w')
 	id_map	  = csv.writer(id_handle, delimiter=sep)
 
 
@@ -135,12 +162,22 @@ def main():
 				sourceFile = fromDerep.group(1)
 
 			dup_count = "NA"
+			cell_name = "NA"
+			con_count = "NA"
 			checkSize = re.search(";size=(\d+)", sequence.id)
 			if checkSize:
 				dup_count = checkSize.group(1)
+			else:
+				#do these separately in case things are coming from older versions of 1.0
+				findCell  = re.search("cell_id=(\S+)", sequence.description)
+				if findCell:  cell_name = findCell.group(1)
+				findUMIs  = re.search("(?:duplicate_count|umi_count)=(\d+)", sequence.description)
+				if findCell:  dup_count = findUMIs.group(1)
+				findReads = re.search("(?:consensus_count|total_reads)=(\d+)", sequence.description)
+				if findReads: con_count = findReads.group(1)
 				
 			total += 1
-			id_map.writerow([ "%08d"%total, sourceFile, re.sub(";file=.+","",sequence.id), dup_count, len(sequence.seq)])
+			id_map.writerow([ "%08d"%total, sourceFile, re.sub(";file=.+","",sequence.id), len(sequence.seq), dup_count, con_count, cell_name])
 
 			if arguments['--minl'] <= len(sequence.seq) <= arguments['--maxl']:
 				total_good += 1
@@ -160,6 +197,10 @@ def main():
 					f_ind += 1
 					fasta = open("%s/%s_%03d.fasta" % (folder_tree.vgene, prj_name, f_ind), 'w')
 					print( "%d processed, %d good; starting file %s_%03d" %(total, total_good, prj_name, f_ind) )
+
+					id_handle.close()
+					id_handle = open("%s/lookup_%03d.txt"  % (folder_tree.internal, f_ind),	      'w')
+					id_map	  = csv.writer(id_handle, delimiter=sep)
 
 					'''
 					if arguments['--qual']:
@@ -204,12 +245,23 @@ def main():
 		os.system( "%s -t 1-%d %s/vblast.sh"%(qsub,f_ind,folder_tree.vgene) )
 		
 		check = "%s/utilities/checkClusterBlast.py --gene v --big %d --check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
-		if arguments['--callJ']:
-			check += " --after '%s/annotate/1.2-blast_J.py %s'" % (SCRIPT_FOLDER, arguments['--jArgs'])
-			monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
-			monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
-			monitor.close()
-			os.system( "%s %s/vmonitor.sh"%(qsub,folder_tree.vgene) )
+		if arguments['--runJBlast']:
+			check += " --after '%s/annotate/1.2-blast_J.py" % SCRIPT_FOLDER
+			for opt in [ '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file', 
+			             '--min1', '--min2', '--id', '--maxgaps', '--rearrangements',
+				     '--save', '--threads']: 
+				if arguments[opt] is not None:
+					check += " %s '%s'" % (opt, arguments[opt])
+			for flag in ['--cluster', '--noD', '--noC', '--runFinalize', 
+		                     '--noclean', '--noFallBack', '--runClustering', '--runCellStatistics']:
+				if arguments[flag]:
+					check += " %s" % flag
+			check += "'"
+			
+		monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
+		monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
+		monitor.close()
+		os.system( "%s %s/vmonitor.sh"%(qsub,folder_tree.vgene) )
 
 	else:
 
@@ -220,8 +272,20 @@ def main():
 		blast_pool.close()
 		blast_pool.join()
 
-		if arguments['--callJ']:
-			os.system( "%s/annotate/1.2-blast_J.py %s" % (SCRIPT_FOLDER, arguments['--jArgs']) )
+		if arguments['--runJBlast']:
+			cmd = "%s/annotate/1.2-blast_J.py" % SCRIPT_FOLDER
+			for opt in [ '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file', 
+			             '--min1', '--min2', '--id', '--maxgaps', '--rearrangements',
+				     '--save', '--threads']: 
+				if arguments[opt] is not None:
+					cmd += " %s '%s'" % (opt, arguments[opt])
+			for flag in ['--cluster', '--noD', '--noC', '--runFinalize', 
+		                     '--noclean', '--noFallBack', '--runClustering', '--runCellStatistics']:
+				if arguments[flag]:
+					cmd += " %s" % flag
+
+			print( "Calling 1.2 with command line: %s" % cmd )
+			os.system( cmd )
 
 
 	
@@ -244,12 +308,6 @@ if __name__ == '__main__':
 		if not clusterExists:
 			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
 
-	#check if call J
-	if arguments['--jArgs'] is not None:
-		arguments['--callJ'] = True
-	elif arguments['--callJ']:
-		arguments['--jArgs'] = "" #kludge to prevent errors
-
 	if arguments['--lib'] is not None:
 		arguments['--locus'] = 'C'
 		if not os.path.isfile(arguments['--lib']):
@@ -264,8 +322,18 @@ if __name__ == '__main__':
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()
-	folder_tree = create_folders( prj_folder, force=arguments['-f'] )
-	prj_name    = prj_folder[prj_folder.rindex("/") + 1 :]
+	folder_tree = ProjectFolders( prj_folder )
+	prj_name    = fullpath2last_folder(folder_tree.home)
+
+	old_files = glob.glob("%s/*"%folder_tree.internal) + glob.glob("%s/*"%folder_tree.vgene) + glob.glob("%s/*"%folder_tree.jgene)
+	if len(old_files) > 0:
+		if arguments['-f']:
+			for f in old_files:
+				os.remove(f)
+				#should I delete old output files, as well?
+		else:
+			sys.exit( "Old files exist: Please use the -f flag to force the start of a new analysis" )
+
 
 	#log command line
 	logCmdLine(sys.argv)	
