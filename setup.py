@@ -183,7 +183,7 @@ def main():
 
 if __name__ == '__main__':
 
-	arguments = docopt(__doc__, options_first=True, version=\"SONAR v3.0\")
+	arguments = docopt(__doc__, options_first=True, version=\"SONAR v4.0\")
 	main()
 
 """ %(SONAR_HOME, SONAR_HOME, SONAR_HOME) )
