@@ -1,9 +1,7 @@
 
 ########################################################
 # Dockerfile for automated build of latest SONAR code  # 
-# Uses the scharch/sonar-base Docker image, which in   # 
-#  turn is based on Ubuntu with various SONAR          #
-#  dependecies installed.                              #
+#                                                      #
 # Please see https://github.com/scharch/SONAR for more #
 #  information.                                        #
 ########################################################
@@ -24,7 +22,8 @@ RUN apt-get update && apt-get install -y \
   perl \
   cpanminus \
   libdb-dev \
-  graphviz 
+  graphviz  \
+  emacs24
 
 #install perl modules that are prerequisites
 RUN cpanm \
@@ -72,6 +71,9 @@ RUN pip3 install --upgrade ete3
 #install AIRR reference library
 RUN pip3 install airr
 
+#install Levensthein
+RUN pip3 install python-Levenshtein
+
 #install R
 RUN echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list
 RUN gpg --keyserver keyserver.ubuntu.com --recv-key E084DAB9
@@ -82,6 +84,8 @@ RUN apt-get update && apt-get install -y r-base r-base-dev
 RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http://cran.us.r-project.org")'
 
 
-#pull latest SONAR source code
-WORKDIR /sonar
+#pull latest SONAR source code and set it up
 RUN git clone https://github.com/scharch/SONAR.git
+WORKDIR SONAR
+RUN echo | ./setup.py
+COPY sonar ~/bin
