@@ -6,7 +6,7 @@ commonVars.py
 Created by Zhenhai Zhang on 2011-04-06.
 Renamed by Chaim A Schramm on 2015-02-10.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
+Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National Institutes of Health, USA. All rights reserved.
 """
 
 import sys, os, csv, shutil, re, glob, string, time, random
@@ -24,11 +24,7 @@ linesep = os.linesep
 pat_nuc_cxrk = re.compile("TG[T|C]...(CG.|AG[A|G]|AA[A|G])", flags=re.I)
 
 
-# programs
-clustalo       = "%s/third-party/clustalo"               % SCRIPT_FOLDER
-clustalw       = "%s/third-party/clustalw2"              % SCRIPT_FOLDER
-muscle         = "%s/third-party/muscle"                 % SCRIPT_FOLDER
-vsearch        = "%s/third-party/vsearch"                % SCRIPT_FOLDER
+# programs (many are specified in paths.py after install)
 igphyml        = "%s/third-party/igphyml_blas_omp"       % SCRIPT_FOLDER
 igphyml_slow   = "%s/third-party/igphyml_no_libraries"   % SCRIPT_FOLDER
 reconstruct    = "%s/third-party/ancReconstructHLP17.pl" % SCRIPT_FOLDER

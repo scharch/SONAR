@@ -49,8 +49,16 @@ if(@ARGV%2>0||@ARGV==0){die "$usage"; }
 
 my %para=@ARGV;
 if(!$para{'-f'}){die "No input sequence file\n";}
-$para{'-beast'}=ppath().'beast';
-if(!$para{'-beast'}){die "Please set up absolute path to beast program\n";}
+if(!$para{'-beast'}){ 
+    if ($^O eq "linux") {
+	$para{'-beast'}=ppath().'beast';
+    } elsif ($^O eq "darwin") {
+	$para{'-beast'}=ppath().'beast_macos';
+    } else {
+	die "Unrecognized file system $^O\n";
+    }
+}
+if( ! -e($para{'-beast'}) ){die "Please set up absolute path to beast program\n";}
 if(!$para{'-n'}){$para{'-n'}=25;}
 if(!$para{'-spliter'}){$para{'-spliter'}='_';}
 if(!$para{'-nc'}){$para{'-nc'}=1;}

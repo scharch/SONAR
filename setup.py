@@ -115,16 +115,29 @@ print_cluster = "clusterExists = False"
 if cluster_exists.upper() == "Y":
     print_cluster = "clusterExists = True\nqsub = '%s'" % qsub
 
-blast = "blastn_linux64"
+blast    = "blastn_linux64"
+clustalo = "clustalo"
+clustalw = "clustalw2"
+muscle   = "muscle"
+vsearch  = "vsearch"
+
 if sys.platform.startswith("darwin"):
-    blast = "blastn_macos"
+    blast    = "blastn_macos"
+    clustalo = "clustalo_macos"
+    clustalw = "clustalw2_macos"
+    muscle   = "muscle_macos"
+    vsearch  = "vsearch_macos"
 ##################################################################
 with open("%s/paths.py"%SONAR_HOME, "w") as paths:
     paths.write("""
 SCRIPT_FOLDER  = '%s'
 blast_cmd = '%s/third-party/%s'
+clustalo  = '%s/third-party/%s'
+clustalw  = '%s/third-party/%s'
+muscle    = '%s/third-party/%s'
+vsearch   = '%s/third-party/%s'
 %s
-""" % (SONAR_HOME, SONAR_HOME, blast, print_cluster))
+""" % (SONAR_HOME, SONAR_HOME, blast, SONAR_HOME, clustal, SONAR_HOME, clustalw, SONAR_HOME, muscle, SONAR_HOME, vsearch, print_cluster))
 ##################################################################
 with open("%s/sonar"%SONAR_HOME, "w") as sonar:
     sonar.write("""#!/usr/bin/env python3
