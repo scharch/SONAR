@@ -88,4 +88,4 @@ RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http:/
 RUN git clone https://github.com/scharch/SONAR.git
 WORKDIR SONAR
 RUN echo | ./setup.py
-COPY sonar ~/bin
+RUN cp sonar /usr/bin
