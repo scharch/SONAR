@@ -251,7 +251,7 @@ def main():
 			             '--min1', '--min2', '--id', '--maxgaps', '--rearrangements',
 				     '--save', '--threads']: 
 				if arguments[opt] is not None:
-					check += " %s '%s'" % (opt, arguments[opt])
+					check += " %s %s" % (opt, arguments[opt])
 			for flag in ['--cluster', '--noD', '--noC', '--runFinalize', 
 		                     '--noclean', '--noFallBack', '--runClustering', '--runCellStatistics']:
 				if arguments[flag]:
