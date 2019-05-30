@@ -107,7 +107,7 @@ def main():
 		print( "curating junction and 3' end..." )
 
 		if arguments['--cluster']:
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s/annotate/parse_blast.py --jmotif %s --nterm %s --chunk $NUM\n" % \
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk $NUM\n" % \
 						( "%03d", SCRIPT_FOLDER, arguments['--jmotif'], arguments['--nterm'] )
 			if arguments['--noFallBack']: command += " --noFallBack"
 			pbs = open("%s/parse.sh"%prj_tree.jgene, 'w')
