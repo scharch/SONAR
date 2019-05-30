@@ -126,6 +126,7 @@ Added options for fasta input and/or multiple input files by CAS 2019-03-04.
 Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 Fixed bug for singletons by CA Schramm 2019-05-02.
 Switched to `cluster_fast` and changed gap penalties by CAS 2019-05-09.
+Changed clustering threshold to 97% by CA Schramm 2019-05-22.
 
 Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -211,7 +212,7 @@ def getUmiConsensus(iter_tuple, minSize, workdir, isUMI=True):
 			subprocess.call([vsearch,
 					 "-cluster_fast", "%s/%s.fa" % (subdir, umi['umi']),
 					 "-consout", "%s/%s_cons.fa" % (subdir, umi['umi']),
-					 "-id", "0.95",
+					 "-id", "0.97",
 					 "-iddef", "3",
 					 "-sizein", "-sizeout",
 					 "-mincols", '150',
