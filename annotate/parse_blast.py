@@ -6,7 +6,7 @@ parse_blast.py
 This script is called internally from 1.3-finalize_assignments.py to allow the parsing 
     to be parallelized on the cluster.
 
-Usage:	parse_blast.py --jmotif MOTIF --nterm OPT --chunk NUM
+Usage:	parse_blast.py --jmotif MOTIF --nterm OPT --chunk NUM [options]
 
 Options:
     --jmotif TGGGG
@@ -16,6 +16,7 @@ Options:
 
 Split out from original 1.3-finalize_assignments.py by Chaim A Schramm on 2019-04-01.
 Added `sequence_alignment` field for noJ reads as v gene region found by BLAST by CAS 2019-05-08.
+Added `locus`, `rev-comp`, and `productive` fields for noJ reads by CA Schramm 2019-05-23.
 
 Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -183,9 +184,22 @@ def main():
 			entry.seq = entry.seq[ myV.qstart - 1 : myV.qend ]
 			if (myV.strand == 'minus'):
 				entry.seq = entry.seq.reverse_complement()
+				rearrangement['rev_comp']       = "T"
+			else:
+				rearrangement['rev_comp']       = "F"
 			myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
+			
+			vlocus = ""
+			if any( x in myV.sid for x in ["HV", "VH", "Vh", "vh", "heavy", "Heavy", "HEAVY"] ):
+				vlocus = "IGH"
+			elif any( x in myV.sid for x in ["LV", "VL", "Vl", "vl", "lambda", "Lambda", "LAMBDA"] ):
+				vlocus = "IGL"
+			elif any( x in myV.sid for x in ["KV", "VK", "Vk", "vk", "kappa", "Kappa", "KAPPA"] ):
+				vlocus = "IGK"
 
 			rearrangement['v_call'] = myVgenes
+			rearrangement['locus']  = vlocus
+			rearrangement['productive'] = "F"
 			rearrangement['status'] = 'noJ'
 			rearrangement['sequence_alignment'] = str(entry.seq)
 			seq_stats.write(rearrangement)
