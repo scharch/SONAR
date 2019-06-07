@@ -152,7 +152,7 @@ def runAlign( fileName ):
 		else:
 			sys.stderr.write( "Error, can't find germline V for %s...\n" % entry.id )
 			results[entry.id]['germline'] = ("NA", "NA")
-			vlookup[entry.id] = "unknown"
+			results[entry.id]['vlookup'] = "unknown"
 		
 		for nat in mature:
 			results[entry.id][nat] = scoreSeqs( mature[nat], entry, tempName )
