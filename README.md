@@ -58,6 +58,10 @@ Using SONAR
 -----
 To see a summary of all SONAR scripts and what they do, simply run `sonar -h`. Alternatively, take advantange of the fuzzy matching to find the scripts in a particular module, eg `sonar annotate`. All sonar scripts will print detailed options and usage when passed the `-h` flag. For a detailed summary, please see [the vignette](vignette.pdf).
 
+Support
+-----
+I am more than happy to assist with basic SONAR usage. Please file all bugs reports and requests for help as GitHub [issues](https://github.com/scharch/SONAR/issues). I will typically respond within a day or two, though it may take me up to a month to push out bug fixes, depending on the criticallity and complexity of the bug, as well as other obligations.
+
 Change Log
 -----
 ### New in version 4.0
