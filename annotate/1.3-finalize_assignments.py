@@ -230,7 +230,7 @@ def main():
 #			if not r['v_identity'] == '':      def_line += " v_identity=%s"      % r['v_identity']
 			if not r['junction_length'] == '': def_line += " junction_length=%s" % r['junction_length']
 			if not r['junction'] == '':        def_line += " junction=%s"        % r['junction']
-			if not r['junction_aa'] == '':     def_line += " junction_aa=%s"     % r['junction']
+			if not r['junction_aa'] == '':     def_line += " junction_aa=%s"     % r['junction_aa']
 			if not r['duplicate_count'] == '': def_line += " duplicate_count=%s" % r['duplicate_count']
 			if not r['consensus_count'] == '': def_line += " consensus_count=%s" % r['consensus_count']
 			if not r['cell_id'] == '':         def_line += " cell_id=%s"         % r['cell_id']
