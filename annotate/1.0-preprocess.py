@@ -455,7 +455,11 @@ def main():
 
 	else:
 		#anything special to do if there are no UMIs/barcodes at all?
-		pass
+                temp = processedFiles
+                processedFiles = []
+                for f in temp:
+                        shutil.move( f, re.sub(prj_tree.preprocess,prj_tree.home,f) )
+                        processedFiles.append( re.sub(prj_tree.preprocess,prj_tree.home,f) )
 
 	# call 1.1 if requested
 	if arguments['--runVBlast']:
