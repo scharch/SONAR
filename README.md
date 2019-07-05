@@ -22,8 +22,8 @@ Installation
 ### Docker
 SONAR is available as an automatically updated Docker image. To use Docker:
 ```
-$> sudo docker pull scharch/sonar
-$> sudo docker run -it -v ~:/host/home scharch/sonar
+$> docker pull scharch/sonar
+$> docker run -it -v ~:/host/home scharch/sonar
 $root@1abcde234> cd /host/home/*path*/*to*/*data*/
 $root@1abcde234> sonar 1.1
 .
