@@ -83,7 +83,7 @@ RUN gpg -a --export E084DAB9 | apt-key add -
 RUN apt-get update && apt-get install -y r-base r-base-dev
 
 #install R packages
-RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http://cran.us.r-project.org")'
+RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http://cran.cnr.berkeley.edu/")'
 
 #get fastq-dump for vignette
 RUN curl -O https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.9.6-1/sratoolkit.2.9.6-1-ubuntu64.tar.gz
