@@ -86,6 +86,7 @@ RUN apt-get update && apt-get install -y r-base r-base-dev
 RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http://cran.cnr.berkeley.edu/")'
 
 #get fastq-dump for vignette
+RUN apt-get install -y curl
 RUN curl -O https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.9.6-1/sratoolkit.2.9.6-1-ubuntu64.tar.gz
 RUN tar -xzf sratoolkit.2.9.6-1-ubuntu64.tar.gz
 RUN ln -s /sratoolkit.2.9.6-1-ubuntu64/bin/fastq-dump /usr/bin/fastq-dump
