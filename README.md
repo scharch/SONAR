@@ -23,7 +23,10 @@ Installation
 SONAR is available as an automatically updated Docker image. To use Docker:
 ```
 $> docker pull scharch/sonar
-$> docker run -it -v ~:/host/home scharch/sonar
+$> docker run -it -e DISPLAY=$DISPLAY -v ~:/host/home scharch/sonar
+$root@1abcde234> cd /host/home
+$root@1abcde234> /SONAR/sample_data/runVignette.sh
+<< *OR* >>
 $root@1abcde234> cd /host/home/*path*/*to*/*data*/
 $root@1abcde234> sonar 1.1
 .
