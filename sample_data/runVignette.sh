@@ -68,6 +68,6 @@ mkdir cap256-longitudinal
 cd cap256-longitudinal
 sonar merge_time --seqs ../cap256-week34H/output/sequences/nucleotide/cap256-week34H_islandSeqs.fa --labels w34 --seqs ../cap256-week48H/output/sequences/nucleotide/cap256-week48H_islandSeqs.fa --labels w48 --seqs ../cap256-week59H/output/sequences/nucleotide/cap256-week59H_islandSeqs.fa --labels w59
 sonar igphyml -v 'IGHV3-30*18' --quick -f
-sonar flip_tree output/cap256-longitudinal_igphyml.tree output/cap256-longitudinal_igphyml.flipped.tree
+sonar fliptree output/cap256-longitudinal_igphyml.tree output/cap256-longitudinal_igphyml.flipped.tree
 sonar display_tree -t output/cap256-longitudinal_igphyml.flipped.tree -n /SONAR/sample_data/natives.csv -o output/plot/CAP256_SONAR-vignette_tree.png --sp 2 --sc 1500 -f 2
 
