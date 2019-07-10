@@ -71,7 +71,7 @@ if check == 1:
 
 
 #R library checks
-for lib in ["docopt","ggplot2","MASS","grid"]:
+for lib in ["docopt","ggplot2","MASS","grid","ptinpoly"]:
     s=subprocess.Popen(['R','--vanilla','--slave','-e', '"%s" %%in%% installed.packages()[,"Package"]'%lib],
                        stderr=subprocess.PIPE,stdout=subprocess.PIPE,universal_newlines=True)
     o,e = s.communicate()

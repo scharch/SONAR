@@ -83,7 +83,10 @@ RUN gpg -a --export E084DAB9 | apt-key add -
 RUN apt-get update && apt-get install -y r-base r-base-dev
 
 #install R packages
-RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2"), repos="http://cran.cnr.berkeley.edu/")'
+RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2","ptinpoly"), repos="http://cran.cnr.berkeley.edu/")'
+
+#install Xvfb for 4.4
+RUN apt-get install -y xvfb
 
 #get fastq-dump for vignette
 RUN apt-get install -y curl

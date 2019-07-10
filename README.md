@@ -39,7 +39,7 @@ $root@1abcde234> sonar 1.1
 #### General Prerequisites:
 * Python3 with Biopython, airr, and docopt
 * Perl5 with BioPerl, Statistics::Basic, List::Util, and Algorithm::Combinatorics
-* R with docopt ggplot2, MASS, and grid
+* R with docopt, ggplot2, MASS, grid, and ptinpoly
 
 #### Optional Prerequisites:
 * For using the master script: fuzzywuzzy python package
