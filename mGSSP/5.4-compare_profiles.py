@@ -71,11 +71,13 @@ def main():
 
 		#single dataset calculations
 		spectrum1.computeRarity()
-		for row in spectrum1.rarity:
-			rWriter.writerow( row )
+		for vgene in spectrum1.rarity:
+			for pos in spectrum1.rarity[vgene]:
+				for aa in spectrum1.rarity[vgene][pos]['mutants']:
+					rWriter.writerow( [ spectrum1.name, vgene, pos+1, spectrum1.rarity[vgene][pos]['germline'], aa, "%.3f"%spectrum1.rarity[vgene][pos]['mutants'][aa]['average'], "%.3f"%spectrum1.rarity[vgene][pos]['mutants'][aa]['stddev'] ] )
 		spectrum1.profileEntropy(use_all=False)
-		for row in spectrum1.entropy:
-			eWriter.writerow( row )
+		for vgene in spectrum1.entropy:
+			eWriter.writerow( [ spectrum1.name, vgene, "%.3f"%spectrum1.entropy[vgene] ] )
 
 		#now do the big distance matrix
 		bigMatrix[x].append( spectrum1.betweenV() )

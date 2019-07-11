@@ -23,8 +23,8 @@ class GSSP:
 		self.name    = name
 		self.vgenes  = defaultdict( list )
 		self.average = defaultdict( list )
-		self.rarity  = []
-		self.entropy = []
+		self.rarity  = defaultdict( dict )
+		self.entropy = dict()
 
 		#read in GSSPs from a text file
 		with open(inFile, "r") as handle:
@@ -102,8 +102,9 @@ class GSSP:
 						r[p][aaList[aa]].append( 1 - (pos['freq']*mut/fixFreq) )
 			#go back through it so we can get position-wise averages over samples
 			for p in r:
+				self.rarity[ v ][ p ] = dict( germline=",".join(i[p]['germline']), mutants=dict() )
 				for aa in r[p]:
-					self.rarity.append( [ self.name, v, p+1, ",".join(i[p]['germline']), aa, "%.3f"%average(r[p][aa]), "%.3f"%std(r[p][aa]) ] )
+					self.rarity[ v ][ p ][ 'mutants' ][ aa ] = dict( average=average(r[p][aa]), stddev=std(r[p][aa]) )
 
 
 	#averages multiple GSSPs sampled from a single gene
@@ -139,7 +140,7 @@ class GSSP:
 						continue
 					e.append( shannon(pos['profile']) )
 					w.append( pos['freq'] )
-				self.entropy.append( [ self.name, v, "%.3f"%average(e, weights=w) ] )
+				self.entropy[ v ] = average(e, weights=w) 
 		else:
 			for v in sorted(self.vgenes.keys()):
 				e = []
@@ -149,8 +150,7 @@ class GSSP:
 						continue
 					e.append( shannon(pos['profile']) )
 					w.append( pos['freq'] )
-				self.entropy.append( [ self.name, v, "%.3f"%average(e, weights=w) ] )
-
+				self.entropy[ v ] = average(e, weights=w) 
 
 
 
