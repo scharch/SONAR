@@ -32,6 +32,7 @@ use Bio::AlignIO;
 
 if ($#ARGV<0 || $ARGV[0] =~ /-h/) { pod2usage(1); }
 
+my @saveArgs = $ARGV;
 &logCmdLine($0,@saveArgs);
 
 my $in = Bio::AlignIO->new( -file=>$ARGV[0], -format=>"phylip");
