@@ -198,6 +198,11 @@ def main():
 			sys.exit("Couldn't read alignment: is %s the correct format?"%arguments['--format'])
 				
 	align_len = aln.get_alignment_length()
+	extra     = align_len % 3
+	if extra > 0:
+		print("Trimming alignment to even codon length...", file=sys.stderr)
+		aln = aln[ :, 0:-extra]
+		align_len -= extra
 	
 	#kill the fasta def line and any usearch/vsearch annotations to avoid formatting foul-ups
 	germ_id	  = ""
