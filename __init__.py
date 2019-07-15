@@ -338,8 +338,27 @@ def translate_a_sequence(s):
 def quickAlign( refseq, testseq, maxiters=None, diags=None, gapopen=None ):
     
 	#sanity check
-	refseq	= re.sub( "-", "", str(refseq) )
-	testseq = re.sub( "-", "", str(testseq) )
+	try:
+		refseq	= re.sub( "-", "", refseq )
+	except TypeError:
+		#not a string, probably a SeqRecord
+		try:
+			refseq = str( refseq.seq )
+			refseq	= re.sub( "-", "", refseq )
+		except AttributeError:
+			#give up
+			sys.exit( "quickAlign() requires inputs to be either strings or SeqRecord objects" )
+
+	try:
+		testseq	= re.sub( "-", "", testseq )
+	except TypeError:
+		#not a string, probably a SeqRecord
+		try:
+			testseq = str( testseq.seq )
+			testseq	= re.sub( "-", "", testseq )
+		except AttributeError:
+			#give up
+			sys.exit( "quickAlign() requires inputs to be either strings or SeqRecord objects" )
 
 	handle = StringIO()
 	handle.write( ">ref\n%s\n>test\n%s\n"%(refseq,testseq) )
