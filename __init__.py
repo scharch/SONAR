@@ -73,10 +73,11 @@ def logCmdLine( command ):
         if re.search("(\s|\*)", arg):
             command[idx] = "'"+arg+"'"
 
-    p = subprocess.Popen(['git', '-C', os.path.dirname(command[0]), 
+    p = subprocess.Popen(['git', '--git-dir', os.path.dirname(command[0])+"/../.git",
+    					  '--work-tree', os.path.dirname(command[0])+"/../",
                           'describe', '--always','--dirty','--tags'],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    VERSION = p.communicate()[0].strip()
+    VERSION = p.communicate()[0].decode().strip()
 
     logStatement = "\n%s -- SONAR %s run with command:\n\t%s\n" % (time.strftime("%c"), VERSION, " ".join(command))
     print(logStatement, file=sys.stderr)

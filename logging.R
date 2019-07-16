@@ -13,7 +13,7 @@ saveCommandLine <- function( logFile, args ) {
     args.positions <- grep("--args", args) 
         
     time.stamp  <- date()
-    version     <- system(paste0("git -C ",script.basename," describe --always --dirty --tags"), intern=T)
+    version     <- system(paste0("git --git-dir ",script.basename,"/../.git --work-tree ",script.basename,"/../ describe --always --dirty --tags"), intern=T)
 
     commandLine <- paste(c(script.name,tail(args, -1*args.positions)),collapse=' ')
     message     <- paste0("\n",time.stamp," -- SONAR ",version," run with command:\n\t",commandLine,"\n")
