@@ -128,6 +128,9 @@ def main():
 					seq.id += ";cell=%s"%cell_barcode
 				if molecule_id	!= "":
 					seq.id += ";umi=%s"%molecule_id
+				else:
+					#no umi, but store cell barcode as the umi in the data structure to prevent errors
+					molecule_id = cell_barcode
 
 				if (cell_barcode, molecule_id) not in umi_dict:
 					umi_dict[ (cell_barcode, molecule_id) ] = { 'cell':cell_barcode, 'umi':molecule_id, 'count':reads, 'seqs':[seq] }
