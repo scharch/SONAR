@@ -331,17 +331,20 @@ def main():
 
 
 if __name__ == '__main__':
-	
-	#log command line
-	logCmdLine(sys.argv)
 
 	arguments = docopt(__doc__)
 	arguments['--threads'] = int(arguments['--threads'])
-	
+
 	if arguments['--cluster']:
 		if not clusterExists:
 			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
- 
+
+	if arguments['--nterm'] not in ["truncate", "extend", "germline", "discard"]:
+		sys.exit("--nterm must be one of ('truncate', 'extend', 'germline', 'discard')")
+
+	#log command line
+	logCmdLine(sys.argv)
+
 	prj_tree  = ProjectFolders(os.getcwd())
 	prj_name  = fullpath2last_folder(prj_tree.home)
 
@@ -361,7 +364,4 @@ if __name__ == '__main__':
 			sys.stderr.write("Custom gene libraries used but no J motif specified; defaulting to human heavy+light...\n")
 			arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
 
-	if arguments['--nterm'] not in ["truncate", "extend", "germline", "discard"]:
-		sys.exit("--nterm must be one of ('truncate', 'extend', 'germline', 'discard')")
-	
 	main()
