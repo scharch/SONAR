@@ -3,7 +3,7 @@
 """
 1.3-finalize_assignments.py
 
-This script parses the BLAST output from 1.1-blast-V_assignment.py and 
+This script parses the BLAST output from 1.1-blast-V_assignment.py and
       1.2-blast_J.py. Sequences with successful assignments are
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
@@ -13,7 +13,7 @@ Usage:  1.3-finalize_assignments.py [ --jmotif "TT[C|T][G|A]G" --nterm truncate 
 Options:
     --jmotif TGGGG    Conserved nucleotide sequence indicating the start of FWR4 on
                           the J gene. Defaults to either TGGGG for heavy chains or
-                          TT[C|T][G|A]G for light chains; set manually for custom 
+                          TT[C|T][G|A]G for light chains; set manually for custom
                           light chain libraries or for species with a different motif.
     --nterm OPT       What to do if blast hit does not extend to the N terminus of the
                           germline V gene. Options are:
@@ -35,15 +35,13 @@ Options:
                           SGE cluster. Throws an error if presence of a cluster was
                           not indicated during setup. [default: False]
     --threads <1>     Number of threads to use when running locally. [default: 1]
-    --reenter         Flag used internally to resume after submitting individual jobs
-                          to the cluster. [default: False]
     --runClustering   Flag to call 1.4 script when finished. Additional options to that
                           script (including the ability to automatically call 1.5) are listed
                           below. This script will not check the validity of options passed
                           downstream, so user beware. [default: False]
 
 Options for other annotation scripts (see those help messages for details):
-    --file FILE 
+    --file FILE
     --min1 1
     --min2 3
     --id .99
@@ -64,7 +62,7 @@ Edited to use Py3 and DocOpt by CAS 2018-08-22.
 Edited to use AIRR datarep convention by CAS 2018-10-12.
 Added pulling through of cell/umi stats from 1.0 by CAS 2019-03-01.
 Added fall-back checking of isotype (IgG vs IgM) based on first 3 bases of CH1
-        since this is available with current Douek lab primers by CAS 2019-03-15. 
+        since this is available with current Douek lab primers by CAS 2019-03-15.
 Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 Moved main processing code to parse_blast.py to allow for parallelization on a
         cluster by CA Schramm 2019-04-01.
@@ -88,7 +86,7 @@ except ImportError:
 	find_SONAR = sys.argv[0].split("SONAR/annotate")
 	sys.path.append(find_SONAR[0])
 	from SONAR.annotate import *
-	
+
 def callParser(chunk):
 	cmd = "%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk %03d" % \
 						( SCRIPT_FOLDER, arguments['--jmotif'], arguments['--nterm'], chunk )
@@ -100,42 +98,25 @@ def main():
 
 	if not glob.glob("%s/%s_*.fasta" % (prj_tree.jgene, prj_name)):
 		sys.exit("No jBlast output found!\n")
-		
+
 	maxFiles = len( glob.glob("%s/%s_*.fasta" % (prj_tree.vgene, prj_name)) )
-	
-	if not arguments['--reenter']:
-		print( "curating junction and 3' end..." )
 
-		if arguments['--cluster']:
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk $NUM\n" % \
-						( "%03d", SCRIPT_FOLDER, arguments['--jmotif'], arguments['--nterm'] )
-			if arguments['--noFallBack']: command += " --noFallBack"
-			pbs = open("%s/parse.sh"%prj_tree.jgene, 'w')
-			pbs.write( "#!/bin/bash\n#$ -N parse-%s\n#$ -l mem=2G\n#$ -cwd\n\n%s\n" % (prj_name, command) )
-			pbs.close()
-			os.system( "%s -t 1-%d %s/parse.sh"%(qsub,maxFiles,prj_tree.jgene) )
-		
-			restart = "%s/annotate/1.3-finalize_assignments.py --reenter" % SCRIPT_FOLDER
-			for opt in [ '--file', '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--save']: 
-				if arguments[opt] is not None:
-					restart += " %s %s" % (opt, arguments[opt])
-			for flag in ['--noclean', '--runClustering', '--runCellStatistics']:
-				if arguments[flag]:
-					restart += " %s" % flag
+	print( "curating junction and 3' end..." )
 
-			monitor = open("%s/parse_monitor.sh"%prj_tree.jgene, 'w')
-			monitor.write( "#!/bin/bash\n#$ -N monitor-%s\n#$ -l mem=2G\n#$ -cwd\n#$ -hold_jid parse-%s\n\n%s\n"%(prj_name, prj_name,restart) )
-			monitor.close()
-			os.system( "%s %s/parse_monitor.sh"%(qsub,prj_tree.jgene) )
-			sys.exit()
+	if arguments['--cluster']:
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk $NUM\n" % \
+					( "%03d", SCRIPT_FOLDER, arguments['--jmotif'], arguments['--nterm'] )
+		if arguments['--noFallBack']: command += " --noFallBack"
+		pbs = open("%s/parse.sh"%prj_tree.jgene, 'w')
+		pbs.write( "#!/bin/bash\n#$ -N parse-%s\n#$ -l mem=2G\n#$ -cwd\n#$ -o %s/parse.o$JOB_ID.$SGE_TASK_ID\n#$ -o %s/parse.e$JOB_ID.$SGE_TASK_ID\n\n%s\n" % (prj_name, prj_tree.annotate, prj_tree.annotate, command) )
+		pbs.close()
+		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%maxFiles, "%s/parse.sh"%prj_tree.jgene])
 
-		else: #do it locally
-
-			parse_pool = Pool(arguments['--threads'])
-			parse_pool.map(callParser, range(1,maxFiles+1))
-			parse_pool.close()
-			parse_pool.join()
-
+	else: #do it locally
+		parse_pool = Pool(arguments['--threads'])
+		parse_pool.map(callParser, range(1,maxFiles+1))
+		parse_pool.close()
+		parse_pool.join()
 
 	#ok, now collect all of the partial outputs and merge them
 	print( "collecting information...")
@@ -168,7 +149,7 @@ def main():
 	dict_jcounts = Counter()
 	dict_ccounts = Counter()
 	dict_dcounts = Counter()
-		
+
 	c = False
 	if os.path.isfile("%s/%s_C_001.txt" % (prj_tree.jgene, prj_name)):
 		c = True
@@ -244,7 +225,7 @@ def main():
 			if not r['status'] in ['noV', 'missingNterm']:
 				allV_nt.write( "%s\n%s\n" % (def_line, ungapped) )
 				allV_aa.write( "%s\n%s\n" % (def_line, Seq.Seq(ungapped).translate()) )
-	
+
 				if not r['status'] == 'noJ':
 					allJ_nt.write( "%s\n%s\n" % (def_line, ungapped) )
 					allJ_aa.write( "%s\n%s\n" % (def_line, Seq.Seq(ungapped).translate()) )
@@ -315,7 +296,7 @@ def main():
 	# call 1.4 if requested
 	if arguments['--runClustering']:
 		cmd = "%s/annotate/1.4-cluster_sequences.py" % SCRIPT_FOLDER
-		for opt in [ '--file', '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--save']: 
+		for opt in [ '--file', '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--save']:
 			if arguments[opt] is not None:
 				cmd += " %s '%s'" % (opt, arguments[opt])
 		if arguments['--runCellStatistics']:
@@ -359,7 +340,7 @@ if __name__ == '__main__':
 				arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
 			else:
 				arguments['--jmotif'] = "TT[C|T][G|A]G"
-		elif "C" in locus and not arguments['--reenter']:
+		elif "C" in locus:
 			#custom library, but default to looking for both motifs
 			sys.stderr.write("Custom gene libraries used but no J motif specified; defaulting to human heavy+light...\n")
 			arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
