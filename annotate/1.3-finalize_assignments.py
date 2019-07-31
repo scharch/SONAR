@@ -66,6 +66,7 @@ Added fall-back checking of isotype (IgG vs IgM) based on first 3 bases of CH1
 Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 Moved main processing code to parse_blast.py to allow for parallelization on a
         cluster by CA Schramm 2019-04-01.
+Fixed command line logging and rationalized cluster usage by CAS 2019-07-31.
 
 Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
