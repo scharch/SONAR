@@ -8,9 +8,9 @@ This script calls IgPhyML to generate a maximum likelihood tree for a set
       calls the IgPhyl Utilities script for ancestor recontruction. For
       optimal results, sequences should be aligned manually and specified
       with the -i parameter. However, the script can also use MUSCLE to
-      create an automated alignment. For automatic alignments, please use 
+      create an automated alignment. For automatic alignments, please use
       the -v parameter to specify the assigned V gene, which will be added
-      to the alignment and used for rooting the tree. 
+      to the alignment and used for rooting the tree.
 Tree file goes in output/<prj_name>_igphyml.tree; inferred sequences go in
       output/sequences/(nucleotide|amino_acid)/<prj_name>_inferredAncestors.fa;
       other IgPhyML output goes in output/logs/<prj_name>_igphyml_stats.txt.
@@ -21,26 +21,26 @@ and
       https://github.com/kbhoehn/IgPhyML
 
 
-Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick -f ]
-       3.2-runIgPhyML.py -v IGHV3-30*18 [ --locus <H|K|L> | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick -f ]
+Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick --noAnc -f ]
+       3.2-runIgPhyML.py -v IGHV3-30*18 [ --locus <H|K|L> | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc -f ]
 
 Options:
-    -i input                   Manual alignment (in PHYLIP format) of the sequences to be 
-                                  analayzed, with known antibody seqeunces and germline 
-                                  (or other outgroup) sequence included. This is the 
+    -i input                   Manual alignment (in PHYLIP format) of the sequences to be
+                                  analayzed, with known antibody seqeunces and germline
+                                  (or other outgroup) sequence included. This is the
                                   preferred option for running this program and should be
                                   used especially for inferring ancestral sequences.
-                                  If --natives and -v (see below) are supplied instead, 
+                                  If --natives and -v (see below) are supplied instead,
                                   sequences will be aligned automagically with MUSCLE.
     --format fasta             Format of the alignment, eg fasta or phylip. [default: fasta]
     --root IGHV1-2*02          Name of the sequence to use as outgroup/root of the tree.
                                   Typically detected automatically if it's a germline V
                                   gene, but may need to be specified if eg, your using an
                                   estimated naive sequence as the root.
-    --quick                    Flag to speed up calculation by turning off SPR moves when 
-                                  finding initial tree and skipping topology refinement when 
+    --quick                    Flag to speed up calculation by turning off SPR moves when
+                                  finding initial tree and skipping topology refinement when
                                   recalulating with the HLP17 model. [default: False]
-    -v IGHV3-30*18             Assigned germline V gene of known antibodes, for use in 
+    -v IGHV3-30*18             Assigned germline V gene of known antibodes, for use in
                                   rooting the trees. Include allele designation.
     --locus <H|K|L>            Specify use of V heavy/kappa/lambda germlines libraries,
                                   respectively. Mutually exclusive with --lib. [default: H]
@@ -49,7 +49,8 @@ Options:
                                   to be built. [default: output/sequences/nucleotide/<project>-collected.fa]
     --natives natives.fa       A fasta file containing known sequences to be included in
                                   the tree.
-    -f		               Force a restart of the analysis, even if there are files from
+	--noAnc                    Skip recontruction of ancestral sequences to save time [default: False]
+    -f		                   Force a restart of the analysis, even if there are files from
                                   a previous run in the working directory.
 
 Created by Chaim A Schramm 2015-07-09 as 3.2-run_DNAML.py.
@@ -57,8 +58,9 @@ Added options for flexibility and more informative error messages by CAS 2016-08
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Changed tree-building engine to IgPhyML and renamed by CAS 2018-10-22.
 Added gap handling (ported from 3.3) by CAS 2018-10-23.
+Added option to skip ancestor recontruction by CA Schramm 2019-07-31.
 
-Copyright (c) 2011-2018 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2019 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -124,7 +126,7 @@ def assignGaps( name, tree, gaps ):
 				gaps[name].append( { 'start':s2, 'end':e1, 'value':v1+v2 } ) #this is also basic case of identical gaps in both children
 				if e2>e1:
 					gaps[name].append( { 'start':e1, 'end':e2, 'value':v2 } )
-				
+
 				ind += 2 #skip the overlapping one we just processed
 
 			else:
@@ -164,7 +166,7 @@ def main():
 				os.remove(f)
 		else:
 			sys.exit("Old files exist! Please use the -f flag to force overwrite.")
-	
+
 
 	if arguments['-v'] is not None:
 
@@ -196,14 +198,14 @@ def main():
 			aln = AlignIO.read(handle, arguments['--format'])
 		except:
 			sys.exit("Couldn't read alignment: is %s the correct format?"%arguments['--format'])
-				
+
 	align_len = aln.get_alignment_length()
 	extra     = align_len % 3
 	if extra > 0:
 		print("Trimming alignment to even codon length...", file=sys.stderr)
 		aln = aln[ :, 0:-extra]
 		align_len -= extra
-	
+
 	#kill the fasta def line and any usearch/vsearch annotations to avoid formatting foul-ups
 	germ_id	  = ""
 	foundRoot = False
@@ -213,21 +215,21 @@ def main():
 		seq.description = ""
 		if re.search("(IG|VH|VK|VL|HV|KV|LV)", seq.id, re.I) is not None:
 			germ_id = seq.id
-			
+
 		if arguments['--root'] is not None and seq.id == arguments['--root']:
 			foundRoot = True
-			
+
 		for g in re.finditer("-+", str(seq.seq)):
 			#save gap. value is a field to help me determine what's real in assignGaps
 			gaps[ seq.id.upper() ].append( {'start':g.start(), 'end':g.end(), 'value':1} )
-			  
+
 	if arguments['--root'] is not None:
 		germ_id = arguments['--root']
 		if not foundRoot:
 			sys.exit("Couldn't find specified root sequence %s in input file"%arguments['--root'])
 	elif germ_id=="":
 		sys.exit("Couldn't find a germline gene in the alignment, please use the --root option and try again.")
-		
+
 	with open("%s/infile" % prj_tree.phylo, "w") as output:
 		AlignIO.write(aln, output, "fasta")
 
@@ -243,7 +245,7 @@ def main():
 			      "-m", "GY", "-w", "MO", "-t", "e", "--run_id", "gy94"] + opts,
 			     universal_newlines=True, stderr=subprocess.PIPE)
 	o,e = s.communicate()
-	
+
 	if re.search("error while loading shared libraries", str(e)):
 		#Some libraries needed for optimized execution are missing
 		#  Try again with a version compiled without optimizations
@@ -254,7 +256,7 @@ def main():
 
 	if e != "" or s.returncode != 0:
 		sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )
-		
+
 
 	#Refine tree with AID-specific hotpsot motifs
 	opts = ['-o', 'tlr']
@@ -279,59 +281,59 @@ def main():
 
 	if e != "" or s.returncode != 0:
 		sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )
-		
 
-	#now need to set up a config file for ancestor reconstruction
-	with open("%s/ar.config"%prj_tree.phylo, "w") as handle:
-		handle.write( "length\t%d\n" % (align_len/3) )
-		handle.write( "rooted\t1\noutdir\t%s\n" % prj_tree.phylo )
-		handle.write( "seqfile\t%s/infile\n" % prj_tree.phylo )
-		handle.write( "rootid\t%s\n" % germ_id )
-		handle.write( "igphyml\t%s/%s\n" % (SCRIPT_FOLDER, "third-party") )
-		handle.write( "stats\t%s/infile_igphyml_stats.txt_hlp17\n" % prj_tree.phylo )
-		handle.write( "tree\t%s/infile_igphyml_tree.txt_hlp17\n" % prj_tree.phylo )
-		handle.write( "ambigfile\t%s/ambigfile.txt\n" % prj_tree.phylo )
-		handle.write( "stem\t%s\n" % prj_name )
+	if not arguments['--noAnc']:
+		#now need to set up a config file for ancestor reconstruction
+		with open("%s/ar.config"%prj_tree.phylo, "w") as handle:
+			handle.write( "length\t%d\n" % (align_len/3) )
+			handle.write( "rooted\t1\noutdir\t%s\n" % prj_tree.phylo )
+			handle.write( "seqfile\t%s/infile\n" % prj_tree.phylo )
+			handle.write( "rootid\t%s\n" % germ_id )
+			handle.write( "igphyml\t%s/%s\n" % (SCRIPT_FOLDER, "third-party") )
+			handle.write( "stats\t%s/infile_igphyml_stats.txt_hlp17\n" % prj_tree.phylo )
+			handle.write( "tree\t%s/infile_igphyml_tree.txt_hlp17\n" % prj_tree.phylo )
+			handle.write( "ambigfile\t%s/ambigfile.txt\n" % prj_tree.phylo )
+			handle.write( "stem\t%s\n" % prj_name )
 
-	s = subprocess.Popen( ["perl", "-I", "%s/third-party"%SCRIPT_FOLDER, reconstruct, "%s/ar.config"%prj_tree.phylo], universal_newlines=True, stderr=subprocess.PIPE )
-	o,e = s.communicate()
-	if e != "" or s.returncode != 0:
-		sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )
+			s = subprocess.Popen( ["perl", "-I", "%s/third-party"%SCRIPT_FOLDER, reconstruct, "%s/ar.config"%prj_tree.phylo], universal_newlines=True, stderr=subprocess.PIPE )
+			o,e = s.communicate()
+			if e != "" or s.returncode != 0:
+				sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )
 
 
-	if len(gaps)>0:
-		#fix ancestor inference by putting gaps back in
-		#start by reading in inferred sequences and reconstructing the tree
-		tree	= dict()
-		stack	= list()
-		seqDict = OrderedDict()
-		with open("%s/%s.MLcodons.fa"%(prj_tree.phylo,prj_name), "r") as infer:
-			for seq in SeqIO.parse(infer, "fasta"):
-				name = seq.id.split(";")[1]
-				seqDict[name] = seq
-				if "," in name:
-					tree[name] = { 'id':name, 'children':stack[-2:] }
-					tree[stack.pop()]['parent'] = name
-					tree[stack.pop()]['parent'] = name
-					stack.append( name )
-				else:
-					tree[name] = { 'id':name, 'children':[] }
-					stack.append( name )
+		if len(gaps)>0:
+			#fix ancestor inference by putting gaps back in
+			#start by reading in inferred sequences and reconstructing the tree
+			tree	= dict()
+			stack	= list()
+			seqDict = OrderedDict()
+			with open("%s/%s.MLcodons.fa"%(prj_tree.phylo,prj_name), "r") as infer:
+				for seq in SeqIO.parse(infer, "fasta"):
+					name = seq.id.split(";")[1]
+					seqDict[name] = seq
+					if "," in name:
+						tree[name] = { 'id':name, 'children':stack[-2:] }
+						tree[stack.pop()]['parent'] = name
+						tree[stack.pop()]['parent'] = name
+						stack.append( name )
+					else:
+						tree[name] = { 'id':name, 'children':[] }
+						stack.append( name )
 
-		#now iterate down tree to propogate gaps
-		assignGaps(stack[0], tree, gaps)
+			#now iterate down tree to propogate gaps
+			assignGaps(stack[0], tree, gaps)
 
-		#do output
-		with open( "%s/%s_inferredAncestors.fa"%(prj_tree.nt,  prj_name), "w" ) as handle:
-			SeqIO.write( getFinalSeqs(seqDict,gaps), handle, "fasta" )
-		with open( "%s/%s_inferredAncestors.fa"%(prj_tree.aa,  prj_name), "w" ) as handle:
-			SeqIO.write( getFinalSeqs(seqDict,gaps, trans=True), handle, "fasta" )
-		
-	else:
-		os.rename( "%s/%s.MLcodons.fa"%(prj_tree.phylo,prj_name), "%s/%s_inferredAncestors.fa"%(prj_tree.nt,prj_name) )
-		os.rename( "%s/%s.MLaas.fa"   %(prj_tree.phylo,prj_name), "%s/%s_inferredAncestors.fa"%(prj_tree.aa,prj_name) )
+			#do output
+			with open( "%s/%s_inferredAncestors.fa"%(prj_tree.nt,  prj_name), "w" ) as handle:
+				SeqIO.write( getFinalSeqs(seqDict,gaps), handle, "fasta" )
+			with open( "%s/%s_inferredAncestors.fa"%(prj_tree.aa,  prj_name), "w" ) as handle:
+				SeqIO.write( getFinalSeqs(seqDict,gaps, trans=True), handle, "fasta" )
 
-		
+		else:
+			os.rename( "%s/%s.MLcodons.fa"%(prj_tree.phylo,prj_name), "%s/%s_inferredAncestors.fa"%(prj_tree.nt,prj_name) )
+			os.rename( "%s/%s.MLaas.fa"   %(prj_tree.phylo,prj_name), "%s/%s_inferredAncestors.fa"%(prj_tree.aa,prj_name) )
+
+
 	#move non-seqeunce outputs to logical places
 	os.rename( "%s/infile_igphyml_stats.txt_hlp17"%prj_tree.phylo,		  "%s/%s_igphyml_stats.txt"   %(prj_tree.logs,prj_name) )
 	os.rename( "%s/infile_igphyml_tree.txt_hlp17" %prj_tree.phylo,		  "%s/%s_igphyml.tree"	      %(prj_tree.out, prj_name) )
@@ -344,8 +346,8 @@ if __name__ == '__main__':
 	prj_tree = ProjectFolders(os.getcwd())
 	prj_name = fullpath2last_folder(prj_tree.home)
 	natives	 = {} #avoid errors
-	
-	
+
+
 	#first decide if program was called with -i or -v
 	if arguments['-i'] is not None:
 		if not os.path.isfile(arguments['-i']):
@@ -372,8 +374,8 @@ if __name__ == '__main__':
 		arguments['--seqs'] = re.sub( "<project>", prj_name, arguments['--seqs'] )
 		if not os.path.isfile(arguments['--seqs']):
 			sys.exit( "Can't find sequence file %s to build tree from." % arguments['--seqs'] )
-		
-		#now load mAb sequences, if provided	    
+
+		#now load mAb sequences, if provided
 		if arguments['--natives'] is not None:
 			natives = load_fastas( arguments['--natives'] )
 		else:
@@ -384,16 +386,15 @@ if __name__ == '__main__':
 		if re.search("[;:]",arguments['--root']):
 			arguments['--root'] = re.sub("[;:].*","",arguments['--root'])
 			sys.stderr.write("Found forbidden character (';' or ':') in root id, will use %s instead"%arguments['--root'])
-			
+
 	#check directories to avoid errors
 	os.makedirs(prj_tree.phylo, exist_ok=True)
 	os.makedirs(prj_tree.aa, exist_ok=True)
 	os.makedirs(prj_tree.nt, exist_ok=True)
 	os.makedirs(prj_tree.logs, exist_ok=True)
-		
+
 	#log command line
 	logCmdLine(sys.argv)
-	
-	
-	main()
 
+
+	main()
