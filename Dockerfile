@@ -80,7 +80,7 @@ RUN pip3 install airr
 RUN pip3 install python-Levenshtein
 
 #install R
-RUN echo "deb https://cloud.r-project.org/bin/linux/ubuntu xenial-cran35/" >> /etc/apt/sources.list
+RUN echo "deb http://cloud.r-project.org/bin/linux/ubuntu xenial-cran35/" >> /etc/apt/sources.list
 RUN gpg --keyserver keyserver.ubuntu.com --recv-key 51716619E084DAB9
 RUN gpg -a --export 51716619E084DAB9 | apt-key add -
 RUN apt-get update && apt-get install -y r-base r-base-dev
