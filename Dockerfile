@@ -11,6 +11,9 @@ MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 
 WORKDIR /
 
+#update pip
+RUN pip3 install --upgrade pip
+
 #add docopt
 RUN pip3 install docopt
 
@@ -77,9 +80,9 @@ RUN pip3 install airr
 RUN pip3 install python-Levenshtein
 
 #install R
-RUN echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" >> /etc/apt/sources.list
-RUN gpg --keyserver keyserver.ubuntu.com --recv-key E084DAB9
-RUN gpg -a --export E084DAB9 | apt-key add -
+RUN echo "deb https://cloud.r-project.org/bin/linux/ubuntu xenial-cran35/" >> /etc/apt/sources.list
+RUN gpg --keyserver keyserver.ubuntu.com --recv-key 51716619E084DAB9
+RUN gpg -a --export 51716619E084DAB9 | apt-key add -
 RUN apt-get update && apt-get install -y r-base r-base-dev
 
 #install R packages
