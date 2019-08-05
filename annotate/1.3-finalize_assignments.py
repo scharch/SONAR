@@ -109,7 +109,7 @@ def main():
 					( "%03d", SCRIPT_FOLDER, arguments['--jmotif'], arguments['--nterm'] )
 		if arguments['--noFallBack']: command += " --noFallBack"
 		pbs = open("%s/parse.sh"%prj_tree.jgene, 'w')
-		pbs.write( "#!/bin/bash\n#$ -N parse-%s\n#$ -l mem=2G\n#$ -cwd\n#$ -o %s/parse.o$JOB_ID.$SGE_TASK_ID\n#$ -o %s/parse.e$JOB_ID.$SGE_TASK_ID\n\n%s\n" % (prj_name, prj_tree.annotate, prj_tree.annotate, command) )
+		pbs.write( "#!/bin/bash\n#$ -N parse-%s\n#$ -l h_vmem=2G\n#$ -cwd\n#$ -o %s/parse.o$JOB_ID.$SGE_TASK_ID\n#$ -o %s/parse.e$JOB_ID.$SGE_TASK_ID\n\n%s\n" % (prj_name, prj_tree.annotate, prj_tree.annotate, command) )
 		pbs.close()
 		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%maxFiles, "%s/parse.sh"%prj_tree.jgene])
 
