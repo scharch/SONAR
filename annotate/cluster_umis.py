@@ -123,7 +123,7 @@ def main():
 							results[ umi['cell'] ]['count'] += 1
 							results[ umi['cell'] ]['seqs'].append(cons)
 
-	with open(re.sub("umi_cons_in","umi_cons_out",arguments["PICKLE"]), 'wb') as pickle_out:
+	with open(re.sub("cons_in","cons_out",arguments["PICKLE"]), 'wb') as pickle_out:
 		pickle.dump( {'results':results, 'small':small, 'multi':multi}, pickle_out )
 
 	print( f"{datetime.datetime.now()}: Finished processing {arguments['PICKLE']}" )
