@@ -149,6 +149,7 @@ from Bio import SeqIO
 from multiprocessing import Pool
 import datetime
 from functools import partial
+import random, math
 
 try:
 	from SONAR.annotate import *
@@ -299,7 +300,10 @@ def main():
 
 		#collect output of find_umis
 		umi_dict = {}
-		for p in glob.glob(f"{prj_tree.preprocess}/*.pickle"):
+		pickleFiles = glob.glob(f"{prj_tree.preprocess}/chunk*.pickle")
+		random.shuffle( pickleFiles ) #try to keep the load balanced when we split up UMIs for clustering below
+		maxUmiReads = 0 #try to estimate memory requirements for clustering
+		for p in pickleFiles:
 			with open(p, 'rb') as pickle_in:
 				chunk_dict = pickle.load(pickle_in)
 				for (cb, mi) in chunk_dict:
@@ -308,6 +312,8 @@ def main():
 					else:
 						umi_dict[ (cb, mi) ]['count'] += chunk_dict[ (cb, mi) ]['count']
 						umi_dict[ (cb, mi) ]['seqs']  += chunk_dict[ (cb, mi) ]['seqs']
+					if umi_dict[ (cb, mi) ]['count'] > maxUmiReads:
+						maxUmiReads = umi_dict[ (cb, mi) ]['count']
 
 		print("Total: %d sequences in %d UMIs" % ( sum([subdict['count'] for subdict in umi_dict.values()]), len(umi_dict)) )
 
@@ -328,10 +334,15 @@ def main():
 			#delete umi_dict to save memory
 			umi_dict = None
 
+			#try to estimate memory requirements
+			memNeeded = 1<<math.ceil( maxUmiReads / 150 ).bit_length()
+			if memNeeded < 8:
+				memNeeded = 8 #no need to go below default allocation
+
 			#spawn subprocesses
 			if arguments['--cluster']:
 				with open("%s/umicons.sh"%prj_tree.preprocess, 'w') as jobHandle:
-					jobHandle.write(f"#!/bin/bash\n#$ -N clusterUMIs\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/umi_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess}\n\n")
+					jobHandle.write(f"#!/bin/bash\n#$ -N clusterUMIs\n#$-l h_vmem={memNeeded}G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/umi_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess}\n\n")
 				subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%uInd, "%s/umicons.sh"%prj_tree.preprocess])
 			else:
 				partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess)
