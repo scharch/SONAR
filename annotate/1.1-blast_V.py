@@ -172,7 +172,7 @@ def main():
 				findCell  = re.search("cell_id=(\S+)", sequence.description)
 				if findCell:  cell_name = findCell.group(1)
 				findUMIs  = re.search("(?:duplicate_count|umi_count)=(\d+)", sequence.description)
-				if findCell:  dup_count = findUMIs.group(1)
+				if findUMIs:  dup_count = findUMIs.group(1)
 				findReads = re.search("(?:consensus_count|total_reads)=(\d+)", sequence.description)
 				if findReads: con_count = findReads.group(1)
 				
