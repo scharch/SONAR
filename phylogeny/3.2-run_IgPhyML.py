@@ -295,10 +295,10 @@ def main():
 			handle.write( "ambigfile\t%s/ambigfile.txt\n" % prj_tree.phylo )
 			handle.write( "stem\t%s\n" % prj_name )
 
-			s = subprocess.Popen( ["perl", "-I", "%s/third-party"%SCRIPT_FOLDER, reconstruct, "%s/ar.config"%prj_tree.phylo], universal_newlines=True, stderr=subprocess.PIPE )
-			o,e = s.communicate()
-			if e != "" or s.returncode != 0:
-				sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )
+		s = subprocess.Popen( ["perl", "-I", "%s/third-party"%SCRIPT_FOLDER, reconstruct, "%s/ar.config"%prj_tree.phylo], universal_newlines=True, stderr=subprocess.PIPE )
+		o,e = s.communicate()
+		if e != "" or s.returncode != 0:
+			sys.exit( "Error running '%s':\n%sExit code %d" % (" ".join(s.args),e,s.returncode) )
 
 
 		if len(gaps)>0:
