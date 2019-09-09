@@ -49,8 +49,8 @@ Options:
                                   to be built. [default: output/sequences/nucleotide/<project>-collected.fa]
     --natives natives.fa       A fasta file containing known sequences to be included in
                                   the tree.
-	--noAnc                    Skip recontruction of ancestral sequences to save time [default: False]
-    -f		                   Force a restart of the analysis, even if there are files from
+    --noAnc                    Skip recontruction of ancestral sequences to save time [default: False]
+    -f                         Force a restart of the analysis, even if there are files from
                                   a previous run in the working directory.
 
 Created by Chaim A Schramm 2015-07-09 as 3.2-run_DNAML.py.
