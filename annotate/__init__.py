@@ -114,6 +114,12 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 						else:
 							best_alignment.qstart = my_alignment.qstart
 
+				elif re.match("IG[HKL]J", my_alignment.sid) and my_alignment.score>=40 and my_alignment.qstart<best_alignment.qstart:
+					#a bit of kludge for double J matches. 
+					#Usually these are bad amplicons (or bad assemblies from single cell data)
+					#My assumption is that the one closer to the V is the more reliable one
+					best_alignment = my_alignment
+					best_row = row
 						
 				elif my_alignment.score >= best_alignment.score - 3 and my_alignment.sid.split("*")[0] != best_alignment.sid.split("*")[0] and not any( my_alignment.sid.split("*")[0] == x.split("*")[0] for x in others ):
 					others.append(my_alignment.sid)
