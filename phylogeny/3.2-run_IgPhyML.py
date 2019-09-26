@@ -21,8 +21,8 @@ and
       https://github.com/kbhoehn/IgPhyML
 
 
-Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick --noAnc -f ]
-       3.2-runIgPhyML.py -v IGHV3-30*18 [ --locus <H|K|L> | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc -f ]
+Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick --noAnc --seed 123 -f ]
+       3.2-runIgPhyML.py -v IGHV3-30*18 [ --locus <H|K|L> | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc --seed 123 -f ]
 
 Options:
     -i input                   Manual alignment (in PHYLIP format) of the sequences to be
@@ -50,6 +50,7 @@ Options:
     --natives natives.fa       A fasta file containing known sequences to be included in
                                   the tree.
     --noAnc                    Skip recontruction of ancestral sequences to save time [default: False]
+    --seed 123                 Initial random seed to pass to IgPhyML.
     -f                         Force a restart of the analysis, even if there are files from
                                   a previous run in the working directory.
 
@@ -239,6 +240,9 @@ def main():
 	opts = ["-s", "SPR"]
 	if arguments['--quick']:
 		opts=[]
+	if arguments['--seed'] is not None:
+		opts += [ "--r_seed", arguments['--seed'] ]
+	print(opts)
 	#set an environmental variable so that IgPhyML can find its libraries
 	os.environ.update( { 'IGPHYML_PATH' : '%s/third-party/src/motifs'%SCRIPT_FOLDER } )
 	s = subprocess.Popen([igphyml, "-i", "%s/infile" % prj_tree.phylo,
@@ -262,6 +266,9 @@ def main():
 	opts = ['-o', 'tlr']
 	if arguments['--quick']:
 		opts = ['-o', 'lr']
+	if arguments['--seed'] is not None:
+		opts += [ "--r_seed", arguments['--seed'] ]
+
 	s = subprocess.Popen([igphyml, "-i", "%s/infile" % prj_tree.phylo,
 			      "-m", "HLP17", "--root", germ_id,
 			      "-u", "%s/infile_igphyml_tree.txt_gy94" % prj_tree.phylo,
