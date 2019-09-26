@@ -88,6 +88,9 @@ RUN apt-get update && apt-get install -y r-base r-base-dev
 #install R packages
 RUN R --vanilla -e 'install.packages(c("docopt","MASS","ggplot2","ptinpoly"), repos="http://cran.cnr.berkeley.edu/")'
 
+#install BLAS/LAPACK for IgPhyML
+RUN apt-get install -y libatlas-base-dev libblas-doc liblapack-doc
+
 #install Xvfb for 4.4
 RUN apt-get install -y xvfb
 
