@@ -7,7 +7,7 @@ This script scores the rarity for each position in a set of antibody sequences
     and identify those qualifying as "extremely rare."
 
 Usage: 5.5-score_sequences.py QVQLVQ... -v IGHV1-2 [ --gssp GSSP.txt ] [options]
-       5.5-score_sequences.py -f input.fasta [ -v IGHV1-2 --gssp GSSP.txt ] [options]
+       5.5-score_sequences.py -f input.fasta [ -v IGHV1-2 --gssp GSSP.txt -a ] [options]
        5.5-score_sequences.py -r rearrangements.tsv [ --gssp GSSP.txt ] [options]
 
 Options:
@@ -19,6 +19,10 @@ Options:
                                  the 'v_call' field of a rearrangements file.
     --gssp GSSP.txt          File with GSSPs to use for scoring the sequences.
                                  [default: <SONAR>/sample_data/GSSPs/Sheng2017_VH_GSSPs.txt]
+    -a                       Flag to indicate that input sequences are already aligned to
+                                 germline v, which must be included in the file as the first
+                                 sequence. Require '-v' to be specified, as well, because
+                                 I'm too lazy to code sanity checking. [default: False]
     -n                       Flag to indicate that input sequences are nucleotide and must
                                  be translated. [default: False]
     --germ germline.fa       File with germline sequences, used for aligning input before
@@ -50,7 +54,7 @@ try:
 except ImportError:
 	find_SONAR = sys.argv[0].split("SONAR/mGSSP")
 	sys.path.append(find_SONAR[0])
-	from SONAR.mGGSP import *
+	from SONAR.mGSSP import *
 
 
 def checkGermSeq( gene, lib ):
@@ -60,7 +64,7 @@ def checkGermSeq( gene, lib ):
 	except KeyError:
 		print( "Can't find sequence of %s*01 in database %s" % (gene,arguments['--germ']), file=sys.stderr )
 		return False
-	
+
 
 def checkGSSP( gene, lib ):
 	if not gene in lib:
@@ -72,14 +76,15 @@ def checkGSSP( gene, lib ):
 
 def score( sequence, germline, v_rarity ):
 	if arguments['-n']:
-		try:
+		if not arguments['-a']:
 			sequence = re.sub("-","",sequence)
-		except TypeError:
-			#SeqRecord from fasta input
-			sequence = re.sub("-","",str(sequence.seq))
-		sequence = str(Seq.Seq(sequence).translate())
+		sequence = str(Seq.Seq(sequence).translate(table=GAPPED_CODON_TABLE))
 
-	align = quickAlign( germline, sequence )
+	if arguments['-a']:
+		align = dict( ref=germline, test=sequence )
+	else:
+		align = quickAlign( germline, sequence )
+
 	rare = []
 	ind=0
 	for r,t in zip(align['ref'],align['test']):
@@ -109,15 +114,36 @@ def main():
 			if checkGermSeq(gl, germDB) and checkGSSP(gl, gssp.rarity):
 				rareSubs[ seq['sequence_id'] ] = score( seq['sequence_alignment'], germDB[gl+"*01"], gssp.rarity[gl] )
 	elif arguments['-f'] is not None:
+
+		#if there's a global V gene, check it
+		if arguments['-v'] is not None:
+			if not checkGermSeq(arguments['-v'], germDB) or not checkGSSP(arguments['-v'], gssp.rarity):
+				sys.exit(1)
+
+		#set up incase it's a prealigned file
+		alignedV = None
+
 		for seq in generate_read_fasta( arguments['-f'] ):
+
+			#if aligned, then first seq is germline
+			if arguments['-a'] and alignedV is None:
+				alignedV = seq.seq
+				if arguments['-n']:
+					alignedV = alignedV.translate(table=GAPPED_CODON_TABLE)
+				alignedV = str(alignedV)
+				continue
+
+			#score all other sequences
 			if arguments['-v'] is not None:
-				if checkGermSeq(arguments['-v'], germDB) and checkGSSP(arguments['-v'], gssp.rarity):
-					rareSubs[ seq.id ] = score( seq, germDB[arguments['-v']+"*01"], gssp.rarity[arguments['-v']] )
+				if arguments['-a']:
+					rareSubs[ seq.id ] = score( str(seq.seq), alignedV, gssp.rarity[arguments['-v']] )
+				else:
+					rareSubs[ seq.id ] = score( str(seq.seq), germDB[arguments['-v']+"*01"], gssp.rarity[arguments['-v']] )
 			else:
 				gl = re.search("(v_call|V_gene)=([^\*\s]+)", seq.description)
 				if gl:
 					if checkGermSeq(gl.group(2), germDB) and checkGSSP(gl.group(2), gssp.rarity):
-						rareSubs[ seq.id ] = score( seq, germDB[gl.group(2)+"*01"], gssp.rarity[gl.group(2)] )
+						rareSubs[ seq.id ] = score( str(seq.seq), germDB[gl.group(2)+"*01"], gssp.rarity[gl.group(2)] )
 				else:
 					print("Could not find V gene annotation for %s, skipping..." % seq.id, file=sys.stderr)
 					continue
@@ -147,12 +173,12 @@ def main():
 
 	if count == 0:
 		print( "No rare substitutions were found")
-		
+
 
 if __name__ == "__main__":
 
 	arguments = docopt(__doc__)
-	
+
 	arguments['--gssp']      = re.sub( "<SONAR>", SCRIPT_FOLDER, arguments['--gssp'] )
 	arguments['--germ']      = re.sub( "<SONAR>", SCRIPT_FOLDER, arguments['--germ'] )
 	arguments['--rare']	     = float( arguments['--rare'] )
@@ -160,8 +186,11 @@ if __name__ == "__main__":
 
 	if arguments['-r'] is not None:
 		arguments['-n'] = True
-	
+
+	if arguments['-a'] and arguments['-v'] is None:
+		sys.exit( "Use of the `-a` flag requires the `-v` option to be specified." )
+
 	#log command line
-	logCmdLine(sys.argv)	
+	logCmdLine(sys.argv)
 
 	main()
