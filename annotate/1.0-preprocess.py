@@ -150,7 +150,7 @@ from multiprocessing import Pool
 import datetime
 from functools import partial
 import random, math
-
+print(sys.argv[0])
 try:
 	from SONAR.annotate import *
 except ImportError:
@@ -466,11 +466,11 @@ def main():
 
 	else:
 		#anything special to do if there are no UMIs/barcodes at all?
-                temp = processedFiles
-                processedFiles = []
-                for f in temp:
-                        shutil.move( f, re.sub(prj_tree.preprocess,prj_tree.home,f) )
-                        processedFiles.append( re.sub(prj_tree.preprocess,prj_tree.home,f) )
+		temp = processedFiles
+		processedFiles = []
+		for f in temp:
+			shutil.move( f, re.sub(prj_tree.preprocess,prj_tree.home,f) )
+			processedFiles.append( re.sub(prj_tree.preprocess,prj_tree.home,f) )
 
 	# call 1.1 if requested
 	if arguments['--runVBlast']:
