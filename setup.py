@@ -9,11 +9,9 @@ Usage: setup.py
 
 import os,subprocess,sys,glob
 
-SONAR_HOME=os.getcwd()
+SONAR_HOME = os.path.abspath( os.path.dirname( sys.argv[0] ) )
 if len(glob.glob("%s/commonVars.py"%SONAR_HOME))==0:
-    SONAR_HOME = sys.argv[0]
-    if not os.path.isabs(SONAR_HOME):
-        sys.exit("Can't find full path to SONAR home directory. You may need to call setup.py from within the SONAR directory or use the full absolute path.")
+	sys.exit("Can't find full path to SONAR home directory. You may need to call setup.py from within the SONAR directory or use the full absolute path.")
 
 if not sys.platform.startswith("linux") and not sys.platform.startswith("darwin"):
     sys.exit("Error, cannot recognize OS. Expected 'linux' or 'darwin' (macos), but got '%s'"%sys.platform)
