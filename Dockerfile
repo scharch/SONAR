@@ -25,8 +25,8 @@ RUN apt-get install -y \
   wget
 WORKDIR /tmp
 RUN wget https://www.python.org/ftp/python/3.6.4/Python-3.6.4.tar.xz
-RUN tar -xf Python-3.7.2.tar.xz
-WORKDIR Python-3.7.2
+RUN tar -xf Python-3.6.4.tar.xz
+WORKDIR Python-3.6.4
 RUN ./configure --enable-optimizations
 RUN make -j 1
 RUN make install
