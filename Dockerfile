@@ -46,13 +46,11 @@ RUN pip3 install fuzzywuzzy
 
 #install libraries for bioperl
 RUN apt-get install -y \
-  build-essential \
   gcc-multilib \
   perl \
   cpanminus \
   libdb-dev \
-  graphviz  \
-  emacs24
+  graphviz
 
 #install perl modules that are prerequisites
 RUN cpanm \
