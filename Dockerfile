@@ -6,32 +6,10 @@
 #  information.                                        #
 ########################################################
 
-FROM biopython/biopython
+FROM biocontainers/biopython:v1.73dfsg-1-deb-py3_cv1
 MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 
 WORKDIR /
-
-#upgrade Python to at least 3.6
-RUN apt-get update
-RUN apt-get install -y \
-  build-essential \
-  zlib1g-dev \
-  libncurses5-dev \
-  libgdbm-dev \
-  libnss3-dev \
-  libssl-dev \
-  libreadline-dev \
-  libffi-dev \
-  wget
-WORKDIR /tmp
-RUN wget https://www.python.org/ftp/python/3.6.4/Python-3.6.4.tar.xz
-RUN tar -xf Python-3.6.4.tar.xz
-WORKDIR Python-3.6.4
-RUN ./configure --enable-optimizations
-RUN make -j 1
-RUN make install
-WORKDIR /
-
 
 #update pip
 RUN pip3 install --upgrade pip
