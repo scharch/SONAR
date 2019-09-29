@@ -7,4 +7,4 @@ services:
 
 before_install:
   - docker build -t scharch/sonar .
-  - docker run scharch/sonar python3 SONAR/tests/run_tests.py
+  - docker run scharch/sonar python3 /SONAR/tests/run_tests.py
