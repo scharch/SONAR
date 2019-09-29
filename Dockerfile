@@ -53,7 +53,8 @@ RUN apt-get install -y \
   graphviz \
   make \
   libexpat1-dev \
-  libatlas-base-dev
+  libatlas-base-dev \
+  gfortran
 
 #install perl modules that are prerequisites
 RUN cpanm \
