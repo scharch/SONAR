@@ -22,18 +22,9 @@ RUN apt-get install -y \
   libssl-dev \
   libreadline-dev \
   libffi-dev \
-  wget
-WORKDIR /tmp
-RUN wget https://www.python.org/ftp/python/3.6.4/Python-3.6.4.tar.xz
-RUN tar -xf Python-3.6.4.tar.xz
-WORKDIR Python-3.6.4
-RUN ./configure --enable-optimizations
-RUN make -j 1
-RUN make install
-WORKDIR /
-
-#update pip
-RUN pip3 install --upgrade pip
+  wget \
+  python3
+  python3-pip
 
 #get biopython
 RUN pip3 install "biopython==1.73"
@@ -107,7 +98,7 @@ RUN pip3 install airr
 RUN pip3 install python-Levenshtein
 
 #install R
-RUN echo "deb http://cloud.r-project.org/bin/linux/ubuntu xenial-cran35/" >> /etc/apt/sources.list
+RUN echo "deb http://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/" >> /etc/apt/sources.list
 RUN gpg --keyserver keyserver.ubuntu.com --recv-key 51716619E084DAB9
 RUN gpg -a --export 51716619E084DAB9 | apt-key add -
 RUN apt-get update && apt-get install -y r-base r-base-dev
