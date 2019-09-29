@@ -87,7 +87,8 @@ RUN cpanm \
   JSON \
   Data::Stag \
   CGI \
-  Bio::Phylo
+  Bio::Phylo \
+  LWP::Protocol::https
 
 #now actually install BioPerl
 RUN cpanm -v \
