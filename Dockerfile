@@ -23,7 +23,7 @@ RUN apt-get install -y \
   libreadline-dev \
   libffi-dev \
   wget \
-  python3
+  python3 \
   python3-pip
 
 #get biopython
