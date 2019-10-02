@@ -39,14 +39,14 @@ import os, subprocess
 SONARDIR = os.path.abspath(sys.argv[0]).split("SONAR/tests")[0]
 os.chdir(f"{SONARDIR}/SONAR/tests")
 for command in [ [f"{SONARDIR}/SONAR/annotate/1.0-preprocess.py", "--input", "subsample_r1.fq.gz", "--reverse", "subsample_r2.fq.gz"],
-                 [f"{SONARDIR}/SONAR/annotate/1.1-blast_V.py", "--fasta", "f0_merged.fq", "--derep", "--npf", "5000", "--threads", "2"],
+                 [f"{SONARDIR}/SONAR/annotate/1.1-blast_V.py", "--fasta", "f0_merged.fq", "--derep", "--npf", "2000", "--threads", "2"],
 				 [f"{SONARDIR}/SONAR/annotate/1.2-blast_J.py"],
 				 [f"{SONARDIR}/SONAR/annotate/1.3-finalize_assignments.py"],
 				 [f"{SONARDIR}/SONAR/annotate/1.4-cluster_sequences.py"],
 				 [f"{SONARDIR}/SONAR/lineage/2.1-calculate_id-div.py"],
 				 [f"{SONARDIR}/SONAR/plotting/4.1-setup_plots.pl", "--statistic", "div"],
 				 [f"{SONARDIR}/SONAR/lineage/2.4-cluster_into_groups.py"],
-				 [f"{SONARDIR}/SONAR/utilities/getReadsByAnnotation.py", "-f", "output/sequences/nucleotide/tests_goodVJ_unique_lineageNotations.fa", "-a", "clone_id=000(01|06|07|49)", "-o", "lineage.fa"],
+				 [f"{SONARDIR}/SONAR/utilities/getReadsByAnnotation.py", "-f", "output/sequences/nucleotide/tests_goodVJ_unique_lineageNotations.fa", "-a", "clone_id=000(01|07|08)", "-o", "lineage.fa"],
 				 [f"{SONARDIR}/SONAR/phylogeny/3.2-run_IgPhyML.py", "-v", "IGHV4-39*01", "--seqs", "lineage.fa", "--quick", "--seed", "321325749"],
 				 [f"{SONARDIR}/SONAR/utilities/flipTree.pl", "output/tests_igphyml.tree", "output/tests_igphyml.flipped.tree"] ]:
 	s=subprocess.Popen( command, universal_newlines=True, stderr=subprocess.PIPE  )
@@ -59,7 +59,7 @@ for command in [ [f"{SONARDIR}/SONAR/annotate/1.0-preprocess.py", "--input", "su
 #validate rearrangements output
 #at the moment, it seems like IgPhyML output varies a bit even with a specified seed, so skip that test for now.
 import hashlib
-checksums = { "output/tables/tests_rearrangements.tsv":"0216119a8c0114f57c3f490e91130efe"}#, "output/tests_igphyml.tree":"e5d75719c9f17cf141d44b89deadacff"}
+checksums = { "output/tables/tests_rearrangements.tsv":"896086eeac85cff23fd4c5924069a8fc" }#, "output/sequences/nucleotide/tests_inferredAncestors.fa":"46b03fc95afec5fda950f048d99db34b"}
 for toValidate in checksums:
 	h = hashlib.md5()
 	with open(toValidate, 'rb') as handle:
