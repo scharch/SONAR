@@ -79,7 +79,8 @@ RUN cpanm \
   Data::Stag \
   CGI \
   Bio::Phylo \
-  LWP::Protocol::https
+  LWP::Protocol::https \
+  Switch
 
 #now actually install BioPerl
 RUN cpanm -v \
@@ -117,7 +118,7 @@ RUN tar -xzf sratoolkit.2.9.6-1-ubuntu64.tar.gz
 RUN ln -s /sratoolkit.2.9.6-1-ubuntu64/bin/fastq-dump /usr/bin/fastq-dump
 
 #pull latest SONAR source code and set it up
-RUN apt-get install -y git
+RUN apt-get install -y git libidn11
 RUN git clone https://github.com/scharch/SONAR.git
 WORKDIR SONAR
 RUN echo | ./setup.py
