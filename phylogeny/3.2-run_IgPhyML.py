@@ -362,8 +362,8 @@ if __name__ == '__main__':
 	else:
 		#find the right germline library
 		if arguments['--lib'] is not None:
-			if not os.path.isfile(arguments['-lib']):
-				sys.exit("Can't find germline file %s" % argument['-lib'])
+			if not os.path.isfile(arguments['--lib']):
+				sys.exit("Can't find germline file %s" % argument['--lib'])
 		else:
 			if arguments['--locus'] in dict_vgerm_db.keys():
 				arguments['--lib'] = dict_vgerm_db[ arguments['--locus'] ]
