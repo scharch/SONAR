@@ -45,7 +45,7 @@ else
 	cp /SONAR/sample_data/cap256-week34H_islandSeqs.fa output/sequences/nucleotide
 fi
 sonar intradonor --n /SONAR/sample_data/CAP256-VRC26.01-12H.fa --v IGHV3-30*18 --threads 4 -f
-sonar groups -v 'IGHV3-30*18' -j 'IGHJ3*01' -t 8
+sonar groups -v 'IGHV3-30*18' -j 'IGHJ3*01' -t 4
 
 echo "Processing week 48 data"
 cd ..
