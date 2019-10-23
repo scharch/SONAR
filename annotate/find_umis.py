@@ -6,7 +6,7 @@ find_umis.py
 This is a helper script to split up UMI identification from large sequencing runs
     for the sake of speed and memory usage.
 
-Usage: find_umis.py FASTA FORMAT [ --cell 0,16 --umi 16,26 --r2umi 0,8 ] [ --cellWhiteList barcodes.txt | --cellPattern NNNNNN ] [ --umiWhiteList barcodes.txt | --umiPattern NNNNNN ] [ --umi2WhiteList barcodes.txt | --umi2Pattern NNNNNN ] [ --minQ Q ]
+Usage: find_umis.py FASTA FORMAT [ --cell 0,16 --umi 16,26 --r2umi 0,8 ] [ --pe --revcomp ] [ --cellWhiteList barcodes.txt | --cellPattern NNNNNN ] [ --umiWhiteList barcodes.txt | --umiPattern NNNNNN ] [ --umi2WhiteList barcodes.txt | --umi2Pattern NNNNNN ] [ --minQ Q ]
 
 Options:
     FASTA                          Subsampled fasta/q file produced by 1.0-preprocess.py
@@ -14,6 +14,8 @@ Options:
     --cell 0,16                    See 1.0-preprocess.py for explanation
     --umi 16,26                    See 1.0-preprocess.py for explanation
     --r2umi 0,8                    See 1.0-preprocess.py for explanation
+    --pe                           Flag to indicate use of 10x PE short reads strategy for feature barcoding.
+    --revcomp                      Flag to reverse-complement the sequence after UMI identification for SE feature barcoding.
     --cellWhiteList barcodes.txt   See 1.0-preprocess.py for explanation
     --cellPattern NNNNNN           See 1.0-preprocess.py for explanation
     --umiWhiteList barcodes.txt    See 1.0-preprocess.py for explanation
@@ -23,6 +25,7 @@ Options:
     --minQ Q                       See 1.0-preprocess.py for explanation
 
 Split out from 1.0-preprocess.py by Chaim A Schramm on 2019-06-18.
+Added PE and REVCOMP flags for handling feature barcoding by CA Schramm 2019-10-08.
 
 Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
     All rights reserved.
@@ -62,6 +65,10 @@ def main():
 		bad_umi   = 0
 		low_qual  = 0
 		print("%s: Starting to look for UMIs in %s" % (datetime.datetime.now(), arguments["FASTA"]) )
+
+		if arguments['--pe']:
+			r2Handle = open( "r2" + arguments["FASTA"], "r" )
+			r2Parser = SeqIO.parse( r2handle, arguments["FORMAT"])
 
 		with open(arguments["FASTA"], "r") as handle:
 			for seq in SeqIO.parse( handle, arguments["FORMAT"]):
@@ -123,6 +130,14 @@ def main():
 				seq = seq[ max(cb_end, umi_end): ]
 				if umi2_end > 0:
 					seq = seq[ : -umi2_end]
+				if arguments['--pe']:
+					tempseq = next(r2Parser)
+					if re.sub("/1$","",seq.id) == re.sub("/2$","", tempseq.id):
+						seq = tempseq
+					else:
+						sys.exit( f"Error: sequence id mismatch between R1 and R2 in {arguments['FASTA']}: {seq.id} vs {tempseq.id}" )
+				elif arguments['--revcomp']:
+					seq.seq = seq.seq.reverse_complement()
 
 				if cell_barcode != "":
 					seq.id += ";cell=%s"%cell_barcode

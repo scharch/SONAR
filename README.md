@@ -72,6 +72,9 @@ I am more than happy to assist with basic SONAR usage. Please file all bugs repo
 
 Change Log
 -----
+### New in version 4.2
+* Added support for cell hashing and feature barcoding.
+
 ### New in version 4.1
 * Added `tests/run_tests.py` to verify installation and function. Implemented Travis CI.
 * Added a full featured vignette in `sample_data`.

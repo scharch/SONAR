@@ -21,10 +21,12 @@ The script then uses vsearch to generate a consensus sequence for each UMI and, 
 TODO:
    * Add dereplication and UMI collision detection when no cell barcodes are present
    * Allow UMI reuse under certain conditions?
+   * Should there be a threshold (10:1? 100:1?) at which I ignore conflicting sample assignments
+         from cell hashing and just go with the majority?
    * Come up with a better way to decide which cells are "real"; 1 UMI might be okay if it has 50
          reads; OTOH 3 UMIs might not be enough if they do not all cluster together.
 
-Usage: 1.0-preprocess.py --input read1.fq... [ --reverse read2.fq... ] [ --cellWhiteList barcodes.txt | --cellPattern NNNNNN ] [ --umiWhiteList barcodes.txt | --umiPattern NNNNNN ] [ --umi2WhiteList barcodes.txt | --umi2Pattern NNNNNN ] [ options ]
+Usage: 1.0-preprocess.py --input read1.fq... [ --reverse read2.fq... ] [ ( --featureLibrary features.fq... --featureList features.tsv ) ] [ --cellWhiteList barcodes.txt | --cellPattern NNNNNN ] [ --umiWhiteList barcodes.txt | --umiPattern NNNNNN ] [ --umi2WhiteList barcodes.txt | --umi2Pattern NNNNNN ] [ options ]
 
 Options:
     --input read1.fq               File with raw data to process. Can be used multiple times **IF**
@@ -33,6 +35,12 @@ Options:
                                        from the same physical source.
     --reverse read2.fq             File with reverse reads for paired ends. If used, must be provided
                                        the same number of times (and in the same order) as --input.
+    --featureLibrary features.fq   File with sequence reads from cell hashing/feature barcoding
+                                       libraries. Can be specified twice for 10x-recommended 26+25
+                                       seqeuncing strategies, in which case the cell barcode and UMI
+                                       will be looked for on R1 and the feature barcodes on R2. If
+                                       only one file is input, the script will look for the reverse
+                                       complements of the feature barcodes downstream of the UMI.
     --cell 0,16                    Python-style zero-indexed, semi-open interval with the expected
                                        position of the cell barcode, if present.
     --umi 16,26                    Python-style zero-indexed, semi-open interval with the expected
@@ -61,6 +69,13 @@ Options:
                                        R2 UMIs. Reads with apparent R2 UMIs that do not match the
                                        pattern will be discarded. Mutually exclusive with
                                        umi2WhiteList.
+    --featureList features.tsv     A tab-delimited text file with cell hashing/feature-barcoding
+                                       oligos in the first column and their respective features in
+                                       the second column. For cell hashing specifically, use
+                                       "sample:pool1," which will produce a "sample" column in the
+                                       rearrangments.tsv; all other values will be used as the name of
+                                       a custom column in the cell_stats.tsv with the value
+                                       corresponding to the number of detected UMIs.
     --filterOptions options        A string of options to be passed to vsearch --fastx_filter for
                                        quality control Will be applied equally to R1 and R2 *before*
                                        merging, or to a single input file if no R2 is specified.
@@ -134,13 +149,14 @@ Fixed bug that was ignoring `--minQ` by CAS 2019-06-18.
 Added `--keepWorkFiles` flag by CAS 2019-06-18.
 Split off `find_umis.py` and `cluster_umis.py` into separate helper scripts
     and option to parallelize these on a cluster by CAS 2019-06-19.
+Added code for feature barcoding by CAS 2019-10-08.
 
 Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
 
 """
 
-import sys, os, shutil, gzip
+import sys, os, shutil, gzip, csv
 from docopt import docopt
 import itertools
 import pickle
@@ -171,22 +187,179 @@ def iterator_slice(iterator, length):
 		yield res
 
 
-def callFinder(num, format, args):
-	cmd = f"{SCRIPT_FOLDER}/annotate/find_umis.py  {prj_tree.preprocess}/chunk{num:04}.{format} {format} {args}"
+def callFinder(num, format, args, stem="chunk"):
+	cmd = f"{SCRIPT_FOLDER}/annotate/find_umis.py  {prj_tree.preprocess}/{stem}{num:04}.{format} {format} {args}"
 	os.system( cmd )
 
 
-def getUmiConsensus(num, minSize, workdir, isCell=False):
-	clustType = "umi"
+def getUmiConsensus(num, minSize, workdir, isCell=False, feature=False, clustType="umi"):
 	if isCell:
 		clustType = "cell"
 	cmd = f"{SCRIPT_FOLDER}/annotate/cluster_umis.py  {prj_tree.preprocess}/{clustType}_cons_in_{num:04}.pickle {minsize} {workdir}"
 	if isCell:
 		cmd += " --isCell"
+	elif feature:
+		cmd += " --isFeature"
 	os.system( cmd )
 
 
+def processFeatures():
+
+	fileformat = "fastq"
+	try:
+		#gzip?
+		if re.search("gz$", arguments['--featureLibrary'][0]):
+			_open = partial(gzip.open,mode='rt')
+		else:
+			_open = partial(open, mode='r')
+		with _open(arguments['--featureLibrary'][0]) as checkInput:
+			parser = SeqIO.parse(checkInput, "fastq")
+			testSeq = next(parser)
+	except StopIteration:
+		#fasta input
+		fileformat		     = "fasta"
+
+
+	fInd = 0
+	with _open(arguments['--featureLibrary'][0]) as toSplit:
+		splitForID = SeqIO.parse( toSplit, format=fileformat )
+		for chunk in iterator_slice(splitForID, 50000):
+			fInd += 1
+			with open( "%s/features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
+				SeqIO.write( chunk, writeChunk, fileformat )
+	#10x PE short read strategy
+	if len(arguments['--featureLibrary']) == 2:
+		ind2 = 0
+		with _open(arguments['--featureLibrary'][1]) as toSplit:
+			splitForID = SeqIO.parse( toSplit, format=fileformat )
+			for chunk in iterator_slice(splitForID, 50000):
+				ind2 += 1
+				with open( "%s/r2features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
+					SeqIO.write( chunk, writeChunk, fileformat )
+
+
+	#construct the command for find_umis
+	featureOpts = ""
+	for opt in ['--cell', '--umi', '--r2umi', '--cellWhiteList', '--cellPattern', '--umiWhiteList', '--umiPattern', '--umi2WhiteList', '--umi2Pattern', '--minQ' ]:
+		if arguments[opt] is not None:
+			featureOpts += " %s '%s'" % (opt, arguments[opt])
+	if len(arguments['--featureLibrary']) == 2:
+		featureOpts += " --pe"
+	else:
+		featureOpts += " --revcomp"
+
+	#call find_umis either on cluster or locally
+	if arguments['--cluster']:
+		with open("%s/featuresjob.sh"%prj_tree.preprocess, 'w') as jobHandle:
+			jobHandle.write(f"#!/bin/bash\n#$ -N featureUMIs\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {prj_tree.preprocess}/features$NUM.{fileformat} {fileformat} {featureOpts}\n\n")
+		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%fInd, "%s/featuresjob.sh"%prj_tree.preprocess])
+	else:
+		partial_finder = partial( callFinder, format=fileformat, args=featureOpts, stem="features" )
+		pool = Pool(arguments['--threads'])
+		pool.map( partial_finder, range(1,fInd+1) )
+		pool.close()
+		pool.join()
+
+	#collect output of find_umis
+	feature_dict = {}
+	pickleFiles = glob.glob(f"{prj_tree.preprocess}/feature*.pickle")
+	for p in pickleFiles:
+		with open(p, 'rb') as pickle_in:
+			chunk_dict = pickle.load(pickle_in)
+			for (cb, mi) in chunk_dict:
+				if (cb, mi) not in feature_dict:
+					feature_dict[ (cb, mi) ] = chunk_dict[ (cb, mi) ].copy()
+				else:
+					feature_dict[ (cb, mi) ]['count'] += chunk_dict[ (cb, mi) ]['count']
+					feature_dict[ (cb, mi) ]['seqs']  += chunk_dict[ (cb, mi) ]['seqs']
+
+	#generate pickles to pass to consensus algorithm
+	dInd = 0
+	for chunk in iterator_slice(feature_dict.values(), 5000):
+		dInd += 1
+		with open( f"{prj_tree.preprocess}/feature_cons_in_{dInd:04}.pickle", 'wb') as pickle_out:
+			pickle.dump( chunk, pickle_out )
+
+	#delete feature_dict to save memory
+	feature_dict = None
+
+	#spawn subprocesses
+	if arguments['--cluster']:
+		with open("%s/featurecons.sh"%prj_tree.preprocess, 'w') as jobHandle:
+			jobHandle.write(f"#!/bin/bash\n#$ -N clusterFeatureUMIs\n#$-l h_vmem=32G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/feature_cons_in_$NUM.pickle 1 {prj_tree.preprocess}\n\n")
+		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%dInd, "%s/featurecons.sh"%prj_tree.preprocess])
+	else:
+		partial_cons = partial( getUmiConsensus, minSize=1, workdir=prj_tree.preprocess, clustType="feature")
+
+		pool = Pool(arguments['--threads'])
+		blob = pool.map( partial_cons, range(1,dInd+1) )
+		pool.close()
+		pool.join()
+
+	#read in feature barcode table
+	hashingSeqs = dict()
+	featureSeqs = dict()
+	with open( arguments['--featureList'], 'r' ) as fHandle:
+		reader = csv.reader(fHandle, delimiter="\t")
+		for row in reader:
+			if "N" in row[0]:
+				sys.exit("I don't know how to handle a degenerate barcode, sorry!")
+			checkHash = re.match("sample:(.*)", row[1])
+			if checkHash:
+				hashingSeqs[ row[0] ] = checkHash.group(1)
+			else:
+				featureSeqs[ row[0] ] = row[1]
+
+	#collect output
+	cellHashes   = defaultdict( dict )
+	cellFeatures = defaultdict( dict )
+	for p in glob.glob(f"{prj_tree.preprocess}/feature_cons_out_*.pickle"):
+		with open(p, 'rb') as pickle_in:
+			chunk_dict = pickle.load(pickle_in)
+			for c in chunk_dict['results']:
+				for s in chunk_dict['results'][c]['seqs']:
+					for hash in hashingSeqs:
+						if hash in str(s.seq):
+							if hashingSeqs[hash] in cellHashes[c]:
+								cellHashes[ c ][ hashingSeqs[hash] ] += 1
+							else:
+								cellHashes[ c ][ hashingSeqs[hash] ] = 1
+							break
+
+					for oligo in featureSeqs:
+						if oligo in str(s.seq):
+							if featureSeqs[oligo] in cellFeatures:
+								cellFeatures[ c ][ featureSeqs[oligo] ] += 1
+							else:
+								cellFeatures[ c ][ featureSeqs[oligo] ] = 1
+							break
+
+	if len(hashingSeqs) > 0:
+		with open( f"{prj_tree.tables}/{prj_name}_hashes.tsv", 'w' ) as handle:
+			writer = csv.writer( handle, delimiter="\t")
+			for cell in sorted(cellHashes.keys()):
+				sample = "unknown"
+				if len(cellHashes[cell]) > 1:
+					sample = "ambiguous"
+				elif len(cellHashes[cell]) == 1:
+					sample = list(cellHashes[cell].keys())[0]
+				writer.writerow( [cell, sample] )
+
+	if len(featureSeqs) > 0:
+		with open( f"{prj_tree.tables}/{prj_name}_features.tsv", 'w' ) as handle:
+			writer = csv.writer( handle, delimiter="\t")
+			writer.writerow( ["cell_id"] + sorted(featureSeqs.values()) )
+			for cell in sorted(cellFeatures.keys()):
+				writer.writerow( [cell] + [ cellFeatures[cell].get(f, 0) for f in sorted(featureSeqs.values()) ] )
+
+	print(str(datetime.datetime.now()) + " - Finished processing feature barcodes!")
+
+
+
 def main():
+
+	if len(arguments['--featureLibrary']) > 0:
+		processFeatures()
 
 	processedFiles = []
 
@@ -342,10 +515,10 @@ def main():
 			#spawn subprocesses
 			if arguments['--cluster']:
 				with open("%s/umicons.sh"%prj_tree.preprocess, 'w') as jobHandle:
-					jobHandle.write(f"#!/bin/bash\n#$ -N clusterUMIs\n#$-l h_vmem={memNeeded}G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/umi_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess}\n\n")
+					jobHandle.write(f"#!/bin/bash\n#$ -N clusterUMIs\n#$-l h_vmem={memNeeded}G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/umi_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess} --isFeature\n\n")
 				subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%uInd, "%s/umicons.sh"%prj_tree.preprocess])
 			else:
-				partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess)
+				partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess, feature=True)
 
 				pool = Pool(arguments['--threads'])
 				blob = pool.map( partial_cons, range(1,uInd+1) )
@@ -527,6 +700,11 @@ if __name__ == '__main__':
 
 	if len(arguments['--input']) != len(arguments['--reverse']) and len(arguments['--reverse']) > 0:
 		sys.exit( "The --reverse option must be specified the same number of times as --input!" )
+
+	if len(arguments['--featureLibrary']) > 2:
+		sys.exit( "The --featureLibrary option takes a maximum of 2 files.")
+	if len(arguments['--featureLibrary']) > 0 and (arguments['--cell'] is None or arguments['--umi'] is None):
+		sys.exit( "Cell hashing and feature barcoding require both --cell and --umi to be specificed.")
 
 	if not all([os.path.isfile(x) for x in arguments['--input']]):
 		sys.exit( "One or more input files are missing" )

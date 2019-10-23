@@ -5,7 +5,7 @@ cluster_umis.py
 
 This is a helper script to split up UMI consensus generation.
 
-Usage: cluster_umis.py PICKLE MINSIZE DIR [ --isCell ]
+Usage: cluster_umis.py PICKLE MINSIZE DIR [ --isCell --isFeature ]
 
 Options:
     PICKLE          Pickled umi dictionary produced by 1.0-preprocess.py
@@ -13,8 +13,11 @@ Options:
     DIR             Directory in which to carry out clustering
     --isCell        Flag to indicate generation of cell metaconsenus (instead of
 	                    individual UMI consensus) [default: False]
+    --isFeature     Flag to adjust clustering for short feature barcoding oligos
+	                    instead of V(D)Js [default: False]
 
 Split out from 1.0-preprocess.py by Chaim A Schramm on 2019-06-18.
+Added option for feature barcodes by CA Schramm 2019-10-08.
 
 Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
     All rights reserved.
@@ -81,18 +84,21 @@ def main():
 			with open("%s/%s.fa" % (subdir, umi['umi']), "w") as handle:
 				SeqIO.write(umi['seqs'], handle, "fasta")
 
+			lenOpts = [ "-mincols", '150' ] #VDJ alignment overlap
+			if arguments['--isFeature']:
+				lenOpts = [ "-minseqlength", '10' ] #in case of naked feature barcodes
+
 			subprocess.call([vsearch,
 					 "-cluster_fast", "%s/%s.fa" % (subdir, umi['umi']),
 					 "-consout", "%s/%s_cons.fa" % (subdir, umi['umi']),
 					 "-id", "0.97",
 					 "-iddef", "3",
 					 "-sizein", "-sizeout",
-					 "-mincols", '150', #need to adjust this for nonIG reads (hashing, feature barcoding)
 					 "-gapopen", "10I/10E", #lower gap open penalty to better account for internal indels
 					 "-gapext", "2I/2E", #don't make endgaps cheaper; encourages TSOs to align properly
 					 "-clusterout_sort", #so we can look at just the biggest
 					 "-quiet" #supress screen clutter
-					 ])
+					 ] + lenOpts )
 
 			with open("%s/%s_cons.fa" % (subdir, umi['umi']), 'r') as cons_file:
 				seq_number = 0
