@@ -286,10 +286,10 @@ def processFeatures():
 	#spawn subprocesses
 	if arguments['--cluster']:
 		with open("%s/featurecons.sh"%prj_tree.preprocess, 'w') as jobHandle:
-			jobHandle.write(f"#!/bin/bash\n#$ -N clusterFeatureUMIs\n#$-l h_vmem=32G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/feature_cons_in_$NUM.pickle 1 {prj_tree.preprocess}\n\n")
+			jobHandle.write(f"#!/bin/bash\n#$ -N clusterFeatureUMIs\n#$-l h_vmem=32G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/feature_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess} --isFeature\n\n")
 		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%dInd, "%s/featurecons.sh"%prj_tree.preprocess])
 	else:
-		partial_cons = partial( getUmiConsensus, minSize=1, workdir=prj_tree.preprocess, clustType="feature")
+		partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess, clustType="feature")
 
 		pool = Pool(arguments['--threads'])
 		blob = pool.map( partial_cons, range(1,dInd+1) )
@@ -328,7 +328,7 @@ def processFeatures():
 
 					for oligo in featureSeqs:
 						if oligo in str(s.seq):
-							if featureSeqs[oligo] in cellFeatures:
+							if featureSeqs[oligo] in cellFeatures[c]:
 								cellFeatures[ c ][ featureSeqs[oligo] ] += 1
 							else:
 								cellFeatures[ c ][ featureSeqs[oligo] ] = 1

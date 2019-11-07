@@ -121,7 +121,7 @@ def main():
 		cell_productive = defaultdict( list )
 		for locus in cells_raw[c]:
 			#Start with the one with the most UMIs
-			for rep in sorted( [ r for r in cells_raw[c][locus] ], key=lambda k: k['duplicate_count'], reverse=True ):
+			for rep in sorted( [ r for r in cells_raw[c][locus] ], key=lambda k: k['duplicate_count'] or 0, reverse=True ):
 				#check if this is a duplicate of a previously kept read
 				keep = True
 				for previous in cell_processed[locus]:
