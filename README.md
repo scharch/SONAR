@@ -1,6 +1,8 @@
 SONAR - Software for Ontogenic aNalysis of Antibody Repertoires [![Build Status](https://travis-ci.com/scharch/SONAR.svg?branch=master)](https://travis-ci.com/scharch/SONAR)
 =====
 
+<a href="https://docs.airr-community.org/en/stable/swtools/airr_swtools_standard.html"><img src="https://github.com/airr-community/software-wg/blob/master/swtools_badge/sw_tools_badge_v1.0.png" alt="AIRR SW Tools v1.0 valid"/></a>
+
 Introduction
 -----
 
