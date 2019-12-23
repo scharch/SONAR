@@ -131,7 +131,7 @@ def main():
 						break
 					#heuristic (for 10x data as of March 2019):  omit gaps and cut off possible noise at 5' end
 					else:
-						cov, score = scoreAlign( quickAlign(previous['sequence_alignment'],rep['sequence_alignment']), countInternalGaps=False, skip=50 )
+						score, cov = scoreAlign( quickAlign(previous['sequence_alignment'],rep['sequence_alignment']), countInternalGaps=False, skip=50 )
 						if score >= 0.95:
 							keep = False
 							break
