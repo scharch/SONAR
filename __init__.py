@@ -62,7 +62,7 @@ hooks.hook()
 
 
 def logCmdLine( command ):
-    
+
     global printLog, logFile
 
     logFile = "SONAR_command_history.log"
@@ -81,17 +81,17 @@ def logCmdLine( command ):
 
     logStatement = "\n%s -- SONAR %s run with command:\n\t%s\n" % (time.strftime("%c"), VERSION, " ".join(command))
     print(logStatement, file=sys.stderr)
-    
+
     try:
         with open(logFile, "a") as handle:
             handle.write( logStatement )
-            
+
         printLog = True
 
     except:
         print("Directory appears to be read-only; command line and output will not be saved", file=sys.stderr)
 
-    
+
 def logExit():
 
     global printLog, logFile
@@ -105,7 +105,7 @@ def logExit():
                 handle.write( "%s -- Exception:\n\t%s\n" % (time.strftime("%c"),formatted) )
             else:
                 handle.write( "%s -- Program finished successfully\n" % time.strftime("%c") )
-                
+
 atexit.register(logExit)
 
 
@@ -114,7 +114,7 @@ atexit.register(logExit)
 #
 # -- BEGIN -- class definition
 #
-		
+
 class MyAlignment:
 	def __init__(self, row):
 		self.qid	= row[0].strip()		# query id
@@ -130,27 +130,27 @@ class MyAlignment:
 		self.evalue 	= float(row[10])		# e-value
 		self.score	= float(row[11])		# bit score
 		self.strand	= str(row[12])			# strand
-		
+
 		self.qlen	= 0
 		self.slen	= 0
-		
+
 		self.real_id	= 0.0				# recaluclated identity
 		self.divergence	= 0.0				# recalculated diversity
-		
+
 	def set_strand(self, s):
 		self.strand = s					# setting strand
-		
+
 	def set_real_identity(self, identity):
 		self.real_id = identity
-		
+
 	def set_diversity(self, divergence):
 		self.divergence = divergence
 
 
-                
+
 class ProjectFolders:
 	"""folder structure of a project """
-	
+
 	def __init__(self, proj_home, create=True):
 
 		self.home       = proj_home
@@ -176,7 +176,7 @@ class ProjectFolders:
 		self.plots      = "%s/plots"       %  self.out
 		self.logs       = "%s/logs"        %  self.out
 		self.rates      = "%s/rates"       %  self.out
-		
+
 		#second-level
 		self.aa         = "%s/amino_acid"  %  self.seq
 		self.nt         = "%s/nucleotide"  %  self.seq
@@ -205,12 +205,12 @@ class ProjectFolders:
 
 def fullpath2last_folder(s):
 	"""get immediate parent folder"""
-	
+
 	return s[s.rindex("/") + 1 :]
 
 
 #
-# -- END -- folder and file methods 
+# -- END -- folder and file methods
 #
 
 
@@ -224,7 +224,7 @@ def has_pat(s, pat):
 	for match in matches:
 		has, start, end = True, match.start(), match.end()
 	return has, start, end
-	
+
 
 def load_seqs_in_dict(f, ids):
 	"""
@@ -234,12 +234,12 @@ def load_seqs_in_dict(f, ids):
 	for entry in SeqIO.parse(open(f, "r"), "fasta"):
 		if entry.id in ids:
 			result[entry.id] = entry
-			
+
 	return result
-	
+
 
 def load_fastas_in_list(f, l):
-	
+
 	print( "loading reads from %s as in given list..." %f )
 	reader, result, good = SeqIO.parse(open(f, "r"), "fasta"), dict(), 0
 
@@ -257,7 +257,7 @@ def load_fastas_in_list(f, l):
 
 	print( "%d loaded...." %len(result) )
 	return result
-	
+
 
 def load_fastas_with_Vgene(f, v):
 	print( "loading reads from %s assigned to %s..." %(f,v) )
@@ -269,7 +269,7 @@ def load_fastas_with_Vgene(f, v):
 	print( "%d loaded..." %len(dict_reads) )
 	return dict_reads
 
-	
+
 def load_fastas(f):
 	"""return gene ID and sequences in a dictionary"""
 	print( "loading sequence info from %s..." %f )
@@ -280,13 +280,13 @@ def load_fastas(f):
 		#myseq = MySeq(entry.id, entry.seq)
 		#myseq.desc = entry.description
 		result[entry.id] = entry
-	
+
 	return result
 
 
 def generate_read_fasta(f):
 	"""read fasta file and yield one reads per time """
-	
+
 	filetype = "fasta"
 	if re.search("\.(fq|fastq)$", f) is not None:
 		filetype = "fastq"
@@ -310,10 +310,10 @@ def generate_read_fasta_folder(fastas):
 
 			#if we reimplement qual handling uncomment next section
 			#if filetype == "fastq":
-			#	yield entry, MyQual(entry.id, entry.letter_annotations["phred_quality"]), fasta_file	
-			
-	
-	
+			#	yield entry, MyQual(entry.id, entry.letter_annotations["phred_quality"]), fasta_file
+
+
+
 def check_fasta_qual_pair(fa_name, qu_name):
 	return fa_name[ : fa_name.rindex(".")] == qu_name[ : qu_name.rindex(".")]
 
@@ -326,9 +326,9 @@ def translate_a_sequence(s):
 	codons = ["".join(x) for x in zip(s[ :: 3], s[1 :: 3], s[2 :: 3])]
 
 	return "".join([dict_codon2aa[x][0] for x in codons])
-	
+
 #
-# -- END -- FASTA file and sequence methods 
+# -- END -- FASTA file and sequence methods
 #
 
 
@@ -337,7 +337,7 @@ def translate_a_sequence(s):
 #
 
 def quickAlign( refseq, testseq, maxiters=None, diags=None, gapopen=None ):
-    
+
 	#sanity check
 	try:
 		refseq	= re.sub( "-", "", refseq )
@@ -376,12 +376,12 @@ def quickAlign( refseq, testseq, maxiters=None, diags=None, gapopen=None ):
 	for p in SeqIO.parse(StringIO(stdout), "fasta"):
 		aligned[ p.id ] = str(p.seq)
 	return aligned
-	
+
 
 def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=False, countInternalGaps=True, skip=0 ):
 
 	refLen = len( re.sub("-", "", alignDict[reference]) )
-    
+
 	if not countTerminalGaps:
 		leftGap = re.match( "-+", alignDict[reference] )
 		if not leftGap:
@@ -396,8 +396,11 @@ def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=Fals
 
 	position = 0
 	alignLen = 0.0
+	covNum   = 0.0
 	matches	 = 0
 	for r,t in zip(alignDict[reference], alignDict[query]):
+		if not (r == "-" or t == "-"):
+			covNum += 1
 		if (not countInternalGaps) and (r == "-" or t == "-"):
 			continue
 		elif position < skip:
@@ -407,11 +410,11 @@ def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=Fals
 			alignLen += 1
 			if r == t:
 				matches += 1
-		    
-		coverage = len( re.sub("-", "", alignDict[query]) )  / refLen
+
+		coverage = covNum  / refLen
 
 	return matches/alignLen, coverage
-    
+
 #
 # -- END -- alignment functions
 #
