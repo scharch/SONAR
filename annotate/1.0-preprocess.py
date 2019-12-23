@@ -195,7 +195,7 @@ def callFinder(num, format, args, stem="chunk"):
 def getUmiConsensus(num, minSize, workdir, isCell=False, feature=False, clustType="umi"):
 	if isCell:
 		clustType = "cell"
-	cmd = f"{SCRIPT_FOLDER}/annotate/cluster_umis.py  {prj_tree.preprocess}/{clustType}_cons_in_{num:04}.pickle {minsize} {workdir}"
+	cmd = f"{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/{clustType}_cons_in_{num:04}.pickle {minSize} {workdir}"
 	if isCell:
 		cmd += " --isCell"
 	elif feature:
@@ -568,7 +568,7 @@ def main():
 						jobHandle.write(f"#!/bin/bash\n#$ -N clusterCells\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/cell_cons_in_$NUM.pickle {arguments['--minUMIs']} {prj_tree.preprocess} --isCell\n\n")
 					subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%cInd, "%s/cellcons.sh"%prj_tree.preprocess])
 				else:
-					partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMI'], workdir=prj_tree.preprocess, isCell=True)
+					partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMIs'], workdir=prj_tree.preprocess, isCell=True)
 
 					pool = Pool(arguments['--threads'])
 					blob = pool.map( partial_cons, range(1,cInd+1) )
@@ -615,7 +615,7 @@ def main():
 					jobHandle.write(f"#!/bin/bash\n#$ -N clusterCells\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/cell_cons_in_$NUM.pickle {arguments['--minUMIs']} {prj_tree.preprocess} --isCell\n\n")
 				subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%cInd, "%s/cellcons.sh"%prj_tree.preprocess])
 			else:
-				partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMI'], workdir=prj_tree.preprocess, isCell=True)
+				partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMIs'], workdir=prj_tree.preprocess, isCell=True)
 				pool = Pool(arguments['--threads'])
 				blob = pool.map( partial_cons, range(1,cInd+1) )
 				pool.close()
