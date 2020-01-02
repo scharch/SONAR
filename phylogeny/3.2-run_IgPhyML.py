@@ -176,7 +176,7 @@ def main():
 		#first create a working file to align and add the germline and natives
 		shutil.copyfile(arguments['--seqs'], "%s/%s_to_align.fa"%(prj_tree.phylo, prj_name))
 		handle = open( "%s/%s_to_align.fa"%(prj_tree.phylo, prj_name), "a" )
-		handle.write( ">%s\n%s\n" % (germ_seq.id, germ_seq.seq) )
+		handle.write( "\n>%s\n%s\n" % (germ_seq.id, germ_seq.seq) )
 		for n in natives.values():
 			handle.write( ">%s\n%s\n" % (n.id, n.seq) )
 		handle.close()
