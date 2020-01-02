@@ -5,7 +5,7 @@
 
 This script uses CDR3 identity to group unique sequences from a given data set
       into pseudo-lineages that can help define groups of related B cells.
-      Uses output/sequences/nucleotide/<project>_goodCDR3_unique.fa and 
+      Uses output/sequences/nucleotide/<project>_goodCDR3_unique.fa and
       output/sequences/nucleotide/<project>_goodVJ_unique.fa as default input.
 
       The default threshold of 90% identity with no in-dels is probably useful
@@ -24,7 +24,7 @@ Options:
                          same group. NOTE: This is implemented in nucleotide space using
                          vsearch's --maxgaps parameter, which counts gap openings, rather
                          than gap columns, so probably shouldn't be set to more than 1.
-                         There is no guarantee an even codon in-del in the alignment used for 
+                         There is no guarantee an even codon in-del in the alignment used for
                          for clustering! Also, vsearch will still count the gap columns as
                          mismatches, so a CDR3 of 20AA will be counted as 95% id to an
                          identical-other-than-deletion 19AA CDR3. Set your --id
@@ -57,8 +57,9 @@ Changed regex for V genes and added special case handling for OR and (II)/(III) 
 Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Updated for AIRR-format compatibility by CAS 2018-10-18.
 Added multithreading by CAS 2019-02-05.
+Generalized germline gene regexes by CAS 2020-01-02.
 
-Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -99,7 +100,7 @@ def processClusters( iter_tuple ):
 	print("Processing chunk #%d..."%count)
 
 	global natives
-	
+
 	clusterLookup = dict()
 	centroidData = dict()
 	clusterSizes = Counter()
@@ -117,7 +118,7 @@ def processClusters( iter_tuple ):
 			continue
 
 		#cluster with vsearch
-		subprocess.call([vsearch, "-cluster_size", cluster['file'], 
+		subprocess.call([vsearch, "-cluster_size", cluster['file'],
 				 "-id", str(arguments['--id']/100.0),
 				 "-maxgaps", str(arguments['--gaps']),
 				 "-sizein", "-uc", "%s/%s.uc"%(prj_tree.lineage, cluster['group']),
@@ -159,7 +160,7 @@ def processClusters( iter_tuple ):
 
 	return { 'cl':clusterLookup, 'cd':centroidData, 'cs':clusterSizes }
 
-	
+
 def main():
 
 	#first, open the input file and parse into groups with same V/J
@@ -169,20 +170,22 @@ def main():
 
 	#start off by getting size annotations
 	for read in generate_read_fasta(arguments['--full']):
-		seqSize[read.id] = 1	
+		seqSize[read.id] = 1
 		check = re.search( "cluster_count=(\d+)", read.description)
 		if check:
 			seqSize[read.id] = int(check.group(1))
 
-			
-	gene_pat = re.compile("(?:v_call|V_gene)=IG([HKL]V[^*]+).*(?:j_call|J_gene)=IG([HKL]J\d)")
+
+	v_gene_pat = re.compile("(?:v_call|V_gene)=([^*]+)")
+	j_gene_pat = re.compile("(?:j_call|J_gene)=([^*]+)")
 	for sequence in SeqIO.parse(open(arguments['--cdr3'], "r"), "fasta"):
-		genes = re.search(gene_pat, sequence.description)
-		if genes:
-			key = genes.group(1) + "_" + genes.group(2)
+		vgene = re.search(v_gene_pat, sequence.description)
+		jgene = re.search(j_gene_pat, sequence.description)
+		if vgene and jgene:
+			key = vgene.group(1) + "_" + gjene.group(1)
 			key = re.sub("[()/]","",key) #so /OR or (II) genes don't screw up the file system
 			if key not in vj_partition:
-				temp = "%s/%s.fa"%(prj_tree.lineage, key) 
+				temp = "%s/%s.fa"%(prj_tree.lineage, key)
 				vj_partition[key] = { 'group':key, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
 
 			vj_partition[key]['count'] += 1
@@ -229,7 +232,7 @@ def main():
 	for cluster in vj_partition:
 		vj_partition[cluster]['handle'].close()
 		del vj_partition[cluster]['handle']
-		
+
 	#now go through and cluster each V/J grouping
 	clusterLookup = dict()
 	centroidData = dict()
@@ -254,17 +257,17 @@ def main():
 	#now process all clusters and do tabular output
 	with open( "%s/%s_lineages.txt" % (prj_tree.tables, prj_name), "w" ) as handle:
 		writer = csv.writer(handle, delimiter=sep)
-		writer.writerow([ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa", 
+		writer.writerow([ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa",
 				  "junction_aa", "clone_count", "included_mAbs" ])
 		for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
 			centroidData[centroid]['rank'] = rank+1
-			writer.writerow([ "%05d"%(rank+1), centroid, centroidData[centroid]['vgene'], centroidData[centroid]['jgene'], 
+			writer.writerow([ "%05d"%(rank+1), centroid, centroidData[centroid]['vgene'], centroidData[centroid]['jgene'],
 					  cdr3_info[centroid]['cdr3_len'], cdr3_info[centroid]['cdr3_seq'], size, ",".join(centroidData[centroid]['nats']) ])
 
 	#do sequence output
 	notationFile = re.sub( "\.f.+", "_lineageNotations.fa", arguments['--full'] )
 	repFile	     = re.sub( "\.f.+", "_lineageRepresentatives.fa", arguments['--full'] )
-    
+
 	rep_seqs = []
 	with open( notationFile, "w" ) as handle:
 		for read in generate_read_fasta(arguments['--full']):
@@ -272,12 +275,12 @@ def main():
 				read.id = read.id[0:8] #this is for raw VSearch output with size annotations
 						       #shouldn't be relevant in pipeline context
 			if read.id not in clusterLookup: continue
-			read.description += " clone_id=%05d clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'], 
+			read.description += " clone_id=%05d clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'],
 													   clusterLookup[read.id], clusterSizes[clusterLookup[read.id]] )
 			SeqIO.write([read],handle,"fasta")
 			if read.id in centroidData:
 				rep_seqs.append(read)
-					
+
 	with open( repFile, "w" ) as handle:
 		#use a sort to put them out in order of lineage rank (ie size)
 		SeqIO.write( sorted(rep_seqs, key=lambda cent: centroidData[cent.id]['rank']), handle, "fasta" )
@@ -295,7 +298,7 @@ def main():
 					#prevent mix-and-match data if this gets run multiple times with multiple settings
 					r['clone_id']	 = ""
 					r['clone_count'] = ""
-					
+
 				withLin.write(r)
 			withLin.close()
 			os.rename( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) )
@@ -309,7 +312,7 @@ if __name__ == '__main__':
 	arguments['--id']   = int( arguments['--id'] )
 	arguments['--gaps'] = int( arguments['--gaps'] )
 	arguments['-t']     = int( arguments['-t'] )
-	
+
 	if arguments['--natives'] is not None:
 		if os.path.isfile( arguments['--natives'] ):
 			#working with known sequences, check for manual input of V and J genes
@@ -322,7 +325,7 @@ if __name__ == '__main__':
 		else:
 			sys.exit("Can't find native sequence file %s" % arguments['--natives'])
 
-				
+
 	prj_tree = ProjectFolders(os.getcwd())
 	prj_name = fullpath2last_folder(prj_tree.home)
 
@@ -338,12 +341,11 @@ if __name__ == '__main__':
 	#log command line
 	logCmdLine(sys.argv)
 
-	
+
 	#create necessary directories if they don't exist
 	os.makedirs(prj_tree.logs, exist_ok=True)
 	os.makedirs(prj_tree.lineage, exist_ok=True)
 	os.makedirs(prj_tree.tables, exist_ok=True)
 
-    
-	main()
 
+	main()
