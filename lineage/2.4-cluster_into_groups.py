@@ -209,8 +209,9 @@ def main():
 			if arguments['-v'] is not None:
 				key = arguments['-v'] + "_" + arguments['-j']
 			else:
-				genes = re.search(gene_pat, s.description)
-				if genes:
+				vgene = re.search(v_gene_pat, s.description)
+				jgene = re.search(j_gene_pat, s.description)
+				if vgene and jgene:
 					key = genes.group(1) + "_" + genes.group(2)
 				else:
 					sys.exit("Can't find V and J gene annotations for native sequence %s. Please specify using the -v and -j parameters." % n)
