@@ -17,8 +17,9 @@ Options:
 Split out from original 1.3-finalize_assignments.py by Chaim A Schramm on 2019-04-01.
 Added `sequence_alignment` field for noJ reads as v gene region found by BLAST by CAS 2019-05-08.
 Added `locus`, `rev-comp`, and `productive` fields for noJ reads by CA Schramm 2019-05-23.
+Added locus consistency checks by CAS 2020-01-02.
 
-Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
+Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
 
 """
@@ -138,15 +139,15 @@ def main():
 	seq_stats = airr.create_rearrangement( "%s/rearrangements_%s.tsv"%(prj_tree.internal, arguments['--chunk']), fields=['vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','duplicate_count','length_raw','length_trimmed','indels','status','blast_identity','consensus_count','cell_id'])
 
 	dict_vgerm_aln, dict_other_vgerms, dict_vcounts = get_top_hits("%s/%s_%s.txt"%(prj_tree.vgene, prj_name, arguments['--chunk']) )
-	dict_jgerm_aln, dict_other_jgerms, dict_jcounts = get_top_hits("%s/%s_%s.txt"%(prj_tree.jgene, prj_name, arguments['--chunk']), topHitWriter=writer, dict_germ_count=dict_jcounts )
+	dict_jgerm_aln, dict_other_jgerms, dict_jcounts = get_top_hits("%s/%s_%s.txt"%(prj_tree.jgene, prj_name, arguments['--chunk']), topHitWriter=writer, dict_germ_count=dict_jcounts, strand="plus" )
 
 	if c:
 		minCStartPos = dict( [ (x, dict_jgerm_aln[x].qend) for x in dict_jgerm_aln.keys() ] )
-		dict_cgerm_aln, dict_other_cgerms, dict_ccounts = get_top_hits("%s/%s_C_%s.txt"%(prj_tree.jgene, prj_name, arguments['--chunk']), topHitWriter=cWriter, dict_germ_count=dict_ccounts, minQStart=minCStartPos )
+		dict_cgerm_aln, dict_other_cgerms, dict_ccounts = get_top_hits("%s/%s_C_%s.txt"%(prj_tree.jgene, prj_name, arguments['--chunk']), topHitWriter=cWriter, dict_germ_count=dict_ccounts, minQStart=minCStartPos, strand="plus" )
 
 	if d:
 		maxDEndPos = dict( [ (x, dict_jgerm_aln[x].qstart) for x in dict_jgerm_aln.keys() ] )
-		dict_dgerm_aln, dict_other_dgerms, dict_dcounts = get_top_hits("%s/%s_D_%s.txt"%(prj_tree.jgene, prj_name, arguments['--chunk']), topHitWriter=dWriter, dict_germ_count=dict_dcounts, maxQEnd=maxDEndPos )
+		dict_dgerm_aln, dict_other_dgerms, dict_dcounts = get_top_hits("%s/%s_D_%s.txt"%(prj_tree.jgene, prj_name, arguments['--chunk']), topHitWriter=dWriter, dict_germ_count=dict_dcounts, maxQEnd=maxDEndPos, strand="plus" )
 
 	for entry in SeqIO.parse( "%s/%s_%s.fasta" % (prj_tree.vgene, prj_name, arguments['--chunk']), "fasta"):
 		total += 1
@@ -190,11 +191,11 @@ def main():
 			myVgenes = ",".join( [myV.sid] + dict_other_vgerms.get(entry.id,[]) )
 			
 			vlocus = ""
-			if any( x in myV.sid for x in ["HV", "VH", "Vh", "vh", "heavy", "Heavy", "HEAVY"] ):
+			if re.search( "(HV|VH|heavy)", myV.sid, re.I ):
 				vlocus = "IGH"
-			elif any( x in myV.sid for x in ["LV", "VL", "Vl", "vl", "lambda", "Lambda", "LAMBDA"] ):
+			elif re.search( "(LV|VL|lambda)", myV.sid, re.I ):
 				vlocus = "IGL"
-			elif any( x in myV.sid for x in ["KV", "VK", "Vk", "vk", "kappa", "Kappa", "KAPPA"] ):
+			elif re.search( "(KV|VK|kappa)", myV.sid, re.I ):
 				vlocus = "IGK"
 
 			rearrangement['v_call'] = myVgenes
@@ -215,6 +216,14 @@ def main():
 			stop = "F"
 			cdr3 = True
 			
+			vlocus = ""
+			if re.search( "(HV|VH|heavy)", myV.sid, re.I ):
+				vlocus = "IGH"
+			elif re.search( "(LV|VL|lambda)", myV.sid, re.I ):
+				vlocus = "IGL"
+			elif re.search( "(KV|VK|kappa)", myV.sid, re.I ):
+				vlocus = "IGK"
+
 			#get actual V(D)J sequence
 			v_len = myV.qend - (myV.qstart-1) #need to use qstart and qend instead of alignment to account for gaps
 
@@ -320,21 +329,13 @@ def main():
 			myDgenes = ""
 			if d:
 				if entry.id in dict_dgerm_aln:
-					myDgenes = ",".join( [dict_dgerm_aln[entry.id].sid] + dict_other_dgerms.get(entry.id,[]) )
+					if not vlocus in ["IGK", "IGL"]:
+						#supress spurious D gene hits if it's a light chain
+						myDgenes = ",".join( [dict_dgerm_aln[entry.id].sid] + dict_other_dgerms.get(entry.id,[]) )
 
 			myCgenes = ""
-			if c:
-				if entry.id in dict_cgerm_aln:
-					myCgenes = ",".join( [dict_cgerm_aln[entry.id].sid] + dict_other_cgerms.get(entry.id,[]) )
-				elif not arguments['--noFallBack']:
-					if re.match("C[CT]", const_seq):
-						myCgenes = "IGHG" #could also be IgE, but I'm assuming that's rare
-					elif re.match("GGA", const_seq):
-						myCgenes = "IGHM"
-					elif re.match("CAT", const_seq):
-						myCgenes = "IGHA"
-					elif re.match("CAC", const_seq):
-						myCgenes = "IGHD"
+			if c and entry.id in dict_cgerm_aln:
+				myCgenes = ",".join( [dict_cgerm_aln[entry.id].sid] + dict_other_cgerms.get(entry.id,[]) )
 			elif not arguments['--noFallBack']:
 				if re.match("C[CT]", const_seq):
 					myCgenes = "IGHG" #could also be IgE, but I'm assuming that's rare
@@ -344,15 +345,29 @@ def main():
 					myCgenes = "IGHA"
 				elif re.match("CAC", const_seq):
 					myCgenes = "IGHD"
-						
-			vlocus = ""
-			if any( x in myV.sid for x in ["HV", "VH", "Vh", "vh", "heavy", "Heavy", "HEAVY"] ):
-				vlocus = "IGH"
-			elif any( x in myV.sid for x in ["LV", "VL", "Vl", "vl", "lambda", "Lambda", "LAMBDA"] ):
-				vlocus = "IGL"
-			elif any( x in myV.sid for x in ["KV", "VK", "Vk", "vk", "kappa", "Kappa", "KAPPA"] ):
-				vlocus = "IGK"
-					
+				elif re.match("CGA", const_seq):
+					myCgenes = "IGKC"
+				elif re.match("GGT", const_seq):
+					myCgenes = "IGLC"
+
+			jlocus = ""
+			if re.search( "(HJ|JH|heavy)", myJ.sid, re.I ):
+				jlocus = "IGH"
+			elif re.search( "(LJ|Jl|lambda)", myJ.sid, re.I ):
+				jlocus = "IGL"
+			elif re.search( "(KJ|JK|kappa)", myJ.sid, re.I ):
+				jlocus = "IGK"
+
+			if not vlocus == jlocus:
+				#this really shouldn't happen unless one or both gene assignments are
+				#    based on very short partial hits. Unfortuantely, the lengths/e-values
+				#    are on different scales, so I don't currently have a good heuristic to
+				#    pick between the two. Just flag it and give up, at least for now.
+				status = "chimera"
+
+			if not myCgenes == "" and not vlocus in myCgenes: #will fail for custom libraries where C gene names don't start with locus
+				myCgenes = "" #assume constant is incorrect since usually based on only a few bases
+
 			#do AIRR output
 			if myV.strand == "plus":
 				rearrangement['rev_comp']       = "F"

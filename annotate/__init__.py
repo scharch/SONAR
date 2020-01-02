@@ -38,7 +38,7 @@ def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=Fa
 
 
 
-def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict(), minQStart=dict()):
+def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict(), minQStart=dict(), strand=None):
 	"""retrieve top hits from all result files"""
 	
 	dict_germ_aln	 =  dict()
@@ -54,6 +54,10 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 
 		else:
 			my_alignment = MyAlignment(row)
+
+			#CAS 2020-01-02
+			if strand is not None and not my_alignment.strand == strand:
+				continue
 
 			if my_alignment.qid != old_id:
 				if old_id != "":

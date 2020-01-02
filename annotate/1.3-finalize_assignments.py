@@ -72,6 +72,7 @@ Moved main processing code to parse_blast.py to allow for parallelization on a
         cluster by CA Schramm 2019-04-01.
 Fixed command line logging and rationalized cluster usage by CAS 2019-07-31.
 Added species option and updated daisy chaining to 1.4/1.5 by CAS 2020-01-02.
+Added locus consistency checks by CAS 2020-01-02.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -150,7 +151,7 @@ def main():
 
 	#initiate overall counters
 	raw_count, total = 0, 0
-	counts = {'good':0,'nonproductive':0,'indel':0,'noCDR3':0,'stop':0,'noV':0,'noJ':0,'missingNterm':0}
+	counts = {'good':0,'nonproductive':0,'indel':0,'noCDR3':0,'stop':0,'noV':0,'noJ':0,'missingNterm':0,'chimera':0}
 
 	dict_jcounts = Counter()
 	dict_ccounts = Counter()
@@ -228,7 +229,7 @@ def main():
 																 #  if I should change/update now that I am using
 																 #  proper alignments.
 
-			if not r['status'] in ['noV', 'missingNterm']:
+			if not r['status'] in ['noV', 'missingNterm', "chimera"]:
 				allV_nt.write( "%s\n%s\n" % (def_line, ungapped) )
 				allV_aa.write( "%s\n%s\n" % (def_line, Seq.Seq(ungapped).translate()) )
 
@@ -260,7 +261,7 @@ def main():
 	all_cdr3_nt.close()
 
 	#useful number
-	found = total - counts['noV'] - counts['noJ']
+	found = total - counts['noV'] - counts['noJ'] - counts['chimera']
 
 	#print out some statistics
 	handle = open("%s/%s_jgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
@@ -293,7 +294,7 @@ def main():
 		handle.close()
 
 	message = "\nTotal raw reads: %d\nCorrect Length: %d\nV assigned: %d\nJ assigned: %d\nCDR3 assigned: %d\nIn-frame junction: %d\nNo indels: %d\nContinuous ORF with no stop codons: %d\n\n"  % \
-								(raw_count, total, total-counts['noV'], found, found-counts['noCDR3'], found-counts['noCDR3']-counts['nonproductive'], found-counts['noCDR3']-counts['nonproductive']-counts['indel'], counts['good'])
+								(raw_count, total, total-counts['noV']-counts['chimera'], found, found-counts['noCDR3'], found-counts['noCDR3']-counts['nonproductive'], found-counts['noCDR3']-counts['nonproductive']-counts['indel'], counts['good'])
 	print( message )
 	handle = open("%s/finalize_blast.log"%prj_tree.logs, "w")
 	handle.write(message)
