@@ -30,7 +30,7 @@ igphyml_slow   = "%s/third-party/igphyml_no_libraries"   % SCRIPT_FOLDER
 reconstruct    = "%s/third-party/ancReconstructHLP17.pl" % SCRIPT_FOLDER
 
 
-# databases	
+# databases
 VH_DB	= "%s/germDB/IgHV.fa"   %SCRIPT_FOLDER
 VK_DB	= "%s/germDB/IgKV.fa"   %SCRIPT_FOLDER
 VL_DB	= "%s/germDB/IgLV.fa"   %SCRIPT_FOLDER
@@ -46,6 +46,10 @@ JHKL_DB	= "%s/germDB/IgHKLJ.fa" %SCRIPT_FOLDER
 DH_DB   = "%s/germDB/IgHD.fa"  %SCRIPT_FOLDER
 
 CH_DB	= "%s/germDB/IgHC_CH1.fa" %SCRIPT_FOLDER
+CK_DB	= "%s/germDB/IgKC.fa" %SCRIPT_FOLDER
+CL_DB	= "%s/germDB/IgLC.fa" %SCRIPT_FOLDER
+CKL_DB	= "%s/germDB/IgKLC.fa" %SCRIPT_FOLDER
+CHKL_DB	= "%s/germDB/IgHKLC.fa" %SCRIPT_FOLDER
 
 dict_vgerm_db = {
 	'H'   : VH_DB,
@@ -61,6 +65,14 @@ dict_jgerm_db = {
 	'L'   : JL_DB,
 	'KL'  : JKL_DB,
 	'HKL' : JHKL_DB
+}
+
+dict_cgerm_db = {
+	'H'   : CH_DB,
+	'K'   : CK_DB,
+	'L'   : CL_DB,
+	'KL'  : CKL_DB,
+	'HKL' : CHKL_DB
 }
 
 
@@ -80,11 +92,11 @@ PBS_STRING = "\
 %s\n"
 
 
-CMD_BLASTCLUST	= "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust -p F -L .9 -S 95 -i %s -o %s"	#pF: nucleotide; L.9: 90%[coverage]  S: Identities 
+CMD_BLASTCLUST	= "/ifs/home/c2b2/bh_lab/shares/blast/current/ia32-linux/bin/blastclust -p F -L .9 -S 95 -i %s -o %s"	#pF: nucleotide; L.9: 90%[coverage]  S: Identities
 
 
 PARSED_BLAST_HEADER = ["qid", "sid", "identity", "align_len", "mismatches", "gaps", "qstart", "qend", "sstart", "send", "evalue", "score", "strand","other_sids"]
-PARSED_BLAST_HEADER_VERBOSE = ["query_id", "sbjct_id", "strand", "evalue", "score", "identities", "gaps", "aln_len", 
+PARSED_BLAST_HEADER_VERBOSE = ["query_id", "sbjct_id", "strand", "evalue", "score", "identities", "gaps", "aln_len",
 								"query_start", "query_end", "query_len", "sbjct_start", "sbjct_end", "aln_query", "aln_sbjct"]
 
 
@@ -104,5 +116,3 @@ table["---"]="-"
 #now register is and export
 CodonTable.register_ncbi_table(name='gapped',alt_name="CAS0",id=99,table=table, stop_codons=['TAA', 'TAG', 'TGA', ], start_codons=['TTG', 'CTG', 'ATG', ] )
 GAPPED_CODON_TABLE=CodonTable.ambiguous_dna_by_name["gapped"]
-
-    

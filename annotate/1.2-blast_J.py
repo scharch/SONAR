@@ -6,8 +6,8 @@
 This script parses the BLAST output from 1.1-blast-V_assignment.py. For reads
       for which a V assignment was successfully made, the section of the read
       3' to the V gene is extracted and sent to the cluster for BLAST assignment
-      of the J gene. Will also try to assign the D gene if relevant and the 
-      constant region class. 
+      of the J gene. Will also try to assign the D gene if relevant and the
+      constant region class.
 
 Usage: 1.2-blast-J.py [ options ]
 
@@ -16,7 +16,7 @@ Options:
                             if a custom V gene library was specificied when running
                             to 1.1-blast-V_assignment.py, otherwise the program will use
                             the default libraries matching the V gene locus.
-    --dlib LIB          Optional fasta file containing germline D gene sequences, for 
+    --dlib LIB          Optional fasta file containing germline D gene sequences, for
                             custom libraries.
     --clib LIB          Optional fasta file containing CH1 gene sequences, for custom
                             libraries.
@@ -35,10 +35,10 @@ Options:
 
 Options for other annotation scripts (see those help messages for details):
     --jmotif TGGGG
-    --nterm OPT   
+    --nterm OPT
     --noclean
     --noFallBack
-    --runClustering 
+    --runClustering
     --file FILE
     --min1 1
     --min2 3
@@ -57,8 +57,9 @@ Edited to add queue monitoring by CAS 2015-08-03.
 Added local option with threading CAS 2015-11-13.
 Edited to use Py3 and DocOpt by CAS 2018-08-22
 Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
+Added default constant region DBs for K and L by CAS 2020-01-02.
 
-Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -77,20 +78,20 @@ except ImportError:
 
 
 def main():
-	
+
 	if not glob.glob("%s/%s_*.fasta" % (prj_tree.vgene, prj_name)):
 		sys.exit("No vBlast output found!\n")
-	
+
 	print( "curating 5'end and strand...." )
 
 	# cut nucleotide sequences from 5'end alignment to germline
 	total, good, f_ind = 0, 0, 1
 	dict_germ_count	= dict()
-	
+
 	topHandle = open("%s/%s_vgerm_tophit.txt" %(prj_tree.tables, prj_name), "w")
 	writer	  = csv.writer(topHandle, delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
-	
+
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
 
 		split_fasta = "%s/%s_%03d.fasta" %(prj_tree.jgene, prj_name, f_ind)
@@ -98,7 +99,7 @@ def main():
 
 		# parse blast output
 		dict_germ_aln, dict_other_germs, dict_germ_count = get_top_hits( "%s/%s_%03d.txt" % (prj_tree.vgene, prj_name, f_ind), topHitWriter=writer, dict_germ_count=dict_germ_count )
-	
+
 		# process each sequence
 		for entry in SeqIO.parse("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind), "fasta"):
 
@@ -116,19 +117,19 @@ def main():
 
 		fasta_handle.close()
 		f_ind += 1
-		
+
 		print( "%d done, %d good..." %(total, good) )
 
 
 	f_ind -= 1 #had to go 1 extra to break while loop, now reset to actual number of files
 	topHandle.close()
-	
+
 
 	#print log message
 	handle = open("%s/1.2.log" % prj_tree.logs, "w")
 	handle.write("total: %d; good: %d\n" %(total, good))
 	handle.close()
-	
+
 
 	#print statistics
 	handle = open("%s/%s_vgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
@@ -149,7 +150,7 @@ def main():
 			mode = "-db"
 			if not os.path.isfile(arguments['--clib'] + ".nhr"):
 				mode = "-subject"
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s -perc_identity 100" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--clib'], 
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s -perc_identity 100" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--clib'],
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_C_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/cblast.sh"%prj_tree.jgene, 'w')
@@ -167,7 +168,7 @@ def main():
 			mode = "-db"
 			if not os.path.isfile(arguments['--dlib'] + ".nhr"):
 				mode = "-subject"
-			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--dlib'], 
+			command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--dlib'],
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_D_$NUM.txt"   % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 			pbs = open("%s/dblast.sh"%prj_tree.jgene, 'w')
@@ -185,7 +186,7 @@ def main():
 		mode = "-db"
 		if not os.path.isfile(arguments['--jlib'] + ".nhr"):
 			mode = "-subject"
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--jlib'], 
+		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--jlib'],
 									      "%s/%s_$NUM.fasta" % (prj_tree.jgene, prj_name),
 									      "%s/%s_$NUM.txt"	 % (prj_tree.jgene, prj_name), J_BLAST_WORD_SIZE) )
 		pbs = open("%s/jblast.sh"%prj_tree.jgene, 'w')
@@ -196,8 +197,8 @@ def main():
 		check = "%s/utilities/checkClusterBlast.py --gene j --big %d --check %s/jmonitor.sh" % (SCRIPT_FOLDER, f_ind, prj_tree.jgene)
 		if arguments['--runFinalize']:
 			check += " --after '%s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
-			for opt in [ '--jmotif', '--nterm', '--file', '--min1', '--min2', 
-				     '--id', '--maxgaps', '--rearrangements', '--save', '--threads']: 
+			for opt in [ '--jmotif', '--nterm', '--file', '--min1', '--min2',
+				     '--id', '--maxgaps', '--rearrangements', '--save', '--threads']:
 				if arguments[opt] is not None:
 					check += " %s %s" % (opt, arguments[opt])
 			for flag in ['--cluster', '--noclean', '--noFallBack',
@@ -236,11 +237,11 @@ def main():
 
 		if arguments['--runFinalize']:
 			cmd = "%s/annotate/1.3-finalize_assignments.py" % SCRIPT_FOLDER
-			for opt in [ '--jmotif', '--nterm', '--file', '--min1', '--min2', 
-			             '--id', '--maxgaps', '--rearrangements', '--save', '--threads']: 
+			for opt in [ '--jmotif', '--nterm', '--file', '--min1', '--min2',
+			             '--id', '--maxgaps', '--rearrangements', '--save', '--threads']:
 				if arguments[opt] is not None:
 					cmd += " %s '%s'" % (opt, arguments[opt])
-			for flag in ['--cluster', '--noclean', '--noFallBack', 
+			for flag in ['--cluster', '--noclean', '--noFallBack',
 		             	 '--runClustering', '--runCellStatistics']:
 				if arguments[flag]:
 					cmd += " %s" % flag
@@ -252,14 +253,14 @@ def main():
 
 
 if __name__ == '__main__':
-	
+
 	arguments = docopt(__doc__)
 	arguments['--threads'] = int(arguments['--threads'])
-	
+
 	if arguments['--cluster']:
 		if not clusterExists:
 			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
-	      
+
 	#load saved locus information
 	prj_tree	= ProjectFolders(os.getcwd())
 	prj_name	= fullpath2last_folder(prj_tree.home)
@@ -297,14 +298,12 @@ if __name__ == '__main__':
 				print( "Can't find custom constant region gene library file!" )
 				sys.exit(1)
 		elif locus == "C":
-			print( "Error: Custom V gene library was used; please specify matching constat region gene library or use the --noC flag" )
+			print( "Error: Custom V gene library was used; please specify matching constant region gene library or use the --noC flag" )
 			sys.exit(1)
-		elif "H" in locus: #include HKL
-			arguments['--clib'] = CH_DB
 		else:
-			arguments['--noC'] = True #light chains only
+			arguments['--jlib'] = dict_cgerm_db[locus]
 
-                        
+
 	#log command line
 	logCmdLine(sys.argv)
 
@@ -318,6 +317,5 @@ if __name__ == '__main__':
 		handle.write("%s\n" % arguments['--clib'])
 		handle.close()
 
-		
-	main()
 
+	main()
