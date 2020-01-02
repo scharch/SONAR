@@ -8,37 +8,42 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-finalize_assignments.py [ --jmotif "TT[C|T][G|A]G" --nterm truncate --noclean ] [ options ]
+Usage:  1.3-finalize_assignments.py [ (--jmotif "TT[C|T][G|A]G" | --species rhesus) --nterm truncate --noclean ] [ options ]
 
 Options:
-    --jmotif TGGGG    Conserved nucleotide sequence indicating the start of FWR4 on
-                          the J gene. Defaults to either TGGGG for heavy chains or
-                          TT[C|T][G|A]G for light chains; set manually for custom
-                          light chain libraries or for species with a different motif.
-    --nterm OPT       What to do if blast hit does not extend to the N terminus of the
-                          germline V gene. Options are:
-                              truncate - trim to blast hit;
-                              extend   - change trim boundary to correspond to expected N
-                                             N terminus of germline or beginning of read if
-                                             shorter (NOT recommended, typically results in
-                                             bad sequences)
-                              germline - replace missing region with the germline V
-                                             sequence (useful for FWR1 primers)
-                              discard  - only mark as 'good' sequences with full germline
-                                             region
-                          [default: truncate]
-    --noclean         Disable automatic deletion of working files from 1.1 and 1.2 [default: False]
-    --noFallBack      Flag to disable fall-back detection of heavy chain isotype based on the
-                          first 3 bases of CH1. Useful for species where those may be different
-                          than in humans. [default: False]
-    --cluster         Flag to indicate that blast jobs should be submitted to the
-                          SGE cluster. Throws an error if presence of a cluster was
-                          not indicated during setup. [default: False]
-    --threads <1>     Number of threads to use when running locally. [default: 1]
-    --runClustering   Flag to call 1.4 script when finished. Additional options to that
-                          script (including the ability to automatically call 1.5) are listed
-                          below. This script will not check the validity of options passed
-                          downstream, so user beware. [default: False]
+    --jmotif TGGGG        Conserved nucleotide sequence indicating the start of FWR4 on
+                              the J gene. Defaults to either TGGGG for heavy chains or
+                              TT[C|T][G|A]G for light chains; set manually for custom
+                              light chain libraries or for an unrecognized species (see
+                              below) with a different motif.
+    --species rhesus      Specify a non-human species to get a default J gene motif for
+                              that species. Currently recognized possiblities: rhesus
+    --nterm OPT           What to do if blast hit does not extend to the N terminus of the
+                              germline V gene. Options are:
+                                  truncate - trim to blast hit;
+                                  extend   - change trim boundary to correspond to expected N
+                                                 N terminus of germline or beginning of read if
+                                                 shorter (NOT recommended, typically results in
+                                                 bad sequences)
+                                  germline - replace missing region with the germline V
+                                                 sequence (useful for FWR1 primers)
+                                  discard  - only mark as 'good' sequences with full germline
+                                                 region
+                              [default: truncate]
+    --noclean             Disable automatic deletion of working files from 1.1 and 1.2 [default: False]
+    --noFallBack          Flag to disable fall-back detection of heavy chain isotype based on the
+                              first 3 bases of CH1. Useful for species where those may be different
+                              than in humans. [default: False]
+    --cluster             Flag to indicate that blast jobs should be submitted to the
+                              SGE cluster. Throws an error if presence of a cluster was
+                              not indicated during setup. [default: False]
+    --threads <1>         Number of threads to use when running locally. [default: 1]
+    --runClustering       Flag to call 1.4 script when finished. Additional options to that
+                              script are listed below. This script will not check the validity
+                              of options passed downstream, so user beware. [default: False]
+    --runCellStatistics   Flag to call 1.5 script when finished. Additional options to that
+                              script are listed below. This script will not check the validity
+                              of options passed downstream, so user beware. [default: False]
 
 Options for other annotation scripts (see those help messages for details):
     --file FILE
@@ -46,7 +51,6 @@ Options for other annotation scripts (see those help messages for details):
     --min2 3
     --id .99
     --maxgaps 0
-    --runCellStatistics
     --rearrangements rearrangements.tsv
     --save OPT
 
@@ -67,8 +71,9 @@ Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 Moved main processing code to parse_blast.py to allow for parallelization on a
         cluster by CA Schramm 2019-04-01.
 Fixed command line logging and rationalized cluster usage by CAS 2019-07-31.
+Added species option and updated daisy chaining to 1.4/1.5 by CAS 2020-01-02.
 
-Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
 
 """
@@ -294,16 +299,22 @@ def main():
 	handle.write(message)
 	handle.close()
 
-	# call 1.4 if requested
+	# call 1.4 or 1.5 if requested
 	if arguments['--runClustering']:
 		cmd = "%s/annotate/1.4-cluster_sequences.py" % SCRIPT_FOLDER
-		for opt in [ '--file', '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--save']:
+		for opt in [ '--file', '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--save' ]:
 			if arguments[opt] is not None:
 				cmd += " %s '%s'" % (opt, arguments[opt])
 		if arguments['--runCellStatistics']:
 			cmd += " --runCellStatistics"
-
 		print( "Calling 1.4 with command line: %s" % cmd )
+		os.system( cmd )
+	elif arguments['--runCellStatistics']:
+		cmd = "%s/annotate/1.5-single_cell_statistics.py" % SCRIPT_FOLDER
+		for opt in [ '--rearrangements', '--save' ]:
+			if arguments[opt] is not None:
+				cmd += " %s '%s'" % (opt, arguments[opt])
+		print( "Calling 1.5 with command line: %s" % cmd )
 		os.system( cmd )
 
 	#clean up!!
@@ -334,7 +345,13 @@ if __name__ == '__main__':
 	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "r")
 	locus = handle.readline().strip()
 
-	if arguments['--jmotif'] is None:
+	if arguments['--species'] is not None:
+		motifDict = { "rhesus":"(TGGGG|TTCGG|TT..GAA|TTTGGC|TTCTGT)" }
+		if not arguments['--species'] in motifDict:
+			sys.exit( "`--species` must be one of the following options: " + ",".join(motifDict.keys()) )
+		else:
+			arguments['--jmotif'] = motifDict[ arguments['--species'] ]
+	elif arguments['--jmotif'] is None:
 		arguments['--jmotif'] = "TGGGG"
 		if "K" in locus or "L" in locus: #it's a light chain!
 			if "H" in locus: #need both motifs
