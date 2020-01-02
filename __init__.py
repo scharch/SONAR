@@ -17,6 +17,8 @@ from Bio.Align.Applications import MuscleCommandline
 from Bio import AlignIO
 from Bio.SeqRecord import SeqRecord
 
+import airr
+
 from math import log
 from io import StringIO
 
@@ -417,4 +419,45 @@ def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=Fals
 
 #
 # -- END -- alignment functions
+#
+
+
+#
+# -- BEGIN -- AIRR manipulation functions
+#
+
+def filterAirrTsv(rearrangementsFile, annotationList):
+	good = 0
+
+	for r in airr.read_rearrangement( rearrangementsFile ):
+		keep = True
+		for filter in annotationList:
+			if len(filter['list']) > 1:
+				#want exact matches (will break if trying to match exactly on a single value - use regex '^foo$')
+				if r[filter['column']] not in filter['list']:
+					keep = False
+					break
+			elif not re.search( filter['list'][0], r[filter['column']] ):
+				keep = False
+				break
+
+		if keep:
+			good += 1
+			if good % 10000 == 0:
+				sys.stderr.write("Found %d matching rearrangements so far...\n" % good)
+			yield r
+
+
+def airrToFasta( rearrangements, field='sequence_alignment', aa=False):
+	for r in rearrangements:
+		if r[field] == "":
+			continue
+
+		tempSeq = SeqRecord( id=r['sequence_id'], seq=Seq.Seq(re.sub("[-.+]","",r[field])) )
+		if aa:
+			tempSeq.seq = tempSeq.seq.translate()
+		yield tempSeq
+
+#
+# -- END -- AIRR manipulation functions
 #
