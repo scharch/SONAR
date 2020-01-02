@@ -456,6 +456,28 @@ def airrToFasta( rearrangements, field='sequence_alignment', aa=False):
 		tempSeq = SeqRecord( id=r['sequence_id'], seq=Seq.Seq(re.sub("[-.+]","",r[field])) )
 		if aa:
 			tempSeq.seq = tempSeq.seq.translate()
+
+		def_line = ""
+		if not r['v_call'] == '':          def_line += " v_call=%s"          % r['v_call']
+		if not r['d_call'] == '':          def_line += " d_call=%s"          % r['d_call']
+		if not r['j_call'] == '':          def_line += " j_call=%s"          % r['j_call']
+		if not r['junction'] == '':        def_line += " junction=%s"        % r['junction']
+		if not r['junction_aa'] == '':     def_line += " junction_aa=%s"     % r['junction_aa']
+		if not r['junction_length'] == '': def_line += " junction_length=%s" % r['junction_length']
+		if 'locus' in r and not r['locus']  == '':                    def_line += " locus=%s"           % r['locus']
+		if 'c_call' in r and not r['c_call'] == '':                   def_line += " c_call=%s"          % r['c_call']
+		if 'status' in r and not r['status'] == '':                   def_line += " status=%s"          % r['status']
+		if 'v_identity' in r and not r['v_identity'] == '':           def_line += " v_identity=%s"      % r['v_identity']
+		if 'duplicate_count' in r and not r['duplicate_count'] == '': def_line += " duplicate_count=%s" % r['duplicate_count']
+		if 'consensus_count' in r and not r['consensus_count'] == '': def_line += " consensus_count=%s" % r['consensus_count']
+		if 'cell_id' in r and not r['cell_id'] == '':                 def_line += " cell_id=%s"         % r['cell_id']
+		if 'cell_status' in r and not r['cell_status'] == '':         def_line += " cell_status=%s"     % r['cell_status']
+		if 'centroid' in r and not r['centroid'] == '':               def_line += " centroid=%s"        % r['centroid']
+		if 'cluster_count' in r and not r['cluster_count'] == '':     def_line += " cluster_count=%s"   % r['cluster_count']
+		if 'clone_id' in r and not r['clone_id'] == '':               def_line += " clone_id=%s"        % r['clone_id']
+		if 'clone_count' in r and not r['clone_count'] == '':         def_line += " clone_count=%s"     % r['clone_count']
+		tempSeq.description = def_line
+
 		yield tempSeq
 
 #
