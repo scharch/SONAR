@@ -182,7 +182,7 @@ def main():
 		vgene = re.search(v_gene_pat, sequence.description)
 		jgene = re.search(j_gene_pat, sequence.description)
 		if vgene and jgene:
-			key = vgene.group(1) + "_" + gjene.group(1)
+			key = vgene.group(1) + "_" + jgene.group(1)
 			key = re.sub("[()/]","",key) #so /OR or (II) genes don't screw up the file system
 			if key not in vj_partition:
 				temp = "%s/%s.fa"%(prj_tree.lineage, key)
@@ -212,7 +212,7 @@ def main():
 				vgene = re.search(v_gene_pat, s.description)
 				jgene = re.search(j_gene_pat, s.description)
 				if vgene and jgene:
-					key = genes.group(1) + "_" + genes.group(2)
+					key = vgene.group(1) + "_" + jgene.group(1)
 				else:
 					sys.exit("Can't find V and J gene annotations for native sequence %s. Please specify using the -v and -j parameters." % n)
 
