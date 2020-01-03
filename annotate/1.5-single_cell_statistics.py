@@ -30,6 +30,8 @@ Options:
 Created by Chaim A Schramm on 2019-03-7.
 Added output filtering by CA Schramm 2019-04-09.
 Added cell hashing and feature barcoding by CA Schramm 2019-10-16.
+Added cell_status to output and included read/UMI counts from discarded
+                 duplicates by CAS 2019-12-26.
 
 Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -95,7 +97,7 @@ def main():
 	outwriter.writerow(outheader)
 
 	data = airr.read_rearrangement(arguments['--rearrangements'])
-	cells_only = airr.derive_rearrangement(re.sub(".tsv", "_single-cell.tsv", arguments['--rearrangements']), arguments['--rearrangements'])
+	cells_only = airr.derive_rearrangement(re.sub(".tsv", "_single-cell.tsv", arguments['--rearrangements']), arguments['--rearrangements'],fields=["cell_status"])
 
 	#assume cells might not be grouped together, so make a first pass
 	#    to collect everything
@@ -128,12 +130,16 @@ def main():
 					#shortcut: assume identical junctions means duplicates
 					if previous['junction_aa'] == rep['junction_aa']:
 						keep = False
+						if previous['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
+						if previous['consensus_count'] is not None: previous['consensus_count'] += rep['consensus_count']
 						break
 					#heuristic (for 10x data as of March 2019):  omit gaps and cut off possible noise at 5' end
 					else:
 						score, cov = scoreAlign( quickAlign(previous['sequence_alignment'],rep['sequence_alignment']), countInternalGaps=False, skip=50 )
 						if score >= 0.95:
 							keep = False
+							if previous['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
+							if previous['consensus_count'] is not None: previous['consensus_count'] += rep['consensus_count']
 							break
 
 				if keep:
@@ -171,6 +177,7 @@ def main():
 			if hashDict.get(c,["unknown"])[0] != "ambiguous" or "probable_multiplet" in arguments['--save']:
 				for loc in cell_processed:
 					for chain in cell_processed[loc]:
+						chain['cell_status'] = status
 						cells_only.write( chain )
 
 		#now log the cell
