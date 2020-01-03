@@ -32,8 +32,9 @@ Added output filtering by CA Schramm 2019-04-09.
 Added cell hashing and feature barcoding by CA Schramm 2019-10-16.
 Added cell_status to output and included read/UMI counts from discarded
                  duplicates by CAS 2019-12-26.
+Included nonproductive rearrangments in detection of multiplets by CAS 2020-01-03.
 
-Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
+Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
 
 """
@@ -148,7 +149,9 @@ def main():
 
 		status = ""
 		h_type = ""
-		if len(cell_productive['IGH']) == 0:
+		if len(cell_processed['IGH']) > 2 or len(cell_processed['IGK']) > 2 or len(cell_processed['IGL']) > 2:
+			status = "probable_multiplet"
+		elif len(cell_productive['IGH']) == 0:
 			if len(cell_productive['IGK']) + len(cell_productive['IGL']) == 0:
 				status = "none_productive"
 			elif len(cell_productive['IGK']) + len(cell_productive['IGL']) == 1:
