@@ -26,6 +26,7 @@ All rights reserved.
 
 import sys, os
 from docopt import docopt
+from collections import Counter
 import airr
 
 try:
@@ -113,9 +114,7 @@ def main():
 	raw = csv.reader(open("%s/lookup_%s.txt" % (prj_tree.internal, arguments['--chunk']),'r'), delimiter=sep)
 
 	raw_count, total, found, noV, noJ, f_ind = 0, 0, 0, 0, 0, 1
-	counts = {'good':0,'nonproductive':0,'indel':0,'noCDR3':0,'stop':0}
-	if arguments['--nterm'] == "discard":
-		counts["missingNterm"]=0
+	counts = Counter()
 
 	writer = csv.writer(open("%s/jtophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep)
 	writer.writerow(PARSED_BLAST_HEADER)
