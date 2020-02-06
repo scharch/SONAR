@@ -301,7 +301,7 @@ if __name__ == '__main__':
 			print( "Error: Custom V gene library was used; please specify matching constant region gene library or use the --noC flag" )
 			sys.exit(1)
 		else:
-			arguments['--jlib'] = dict_cgerm_db[locus]
+			arguments['--clib'] = dict_cgerm_db[locus]
 
 
 	#log command line
