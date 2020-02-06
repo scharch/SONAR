@@ -18,8 +18,9 @@ Options:
 
 Split out from 1.0-preprocess.py by Chaim A Schramm on 2019-06-18.
 Added option for feature barcodes by CA Schramm 2019-10-08.
+Tweaked clustering thresholds by CAS 2020-02-04/
 
-Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
+Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
     All rights reserved.
 
 """
@@ -84,6 +85,10 @@ def main():
 			with open("%s/%s.fa" % (subdir, umi['umi']), "w") as handle:
 				SeqIO.write(umi['seqs'], handle, "fasta")
 
+			idThreshold = "0.95"
+			if arguments['--isCell']:
+				idThreshold = "0.99"
+
 			lenOpts = [ "-mincols", '150' ] #VDJ alignment overlap
 			if arguments['--isFeature']:
 				lenOpts = [ "-minseqlength", '10' ] #in case of naked feature barcodes
@@ -91,7 +96,7 @@ def main():
 			subprocess.call([vsearch,
 					 "-cluster_fast", "%s/%s.fa" % (subdir, umi['umi']),
 					 "-consout", "%s/%s_cons.fa" % (subdir, umi['umi']),
-					 "-id", "0.97",
+					 "-id", idThreshold,
 					 "-iddef", "3",
 					 "-sizein", "-sizeout",
 					 "-gapopen", "10I/10E", #lower gap open penalty to better account for internal indels
