@@ -8,16 +8,13 @@ This script parses the BLAST output from 1.1-blast-V_assignment.py and
       output into fasta files and a master table is created summarizing the
       properties of all input sequences.
 
-Usage:  1.3-finalize_assignments.py [ --jmotif TGGGG | --species rhesus ] [ --nterm truncate --noclean ] [ options ]
+Usage:  1.3-finalize_assignments.py [ --jmotif TGGGG --nterm truncate --noclean ] [ options ]
 
 Options:
     --jmotif TGGGG        Conserved nucleotide sequence indicating the start of FWR4 on
                               the J gene. Defaults to either TGGGG for heavy chains or
                               TT[C|T][G|A]G for light chains; set manually for custom
-                              light chain libraries or for an unrecognized species (see
-                              below) with a different motif.
-    --species rhesus      Specify a non-human species to get a default J gene motif for
-                              that species. Currently recognized possiblities: rhesus
+                              light chain libraries or for an unrecognized species.
     --nterm OPT           What to do if blast hit does not extend to the N terminus of the
                               germline V gene. Options are:
                                   truncate - trim to blast hit;
@@ -73,6 +70,7 @@ Moved main processing code to parse_blast.py to allow for parallelization on a
 Fixed command line logging and rationalized cluster usage by CAS 2019-07-31.
 Added species option and updated daisy chaining to 1.4/1.5 by CAS 2020-01-02.
 Added locus consistency checks by CAS 2020-01-02.
+Moved species option to 1.1 and added consistent handling.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -344,24 +342,15 @@ if __name__ == '__main__':
 
 	#load saved locus and library information
 	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "r")
-	locus = handle.readline().strip()
+	species = handle.readline().strip()
+	locus   = handle.readline().strip()
 
-	if arguments['--species'] is not None:
-		motifDict = { "rhesus":"(TGGGG|TTCGG|TT..GAA|TTTGGC|TTCTGT)" }
-		if not arguments['--species'] in motifDict:
-			sys.exit( "`--species` must be one of the following options: " + ",".join(motifDict.keys()) )
-		else:
-			arguments['--jmotif'] = motifDict[ arguments['--species'] ]
-	elif arguments['--jmotif'] is None:
-		arguments['--jmotif'] = "TGGGG"
-		if "K" in locus or "L" in locus: #it's a light chain!
-			if "H" in locus: #need both motifs
-				arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
-			else:
-				arguments['--jmotif'] = "TT[C|T][G|A]G"
-		elif "C" in locus:
+	if arguments['--jmotif'] is None:
+		if species == "NA":
 			#custom library, but default to looking for both motifs
 			sys.stderr.write("Custom gene libraries used but no J motif specified; defaulting to human heavy+light...\n")
-			arguments['--jmotif'] = "(TGGGG|TT[C|T][G|A]G)"
+			arguments['--jmotif'] = HU_JHKL_MOTIF
+		else:
+			arguments['--jmotif'] = eval( SUPPORTED_SPECIES[species] + "_J" + locus + "_MOTIF" )
 
 	main()

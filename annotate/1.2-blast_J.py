@@ -58,6 +58,7 @@ Added local option with threading CAS 2015-11-13.
 Edited to use Py3 and DocOpt by CAS 2018-08-22
 Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
 Added default constant region DBs for K and L by CAS 2020-01-02.
+Updated default database look ups to include `--species` from 1.1 by CAS 2020-02-06.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -265,8 +266,9 @@ if __name__ == '__main__':
 	prj_tree	= ProjectFolders(os.getcwd())
 	prj_name	= fullpath2last_folder(prj_tree.home)
 	with open( "%s/gene_locus.txt" % prj_tree.internal) as handle:
-		locus = handle.readline().strip()
-		vlib  = handle.readline().strip()
+		species = handle.readline().strip()
+		locus   = handle.readline().strip()
+		vlib    = handle.readline().strip()
 
 	#check germline libraries
 	if arguments['--jlib'] is not None:
@@ -277,7 +279,7 @@ if __name__ == '__main__':
 		print( "Error: Custom V gene library was used; please specify matching J gene library" )
 		sys.exit(1)
 	else:
-		arguments['--jlib'] = dict_jgerm_db[locus]
+		arguments['--jlib'] = eval( SUPPORTED_SPECIES[species] + "_J" + locus + "_DB" )
 
 	if not arguments['--noD']:
 		if arguments['--dlib'] is not None:
@@ -288,7 +290,7 @@ if __name__ == '__main__':
 			print( "Error: Custom V gene library was used; please specify matching D gene library or use the --noD flag" )
 			sys.exit(1)
 		elif "H" in locus: #include HKL
-			arguments['--dlib'] = DH_DB
+			arguments['--dlib'] = eval( SUPPORTED_SPECIES[species] + "_DH_DB" )
 		else:
 			arguments['--noD'] = True #light chains only
 
@@ -301,7 +303,7 @@ if __name__ == '__main__':
 			print( "Error: Custom V gene library was used; please specify matching constant region gene library or use the --noC flag" )
 			sys.exit(1)
 		else:
-			arguments['--clib'] = dict_cgerm_db[locus]
+			arguments['--clib'] = eval( SUPPORTED_SPECIES[species] + "_C" + locus + "_DB" )
 
 
 	#log command line
@@ -310,6 +312,7 @@ if __name__ == '__main__':
 	# save J/D/C library locations for next step
 	# overwrite the file to avoid errors in 1.3 in case we are experimenting with multiple germline databases
 	with open( "%s/gene_locus.txt" % prj_tree.internal, 'w') as handle:
+		handle.write("%s\n" % species)
 		handle.write("%s\n" % locus)
 		handle.write("%s\n" % vlib)
 		handle.write("%s\n" % arguments['--jlib'])

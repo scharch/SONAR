@@ -13,13 +13,16 @@ This script looks for raw NGS data files in the current folder and parses them
       is assigned as the project name, which will be used to identify all
       output files created.
 
-Usage: 1.1-blast-V.py [ --locus H | --lib path/to/library.fa ] [ --fasta file1.fa ]... [ --derep ] [ --cluster | [--npf 10000 --threads 1] ] [ options ]
+Usage: 1.1-blast-V.py [ [--species human --locus H] | --lib path/to/library.fa ] [ --fasta file1.fa ]... [ --derep ] [ --cluster | [--npf 10000 --threads 1] ] [ options ]
 
 Options:
-    --locus H		     H: heavy chain / K: kappa chain / L: lambda chain / 
+    --species human      Which species to use with the --locus parameter. Current
+	                         options are human and rhesus. [default: human]
+    --locus H		     H: heavy chain / K: kappa chain / L: lambda chain /
 			                 KL: kappa OR lambda / HKL: any. [default: H]
     --lib LIB            Location of file containing custom library (e.g. for use with
-			                 non-human genes). Mutually exclusive with  --locus.
+			                 non-human genes). Mutually exclusive with  --locus
+                             and --species.
     --fasta <input.fa>   File(s) containing the input reads to process. May be specified
 			                 multiple times. By default, uses all FASTA/FASTQ files (those
 			                 with extensions of .fa, .fas, .fst, .fasta, .fna, .fq, or
@@ -78,8 +81,9 @@ Changed definition of forcing a new analysis to avoid clobbering
     ouput from new 1.0 script by CA Schramm 2019-02-26.
 Added checks to pull cell/umi information through annotate module by CA Schramm 2019-03-01.
 Updated how Module 1 scripts chain together by CA Schramm 2019-04-01.
+Added species option by CAS 2020-02-06.
 
-Copyright (c) 2011-2019 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
 			 Institutes of Health, USA. All rights reserved.
 
 """
@@ -309,16 +313,18 @@ if __name__ == '__main__':
 			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
 
 	if arguments['--lib'] is not None:
+		arguments['--species'] = 'NA'
 		arguments['--locus'] = 'C'
 		if not os.path.isfile(arguments['--lib']):
 			print( "Can't find custom V gene library file!" )
 			sys.exit(1)                
 	else:
-		if arguments['--locus'] in dict_vgerm_db.keys():
-			arguments['--lib'] = dict_vgerm_db[arguments['--locus']]
+		if arguments['--species'] not in SUPPORTED_SPECIES:
+			sys.exit( "Error: `--species` must be one of: " + ",".join(SUPPORTED_SPECIES.keys()) )
+		elif arguments['--locus'] not in LOCUS_LIST:
+			sys.exit( "Error: `--locus` must be one of: " + ",".join(LOCUS_LIST) )
 		else:
-			print("Error: valid options for --locus are H, K, L, KL, and HKL only")
-			sys.exit(1)
+			arguments['--lib'] = eval( SUPPORTED_SPECIES[arguments['--species']] + "_V" + arguments['--locus'] + "_DB" )
 
 	# create 1st and 2nd subfolders
 	prj_folder  = os.getcwd()
@@ -339,7 +345,7 @@ if __name__ == '__main__':
 	logCmdLine(sys.argv)	
 
 	handle = open( "%s/gene_locus.txt" % folder_tree.internal, "w")
-	handle.write( "%s\n%s\n" % (arguments['--locus'], arguments['--lib']) )
+	handle.write( "%s\n%s\n%s\n" % (arguments['--species'], arguments['--locus'], arguments['--lib']) )
 	handle.close()
 
 	main()

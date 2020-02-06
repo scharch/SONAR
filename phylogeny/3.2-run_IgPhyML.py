@@ -22,7 +22,7 @@ and
 
 
 Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick --noAnc --seed 123 -f ]
-       3.2-runIgPhyML.py -v IGHV3-30*18 [ --locus <H|K|L> | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc --seed 123 -f ]
+       3.2-runIgPhyML.py -v IGHV3-30*18 [ [--species human --locus H] | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc --seed 123 -f ]
 
 Options:
     -i input                   Manual alignment (in PHYLIP format) of the sequences to be
@@ -42,9 +42,11 @@ Options:
                                   recalulating with the HLP17 model. [default: False]
     -v IGHV3-30*18             Assigned germline V gene of known antibodes, for use in
                                   rooting the trees. Include allele designation.
-    --locus <H|K|L>            Specify use of V heavy/kappa/lambda germlines libraries,
+    --species human            Which species to use with the --locus parameter. Current
+	                              options are human and rhesus. [default: human]
+    --locus H                  Specify use of V heavy/kappa/lambda germlines libraries,
                                   respectively. Mutually exclusive with --lib. [default: H]
-    --lib path/to/library.fa   Optional custom germline library (eg for Rhesus or Mouse).
+    --lib path/to/library.fa   Optional custom germline library (eg for Mouse or from IgDiscover).
     --seqs input.fa            A fasta file containing the sequences from which the tree is
                                   to be built. [default: output/sequences/nucleotide/<project>-collected.fa]
     --natives natives.fa       A fasta file containing known sequences to be included in
@@ -60,8 +62,9 @@ Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Changed tree-building engine to IgPhyML and renamed by CAS 2018-10-22.
 Added gap handling (ported from 3.3) by CAS 2018-10-23.
 Added option to skip ancestor recontruction by CA Schramm 2019-07-31.
+Added species option to match new handling of defaults by CAS 2020-02-06.
 
-Copyright (c) 2011-2019 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -365,10 +368,13 @@ if __name__ == '__main__':
 			if not os.path.isfile(arguments['--lib']):
 				sys.exit("Can't find germline file %s" % argument['--lib'])
 		else:
-			if arguments['--locus'] in dict_vgerm_db.keys():
-				arguments['--lib'] = dict_vgerm_db[ arguments['--locus'] ]
+			if arguments['--species'] not in SUPPORTED_SPECIES:
+				sys.exit( "Error: `--species` must be one of: " + ",".join(SUPPORTED_SPECIES.keys()) )
+			elif arguments['--locus'] not in LOCUS_LIST:
+				sys.exit( "Error: `--locus` must be one of: " + ",".join(LOCUS_LIST) )
 			else:
-				sys.exit("Error: --locus must be one of H, K, or L")
+				arguments['--lib'] = eval( SUPPORTED_SPECIES[arguments['--species']] + "_V" + arguments['--locus'] + "_DB" )
+
 
 		germ_dict = load_fastas(arguments['--lib'])
 

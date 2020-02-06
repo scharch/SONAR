@@ -112,6 +112,7 @@ Options:
 
 Options for other annotation scripts (see those help messages for details):
     --locus H
+    --species human
     --lib LIB
     --derep
     --minl <300>
@@ -150,8 +151,9 @@ Added `--keepWorkFiles` flag by CAS 2019-06-18.
 Split off `find_umis.py` and `cluster_umis.py` into separate helper scripts
     and option to parallelize these on a cluster by CAS 2019-06-19.
 Added code for feature barcoding by CAS 2019-10-08.
+Added species option by CAS 2020-02-06.
 
-Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
+Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
 
 """

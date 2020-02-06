@@ -27,18 +27,20 @@ This algorithm is generally intended to find somatically related antibodies
       It is unknown at this time whether this method would work for other
       classes of antibodies.
 
-Usage: 2.3-intradonor_analysis.py --n native.fa --v germline_V [--locus H | --lib path/to/library.fa] [--in custom/input.fa | [ -a --noFilter ]] [options]
+Usage: 2.3-intradonor_analysis.py --n native.fa --v germline_V [ [--species human --locus H] | --lib path/to/library.fa] [--in custom/input.fa | [ -a --noFilter ]] [options]
 
 Options:
     --n	<native.fa>       Fasta file containing the known sequences.
     --v	<IGHV1-2*02>      Assigned germline V gene of known antibodes, for use in 
                              rooting the trees.
+    --species human       Which species to use with the --locus parameter. Current
+	                         options are human and rhesus. [default: human]
     --locus H             H: use V heavy / K: use V kappa / L: use V lambda
                              PLEASE NOTE: This algorithm is not generally recommended
                              for analyzing light chain sequences.
                              [default: H]
     --lib <germline.fa>   Optional custom germline library (eg Rhesus or Mouse).
-                             Mutually exclusive with --locus.
+                             Mutually exclusive with --species and --locus.
     --in <seqs.fa>        Optional custom set of sequences to be analayzed.
                              Default is output/sequences/<ROOT>_goodVJ_unique.fa (or 
                              output/sequences/<ROOT>_allV.fa with the -a flag).
@@ -69,8 +71,9 @@ Modified to compress into a single script and many updates by
         Chaim A Schramm 2014-01-09.
 Edited and commented for publication by Chaim A Schramm on 2015-04-14.
 Edited to use Py3 and DocOpt by CAS 2018-08-22.
+Added species option to match new handling of defaults by CAS 2020-02-06.
 
-Copyright (c) 2011-2018 Columbia University Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -380,11 +383,13 @@ if __name__ == '__main__':
 			print( "Can't find custom V gene library file!" )
 			sys.exit(1)		   
 	else:
-		if arguments['--locus'] in dict_vgerm_db.keys():
-			arguments['--lib'] = dict_vgerm_db[arguments['--locus']]
+		if arguments['--species'] not in SUPPORTED_SPECIES:
+			sys.exit( "Error: `--species` must be one of: " + ",".join(SUPPORTED_SPECIES.keys()) )
+		elif arguments['--locus'] not in LOCUS_LIST:
+			sys.exit( "Error: `--locus` must be one of: " + ",".join(LOCUS_LIST) )
 		else:
-			print("Error: valid options for --locus are H, K, L, KL, and HKL only")
-			sys.exit(1)
+			arguments['--lib'] = eval( SUPPORTED_SPECIES[arguments['--species']] + "_V" + arguments['--locus'] + "_DB" )
+
 
 	germ_dict = load_fastas(arguments['--lib'])
 	try:

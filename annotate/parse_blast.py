@@ -409,10 +409,11 @@ if __name__ == '__main__':
 	prj_name = fullpath2last_folder(prj_tree.home)
 
 	#load saved locus and library information
-	handle = open( "%s/gene_locus.txt" % prj_tree.internal, "r")
-	locus  = handle.readline().strip()
-	vlib   = handle.readline().strip()
-	jlib   = handle.readline().strip()
+	handle  = open( "%s/gene_locus.txt" % prj_tree.internal, "r")
+	species = handle.readline().strip()
+	locus   = handle.readline().strip()
+	vlib    = handle.readline().strip()
+	jlib    = handle.readline().strip()
 
 	dict_v = load_fastas(vlib)
 	dict_j = load_fastas(jlib)

@@ -30,50 +30,65 @@ igphyml_slow   = "%s/third-party/igphyml_no_libraries"   % SCRIPT_FOLDER
 reconstruct    = "%s/third-party/ancReconstructHLP17.pl" % SCRIPT_FOLDER
 
 
+#control variables
+SUPPORTED_SPECIES = { "human":"HU", "rhesus":"RH" }
+LOCUS_LIST        = [ 'H', "K", "L", "KL", "HKL" ]
+
 # databases
-VH_DB	= "%s/germDB/IgHV.fa"   %SCRIPT_FOLDER
-VK_DB	= "%s/germDB/IgKV.fa"   %SCRIPT_FOLDER
-VL_DB	= "%s/germDB/IgLV.fa"   %SCRIPT_FOLDER
-VKL_DB	= "%s/germDB/IgKLV.fa"  %SCRIPT_FOLDER
-VHKL_DB	= "%s/germDB/IgHKLV.fa" %SCRIPT_FOLDER
+HU_VH_DB	= "%s/germDB/IgHV.fa"   %SCRIPT_FOLDER
+HU_VK_DB	= "%s/germDB/IgKV.fa"   %SCRIPT_FOLDER
+HU_VL_DB	= "%s/germDB/IgLV.fa"   %SCRIPT_FOLDER
+HU_VKL_DB	= "%s/germDB/IgKLV.fa"  %SCRIPT_FOLDER
+HU_VHKL_DB	= "%s/germDB/IgHKLV.fa" %SCRIPT_FOLDER
 
-JH_DB	= "%s/germDB/IgHJ.fa"   %SCRIPT_FOLDER
-JK_DB	= "%s/germDB/IgKJ.fa"   %SCRIPT_FOLDER
-JL_DB	= "%s/germDB/IgLJ.fa"   %SCRIPT_FOLDER
-JKL_DB	= "%s/germDB/IgKLJ.fa"  %SCRIPT_FOLDER
-JHKL_DB	= "%s/germDB/IgHKLJ.fa" %SCRIPT_FOLDER
+HU_JH_DB	= "%s/germDB/IgHJ.fa"   %SCRIPT_FOLDER
+HU_JK_DB	= "%s/germDB/IgKJ.fa"   %SCRIPT_FOLDER
+HU_JL_DB	= "%s/germDB/IgLJ.fa"   %SCRIPT_FOLDER
+HU_JKL_DB	= "%s/germDB/IgKLJ.fa"  %SCRIPT_FOLDER
+HU_JHKL_DB	= "%s/germDB/IgHKLJ.fa" %SCRIPT_FOLDER
 
-DH_DB   = "%s/germDB/IgHD.fa"  %SCRIPT_FOLDER
+HU_DH_DB   = "%s/germDB/IgHD.fa"  %SCRIPT_FOLDER
 
-CH_DB	= "%s/germDB/IgHC_CH1.fa" %SCRIPT_FOLDER
-CK_DB	= "%s/germDB/IgKC.fa" %SCRIPT_FOLDER
-CL_DB	= "%s/germDB/IgLC.fa" %SCRIPT_FOLDER
-CKL_DB	= "%s/germDB/IgKLC.fa" %SCRIPT_FOLDER
-CHKL_DB	= "%s/germDB/IgHKLC.fa" %SCRIPT_FOLDER
+HU_CH_DB	= "%s/germDB/IgHC_CH1.fa" %SCRIPT_FOLDER
+HU_CK_DB	= "%s/germDB/IgKC.fa" %SCRIPT_FOLDER
+HU_CL_DB	= "%s/germDB/IgLC.fa" %SCRIPT_FOLDER
+HU_CKL_DB	= "%s/germDB/IgKLC.fa" %SCRIPT_FOLDER
+HU_CHKL_DB	= "%s/germDB/IgHKLC.fa" %SCRIPT_FOLDER
 
-dict_vgerm_db = {
-	'H'   : VH_DB,
-	'K'   : VK_DB,
-	'L'   : VL_DB,
-	'KL'  : VKL_DB,
-	'HKL' : VHKL_DB
-}
 
-dict_jgerm_db = {
-	'H'   : JH_DB,
-	'K'   : JK_DB,
-	'L'   : JL_DB,
-	'KL'  : JKL_DB,
-	'HKL' : JHKL_DB
-}
+RH_VH_DB	= "%s/germDB/IgHV_BU_DD.fasta"   %SCRIPT_FOLDER
+RH_VK_DB	= "%s/germDB/IgKV_BU_DD.fasta"   %SCRIPT_FOLDER
+RH_VL_DB	= "%s/germDB/IgLV_BU_DD.fasta"   %SCRIPT_FOLDER
+RH_VKL_DB	= "%s/germDB/IgKLV_BU_DD.fasta"  %SCRIPT_FOLDER
+RH_VHKL_DB	= "%s/germDB/IgHKLV_BU_DD.fasta" %SCRIPT_FOLDER
 
-dict_cgerm_db = {
-	'H'   : CH_DB,
-	'K'   : CK_DB,
-	'L'   : CL_DB,
-	'KL'  : CKL_DB,
-	'HKL' : CHKL_DB
-}
+RH_JH_DB	= "%s/germDB/IgHJ_BU_DD.fasta"   %SCRIPT_FOLDER
+RH_JK_DB	= "%s/germDB/IgKJ_BU_DD.fasta"   %SCRIPT_FOLDER
+RH_JL_DB	= "%s/germDB/IgLJ_BU_DD.fasta"   %SCRIPT_FOLDER
+RH_JKL_DB	= "%s/germDB/IgKLJ_BU_DD.fasta"  %SCRIPT_FOLDER
+RJH_HKL_DB	= "%s/germDB/IgHKLJ_BU_DD.fasta" %SCRIPT_FOLDER
+
+RH_DH_DB   = "%s/germDB/IgHD_BU_DD.fasta"  %SCRIPT_FOLDER
+
+RH_CH_DB	= "%s/germDB/IgHC_CH1_BU_DD.fasta" %SCRIPT_FOLDER
+RH_CK_DB	= "%s/germDB/IgKC_BU_DD.fasta" %SCRIPT_FOLDER
+RH_CL_DB	= "%s/germDB/IgLC_BU_DD.fasta" %SCRIPT_FOLDER
+RH_CKL_DB	= "%s/germDB/IgKLC_BU_DD.fasta" %SCRIPT_FOLDER
+RH_CHKL_DB	= "%s/germDB/IgHKLC_BU_DD.fasta" %SCRIPT_FOLDER
+
+
+#J motifs
+HU_JH_MOTIF   = "TGGGG"
+HU_JK_MOTIF   = "TT[C|T][G|A]G"
+HU_JL_MOTIF   = "TT[C|T][G|A]G"
+HU_JKL_MOTIF  = "TT[C|T][G|A]G"
+HU_JHKL_MOTIF = "(TGGGG|TT[C|T][G|A]G)"
+
+RH_JH_MOTIF   = "TGGGG"
+RH_JK_MOTIF   = "TT[C|T][G|A]G"
+RH_JL_MOTIF   = "TT[C|T][G|A]G"
+RH_JKL_MOTIF  = "TT[C|T][G|A]G"
+RH_JHKL_MOTIF = "(TGGGG|TTCGG|TT..GAA|TTTGGC|TTCTGT)"
 
 
 CMD_BLAST           = "%s %s %s -query %s -out %s -outfmt '6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand' -gapopen 5 -gapextend 2 -penalty -1 -reward 1 -evalue 1e-3 -max_target_seqs 10 -word_size %d"
