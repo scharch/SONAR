@@ -59,7 +59,7 @@ for command in [ [f"{SONARDIR}/SONAR/annotate/1.0-preprocess.py", "--input", "su
 #validate rearrangements output
 #at the moment, it seems like IgPhyML output varies a bit even with a specified seed, so skip that test for now.
 import hashlib
-checksums = { "output/tables/tests_rearrangements.tsv":"896086eeac85cff23fd4c5924069a8fc" }#, "output/sequences/nucleotide/tests_inferredAncestors.fa":"46b03fc95afec5fda950f048d99db34b"}
+checksums = { "output/tables/tests_rearrangements.tsv":"87f8dbc7356ef62de500833a38574abc" }#, "output/sequences/nucleotide/tests_inferredAncestors.fa":"46b03fc95afec5fda950f048d99db34b"}
 for toValidate in checksums:
 	h = hashlib.md5()
 	with open(toValidate, 'rb') as handle:
