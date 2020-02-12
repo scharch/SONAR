@@ -52,8 +52,10 @@ def main():
 
 	for umi in umi_iter:
 
-		#check read threshold
-		if umi['count'] < arguments['MINSIZE']:
+		#check thresholds
+		#for UMIs (isCell==False) use count, in case I eventually implement dereplication
+		#for metaconsenus (isCell==True), use len(seqs), because care about the number of UMIs, not the total reads
+		if (arguments['--isCell'] and len(umi['seqs']) < arguments['MINSIZE']) or (umi['count'] < arguments['MINSIZE'] and not arguments['--isCell']):
 			small += 1
 			continue
 
@@ -129,9 +131,9 @@ def main():
 
 						cons.description = ""
 						if (umi['cell']) not in results:
-							results[ umi['cell'] ] = { 'cell':umi['cell'], 'umi':umi['cell'], 'count':1, 'seqs':[cons] }
+							results[ umi['cell'] ] = { 'cell':umi['cell'], 'umi':umi['cell'], 'count':num_reads.group(2), 'seqs':[cons] }
 						else:
-							results[ umi['cell'] ]['count'] += 1
+							results[ umi['cell'] ]['count'] += num_reads.group(2)
 							results[ umi['cell'] ]['seqs'].append(cons)
 
 	with open(re.sub("cons_in","cons_out",arguments["PICKLE"]), 'wb') as pickle_out:
