@@ -18,7 +18,8 @@ Options:
 
 Split out from 1.0-preprocess.py by Chaim A Schramm on 2019-06-18.
 Added option for feature barcodes by CA Schramm 2019-10-08.
-Tweaked clustering thresholds by CAS 2020-02-04/
+Tweaked clustering thresholds by CAS 2020-02-04.
+Changed minUMIs to a per metaconsenus (instead of per cell) threshold by CAS 2020-02-12.
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
     All rights reserved.
@@ -56,7 +57,7 @@ def main():
 		#for UMIs (isCell==False) use count, in case I eventually implement dereplication
 		#for metaconsenus (isCell==True), use len(seqs), because care about the number of UMIs, not the total reads
 		if (arguments['--isCell'] and len(umi['seqs']) < arguments['MINSIZE']) or (umi['count'] < arguments['MINSIZE'] and not arguments['--isCell']):
-			small += 1
+			small += 1  #not correct for metaconsenus case
 			continue
 
 		if len(umi['seqs']) == 1:
@@ -120,12 +121,13 @@ def main():
 
 					num_reads = re.search(";seqs=(\d+);size=(\d+)",cons.id)
 					if num_reads:
+						if int(num_reads.group(2)) < arguments['MINSIZE']:
+							small += 1
+							continue
+
 						if arguments['--isCell']:
 							cons.id	 = "%s.%d cell_id=%s duplicate_count=%s consensus_count=%s"%( umi['cell'], seq_number, umi['cell'], num_reads.group(1), num_reads.group(2) )
 						else:
-							if int(num_reads.group(2)) < arguments['MINSIZE']:
-								small += 1
-								continue
 							else:
 								cons.id += ";consensus_count=%s" % num_reads.group(2) #save size annotation for further clustering/dereplication
 

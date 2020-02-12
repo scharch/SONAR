@@ -92,8 +92,8 @@ Options:
                                        be discarded. [default: 20]
     --minReads 1                   Minimum number of reads per UMI. UMIs with fewer reads will be
                                        discarded. [default: 3]
-    --minUMIs 1                    Minimum number of UMIs per cell. Cells with fewer UMIs will be
-                                       discarded. [default: 3]
+    --minUMIs 1                    Minimum number of UMIs per metaconsenus/final sequence. In theory,
+                                       a value >1 should help remove background contamination. [default: 1]
     --umiOutput file.fa            File in which to save the UMI-processed sequences. Ignored if
                                        UMIs are not present. [default: byUMI.fa]
     --cellOutput file.fa           File in which to save the cell-processed sequences. Ignored if
@@ -152,6 +152,8 @@ Split off `find_umis.py` and `cluster_umis.py` into separate helper scripts
     and option to parallelize these on a cluster by CAS 2019-06-19.
 Added code for feature barcoding by CAS 2019-10-08.
 Added species option by CAS 2020-02-06.
+Changed minUMIs to a per metaconsenus threshold and set default to 1 (for now)
+    by CAS 2020-02-12.
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -588,8 +590,8 @@ def main():
 						for c in chunk_dict['results']:
 							final_seqs  += chunk_dict['results'][c]['seqs']
 
-				print("%s: %d cells discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']) , file=sys.stderr)
-				print("%s: %d cells discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']) , file=logFile)
+				print("%s: %d sequences discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']) , file=sys.stderr)
+				print("%s: %d sequences discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']) , file=logFile)
 				with open( arguments['--cellOutput'], "w" ) as handle:
 					SeqIO.write( final_seqs, handle, "fasta" )
 
@@ -599,10 +601,7 @@ def main():
 
 		else:
 			#no UMIs present, only cell barcodes
-			#in this case, minUMIs effectively becomes a minReads per cell,
-			#    with no minimum on the reads per final sequence.
-			#Not clear this is the desired behavior, may need to add a
-			#    third case to the getUmiConsensus function.
+			#in this case, minUMIs effectively replaces minReads
 
 			#generate pickles to pass to consensus algorithm
 			cInd = 0
@@ -634,8 +633,8 @@ def main():
 					for c in chunk_dict['results']:
 						final_seqs  += chunk_dict['results'][c]['seqs']
 
-			print("%s: %d cells discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']), file=sys.stderr)
-			print("%s: %d cells discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']), file=logFile)
+			print("%s: %d sequences discarded because they contained fewer than %d reads..." % (datetime.datetime.now(), small, arguments['--minUMIs']), file=sys.stderr)
+			print("%s: %d sequences discarded because they contained fewer than %d reads..." % (datetime.datetime.now(), small, arguments['--minUMIs']), file=logFile)
 			with open( arguments['--cellOutput'], "w" ) as handle:
 				SeqIO.write( final_seqs, handle, "fasta" )
 
