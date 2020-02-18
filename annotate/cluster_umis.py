@@ -128,8 +128,7 @@ def main():
 						if arguments['--isCell']:
 							cons.id	 = "%s.%d cell_id=%s duplicate_count=%s consensus_count=%s"%( umi['cell'], seq_number, umi['cell'], num_reads.group(1), num_reads.group(2) )
 						else:
-							else:
-								cons.id += ";consensus_count=%s" % num_reads.group(2) #save size annotation for further clustering/dereplication
+							cons.id += ";consensus_count=%s" % num_reads.group(2) #save size annotation for further clustering/dereplication
 
 						cons.description = ""
 						if (umi['cell']) not in results:
