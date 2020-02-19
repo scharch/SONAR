@@ -132,9 +132,9 @@ def main():
 
 						cons.description = ""
 						if (umi['cell']) not in results:
-							results[ umi['cell'] ] = { 'cell':umi['cell'], 'umi':umi['cell'], 'count':num_reads.group(2), 'seqs':[cons] }
+							results[ umi['cell'] ] = { 'cell':umi['cell'], 'umi':umi['cell'], 'count':int(num_reads.group(2)), 'seqs':[cons] }
 						else:
-							results[ umi['cell'] ]['count'] += num_reads.group(2)
+							results[ umi['cell'] ]['count'] += int(num_reads.group(2))
 							results[ umi['cell'] ]['seqs'].append(cons)
 
 	with open(re.sub("cons_in","cons_out",arguments["PICKLE"]), 'wb') as pickle_out:
