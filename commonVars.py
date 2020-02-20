@@ -66,7 +66,7 @@ RH_JH_DB	= "%s/germDB/IgHJ_BU_DD.fasta"   %SCRIPT_FOLDER
 RH_JK_DB	= "%s/germDB/IgKJ_BU_DD.fasta"   %SCRIPT_FOLDER
 RH_JL_DB	= "%s/germDB/IgLJ_BU_DD.fasta"   %SCRIPT_FOLDER
 RH_JKL_DB	= "%s/germDB/IgKLJ_BU_DD.fasta"  %SCRIPT_FOLDER
-RJH_HKL_DB	= "%s/germDB/IgHKLJ_BU_DD.fasta" %SCRIPT_FOLDER
+RH_JHKL_DB	= "%s/germDB/IgHKLJ_BU_DD.fasta" %SCRIPT_FOLDER
 
 RH_DH_DB   = "%s/germDB/IgHD_BU_DD.fasta"  %SCRIPT_FOLDER
 
