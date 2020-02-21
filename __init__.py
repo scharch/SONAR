@@ -426,15 +426,15 @@ def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=Fals
 # -- BEGIN -- AIRR manipulation functions
 #
 
-def filterAirrTsv(rearrangementsFile, annotationList):
+def filterAirrTsv(rearrangementsFile, annotationList, exact=False):
 	good = 0
 
 	for r in airr.read_rearrangement( rearrangementsFile ):
 		keep = True
 		for filter in annotationList:
-			if len(filter['list']) > 1:
+			if len(filter['list']) > 1 or exact:
 				#want exact matches (will break if trying to match exactly on a single value - use regex '^foo$')
-				if r[filter['column']] not in filter['list']:
+				if str(r[filter['column']]) not in filter['list']:
 					keep = False
 					break
 			elif not re.search( filter['list'][0], r[filter['column']] ):
