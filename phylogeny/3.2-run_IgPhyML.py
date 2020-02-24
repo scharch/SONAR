@@ -21,8 +21,8 @@ and
       https://github.com/kbhoehn/IgPhyML
 
 
-Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick --noAnc --seed 123 -f ]
-       3.2-runIgPhyML.py -v IGHV3-30*18 [ [--species human --locus H] | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc --seed 123 -f ]
+Usage: 3.2-runIgPhyML.py -i input [ --format fasta --root IGHV1-2*02 --quick --noAnc --seed 123 --threads 1 -f ]
+       3.2-runIgPhyML.py -v IGHV3-30*18 [ [--species human --locus H] | --lib path/to/library.fa ] [ --seqs input.fa --natives natives.fa --quick --noAnc --seed 123 --threads 1 -f ]
 
 Options:
     -i input                   Manual alignment (in PHYLIP format) of the sequences to be
@@ -43,7 +43,7 @@ Options:
     -v IGHV3-30*18             Assigned germline V gene of known antibodes, for use in
                                   rooting the trees. Include allele designation.
     --species human            Which species to use with the --locus parameter. Current
-	                              options are human and rhesus. [default: human]
+                                  options are human and rhesus. [default: human]
     --locus H                  Specify use of V heavy/kappa/lambda germlines libraries,
                                   respectively. Mutually exclusive with --lib. [default: H]
     --lib path/to/library.fa   Optional custom germline library (eg for Mouse or from IgDiscover).
@@ -52,6 +52,7 @@ Options:
     --natives natives.fa       A fasta file containing known sequences to be included in
                                   the tree.
     --noAnc                    Skip recontruction of ancestral sequences to save time [default: False]
+    --threads 1                Number of threads that IgPhyML should use [default: 1].
     --seed 123                 Initial random seed to pass to IgPhyML.
     -f                         Force a restart of the analysis, even if there are files from
                                   a previous run in the working directory.
@@ -63,6 +64,7 @@ Changed tree-building engine to IgPhyML and renamed by CAS 2018-10-22.
 Added gap handling (ported from 3.3) by CAS 2018-10-23.
 Added option to skip ancestor recontruction by CA Schramm 2019-07-31.
 Added species option to match new handling of defaults by CAS 2020-02-06.
+Added threads option by CAS 2020-02-11.
 
 Copyright (c) 2011-2020 Columbia University Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -240,12 +242,11 @@ def main():
 
 	#now call IgPhyML
 	#fast initial tree
-	opts = ["-s", "SPR"]
-	if arguments['--quick']:
-		opts=[]
+	opts = [ "--threads", arguments['--threads'] ]
+	if not arguments['--quick']:
+		opts += ["-s", "SPR"]
 	if arguments['--seed'] is not None:
 		opts += [ "--r_seed", arguments['--seed'] ]
-	print(opts)
 	#set an environmental variable so that IgPhyML can find its libraries
 	os.environ.update( { 'IGPHYML_PATH' : '%s/third-party/src/motifs'%SCRIPT_FOLDER } )
 	s = subprocess.Popen([igphyml, "-i", "%s/infile" % prj_tree.phylo,
@@ -257,7 +258,7 @@ def main():
 		#Some libraries needed for optimized execution are missing
 		#  Try again with a version compiled without optimizations
 		s = subprocess.Popen([igphyml_slow, "-i", "%s/infile" % prj_tree.phylo,
-				      "-m", "GY", "-w", "MO", "-t", "e", "--run_id", "gy94"] + opts,
+				      "-m", "GY", "-w", "MO", "-t", "e", "--run_id", "gy94"] + opts[2:], #no threading option available
 				     universal_newlines=True, stderr=subprocess.PIPE)
 		o,e = s.communicate()
 
@@ -266,9 +267,11 @@ def main():
 
 
 	#Refine tree with AID-specific hotpsot motifs
-	opts = ['-o', 'tlr']
+	opts = [ "--threads", arguments['--threads'] ]
 	if arguments['--quick']:
-		opts = ['-o', 'lr']
+		opts += ['-o', 'lr']
+	else:
+		opts += ['-o', 'tlr']
 	if arguments['--seed'] is not None:
 		opts += [ "--r_seed", arguments['--seed'] ]
 
@@ -285,7 +288,7 @@ def main():
 				  "-m", "HLP17", "--root", germ_id,
 				  "-u", "%s/infile_igphyml_tree.txt_gy94" % prj_tree.phylo,
 				  "--motifs", "FCH", "--run_id", "hlp17",
-				  "--ambigfile", "%s/ambigfile.txt" % prj_tree.phylo] + opts,
+				  "--ambigfile", "%s/ambigfile.txt" % prj_tree.phylo] + opts[2:], #no threading option available
 				 universal_newlines=True, stderr=subprocess.PIPE)
 		o,e = s.communicate()
 
