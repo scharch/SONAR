@@ -91,14 +91,17 @@ def main():
 	outwriter = csv.writer( output, delimiter="\t" )
 	outheader = ["cell","status","isotype"]
 	if len(hashDict) > 0:
-		outheader += ["sample"]
+		outheader += ["hash_sample"]
 	if len(featureDict) > 0:
 		outheader += featureDict["keys"]
 	outheader += ["productive_IGH","total_IGH","IGH_junctions","productive_IGK","total_IGK","IGK_junctions","productive_IGL","total_IGL","IGL_junctions"]
 	outwriter.writerow(outheader)
 
 	data = airr.read_rearrangement(arguments['--rearrangements'])
-	cells_only = airr.derive_rearrangement(re.sub(".tsv", "_single-cell.tsv", arguments['--rearrangements']), arguments['--rearrangements'],fields=["cell_status"])
+	fields = ["cell_status"]
+	if len(hashDict) > 0:
+		fields += ["hash_sample"]
+	cells_only = airr.derive_rearrangement(re.sub(".tsv", "_single-cell.tsv", arguments['--rearrangements']), arguments['--rearrangements'],fields=fields)
 
 	#assume cells might not be grouped together, so make a first pass
 	#    to collect everything
@@ -181,10 +184,12 @@ def main():
 				for loc in cell_processed:
 					for chain in cell_processed[loc]:
 						chain['cell_status'] = status
+						if len(hashDict)>0:
+							chain['hash_sample']=hashDict.get(chain['cell_id'],['unknown'])[0]
 						cells_only.write( chain )
 
 		#now log the cell
-		outwriter.writerow( [c, status, h_type] + hashDict.get(c,['']*(len(hashDict)>0)) + featureDict.get(c, ['']*len(featureDict.get("keys",[]))) +
+		outwriter.writerow( [c, status, h_type] + hashDict.get(c,['unknown']*(len(hashDict)>0)) + featureDict.get(c, ['0']*len(featureDict.get("keys",[]))) +
 				   [ len(cell_productive['IGH']), len(cell_processed['IGH']), ";".join([chain['junction_aa'] for chain in cell_processed['IGH']]),
 				   len(cell_productive['IGK']), len(cell_processed['IGK']), ";".join([chain['junction_aa'] for chain in cell_processed['IGK']]),
 				   len(cell_productive['IGL']), len(cell_processed['IGL']), ";".join([chain['junction_aa'] for chain in cell_processed['IGL']]) ] )
