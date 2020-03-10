@@ -40,7 +40,7 @@ sonar id-div -a /SONAR/sample_data/CAP256-VRC26.01-12H.fa -t 4
 
 if [[ -n "$DISPLAY" ]]; then
 	sonar get_island output/tables/cap256-week34H_goodVJ_unique_id-div.tab --mab CAP256-VRC26.01 --mab CAP256-VRC26.08
-	sonar getfasta -l output/tables/islandSeqs.txt  -f output/sequences/nucleotide/cap256-week34H_goodVJ_unique.fa -o output/sequences/nucleotide/cap256-week34H_islandSeqs.fa
+	sonar getfastafromlist -l output/tables/islandSeqs.txt  -f output/sequences/nucleotide/cap256-week34H_goodVJ_unique.fa -o output/sequences/nucleotide/cap256-week34H_islandSeqs.fa
 else
 	cp /SONAR/sample_data/cap256-week34H_islandSeqs.fa output/sequences/nucleotide
 fi
@@ -59,7 +59,7 @@ sonar cluster_Sequences --id .97 --min2 2
 sonar id-div -a /SONAR/sample_data/CAP256-VRC26.01-12H.fa -t 4
 if [[ -n "$DISPLAY" ]]; then
 	sonar get_island output/tables/cap256-week48H_goodVJ_unique_id-div.tab --mab CAP256-VRC26.01 --mab CAP256-VRC26.08
-	sonar getfasta -l output/tables/islandSeqs.txt  -f output/sequences/nucleotide/cap256-week48H_goodVJ_unique.fa -o output/sequences/nucleotide/cap256-week48H_islandSeqs.fa
+	sonar getfastafromlist -l output/tables/islandSeqs.txt  -f output/sequences/nucleotide/cap256-week48H_goodVJ_unique.fa -o output/sequences/nucleotide/cap256-week48H_islandSeqs.fa
 else
 	cp /SONAR/sample_data/cap256-week48H_islandSeqs.fa output/sequences/nucleotide
 fi
@@ -76,7 +76,7 @@ sonar cluster_Sequences --id .97 --min2 2
 sonar id-div -a /SONAR/sample_data/CAP256-VRC26.01-12H.fa -t 4
 if [[ -n "$DISPLAY" ]]; then
 	sonar get_island output/tables/cap256-week59H_goodVJ_unique_id-div.tab --mab CAP256-VRC26.01 --mab CAP256-VRC26.08
-	sonar getfasta -l output/tables/islandSeqs.txt  -f output/sequences/nucleotide/cap256-week59H_goodVJ_unique.fa -o output/sequences/nucleotide/cap256-week59H_islandSeqs.fa
+	sonar getfastafromlist -l output/tables/islandSeqs.txt  -f output/sequences/nucleotide/cap256-week59H_goodVJ_unique.fa -o output/sequences/nucleotide/cap256-week59H_islandSeqs.fa
 else
 	cp /SONAR/sample_data/cap256-week59H_islandSeqs.fa output/sequences/nucleotide
 fi
