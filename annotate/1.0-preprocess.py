@@ -170,7 +170,6 @@ from multiprocessing import Pool
 import datetime
 from functools import partial
 import random, math
-print(sys.argv[0])
 try:
 	from SONAR.annotate import *
 except ImportError:
@@ -654,9 +653,9 @@ def main():
 		if arguments['--cluster']:
 			arguments['--threads'] = None
 
-		for opt in [ '--locus', '--lib', '--npf', '--minl', '--maxl', '--jlib', '--dlib',
-					 '--clib', '--jmotif', '--nterm', '--file', '--min1', '--min2',
-					 '--id', '--maxgaps', '--rearrangements', '--threads']:
+		for opt in [ '--locus', '--lib', '--species', '--npf', '--minl', '--maxl',
+           '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file',
+					 '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--threads']:
 			if arguments[opt] is not None:
 				cmd += " %s '%s'" % (opt, arguments[opt])
 		for flag in ['--derep', '--cluster', '-f', '--runJBlast', '--noD', '--noC',
