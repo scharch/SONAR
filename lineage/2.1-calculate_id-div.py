@@ -21,7 +21,7 @@ Options:
                            (the old format of "V_gene=" will also still work).
                            [default: output/sequences/nucleotide/<project>_goodVJ_unique.fa]
      -g germline.fa     File with germline genes used in annotation step.
-                           [default: <SONAR>/germDB/IgHKLV.fa]
+                           [default: <SONAR>/germDB/IgHKLV_cysTruncated.fa]
      -a antibodies.fa   Fasta file with the sequences of known antibodies that the
                            NGS data should be compared to.
      -o output          Specify directory and file stem for output; "_coverage.tab"
