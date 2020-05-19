@@ -12,6 +12,7 @@ MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 ENV TERM linux
 
 WORKDIR /
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 #install Python
 RUN apt-get update
