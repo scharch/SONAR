@@ -6,13 +6,12 @@
 #  information.                                        #
 ########################################################
 
-FROM ubuntu
+FROM ubuntu:bionic
 MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 
-ENV TERM linux
+ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 #install Python
 RUN apt-get update
@@ -102,7 +101,6 @@ RUN pip3 install airr
 RUN pip3 install python-Levenshtein
 
 #install R
-ENV DEBIAN_FRONTEND=noninteractive
 RUN echo "deb http://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/" >> /etc/apt/sources.list
 RUN gpg --keyserver keyserver.ubuntu.com --recv-key 51716619E084DAB9
 RUN gpg -a --export 51716619E084DAB9 | apt-key add -
