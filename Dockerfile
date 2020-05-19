@@ -9,6 +9,8 @@
 FROM ubuntu
 MAINTAINER Chaim Schramm chaim.schramm@nih.gov
 
+ENV TERM linux
+
 WORKDIR /
 
 #install Python
