@@ -15,7 +15,7 @@ This script uses CDR3 identity to group unique sequences from a given data set
       Sequences are first grouped by unique V and J gene assignments and then
       VSearch is used to cluster the CDR3 sequences.
 
-Usage: 2.4-cluster_into_groups.py [ --id <90> --gaps <0> --natives FASTA (-v IGHV -j IGHJ) (--full FASTA --cdr3 FASTA) -t 1 ]
+Usage: 2.4-cluster_into_groups.py [ --id <90> --gaps <0> --natives FASTA (-v IGHV -j IGHJ) (--full FASTA --cdr3 FASTA) --singlecell -t 1 ]
 
 Options:
     --id <90>         Clustering threshold (%) for CDR3 sequence identity (nucleotide).
@@ -44,6 +44,9 @@ Options:
                          than SONAR's "goodVJ_unique" file. Must specify --cdr3, as well.
     --cdr3 FASTA      CDR3 nucleotide sequences extracted from custom sequence file if
                          not using SONAR's "goodVJ_unique" file. Must specify --full, too.
+    --singlecell      A flag to indicate single cell data - heavy and light chain data will
+                         be used jointly to define clones. output/tables/rearrangements_single-cell.tsv
+                         (output of 1.5) must be present. [default: False]
     -t 1              Number of threads used [default: 1]
 
 
@@ -58,6 +61,7 @@ Edited to use Py3 and DocOpt by CAS 2018-08-29.
 Updated for AIRR-format compatibility by CAS 2018-10-18.
 Added multithreading by CAS 2019-02-05.
 Generalized germline gene regexes by CAS 2020-01-02.
+Added joint heavy-light clonal partitioning for single cells by CAS 2020-01-16.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -68,6 +72,8 @@ import sys
 from docopt import docopt
 from collections import *
 from multiprocessing import Pool
+from Bio import Seq
+from Bio.SeqRecord import SeqRecord
 import itertools
 import airr
 
@@ -136,29 +142,98 @@ def processClusters( iter_tuple ):
 				hit  = re.sub(";size=\d+.*","",row[8])
 				cent = re.sub(";size=\d+.*","",row[9]) # just a * for S rows, use hit as cent
 
-				if cent in natives:
-					#I am excluding clusters with natives as centroids because they only contain other natives
-					#Since I've assigned them a size of 1, cluster_size will try them last, and since I added them
-					# to the bottom of the file after all the NGs sequences, they should also be the last of any
-					# other singletons to be tried, as well.
-					continue
-				elif row[0] == "S":
-					if hit in natives:
-						continue
+				if row[0] == "S":
 					centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1], nats=[] )
+					if hit in natives:
+						centroidData[ hit ][ 'nats' ].append(hit)
+					else:
+						clusterSizes[ hit ] = 1#seqSize[ hit ]
 					clusterLookup[ hit ] = hit
-					clusterSizes[ hit ] = 1#seqSize[ hit ]
 				elif row[0] == "H":
 					clusterLookup[ hit ] = cent
 					if hit in natives:
 						centroidData[ cent ][ 'nats' ].append( hit )
 					else:
-						#don't want to count natives in NGS clone size
 						clusterSizes[ cent ] += 1#seqSize[ hit ]
 				else:
 					break #skip "C" lines
 
 	return { 'cl':clusterLookup, 'cd':centroidData, 'cs':clusterSizes }
+
+
+
+def jointClonality(clusters, cells, cdr3Info, natCells):
+
+	#start by creating a graph connecting each pair of 'chain clones' that have been seen
+	# together in an individual cell
+	# use the `cluster` dictionary to find the centroid to which each chain has been assigned
+	cloneGraph = Graph()
+	for c in cells:
+		for l1 in range(len(cells[c])):
+			for l2 in range(l1+1, len(cells[c])):
+				cloneGraph.add_edge( clusters[ cells[c][l1] ], clusters[ cells[c][l2] ] )
+
+
+	#now decompose the graph into "maximal cliques" to identify 'cell clones'
+	# probably overkill since the graph will mostly be disjoint, with clearly identifiable
+	# clones, but this way I don't have to think about edge cases (no pun intended)
+	cellClones = Counter()
+	for cliq in find_cliques(cloneGraph):
+		cellClones[ frozenset(cliq) ] = -1
+
+
+	#Go back through the list of cells and assign them to clones
+	assignments = dict()
+	natClones = defaultdict(list)
+	ambiguous = 0
+	for c in cells:
+		possibleClones = []
+		for cc in cellClones:
+			if frozenset([clusters[s] for s in cells[c]]) <= cc:
+				possibleClones.append(cc)
+		if len(possibleClones) == 1:
+				assignments[c] = possibleClones[0]
+				if cellClones[ possibleClones[0] ] < 0:
+					cellClones[ possibleClones[0] ] = 0 #kludge to distinguish between those unseen and those with only "natives"
+				if c in natCells:
+					natClones[ possibleClones[0] ].append( c )
+				else:
+					cellClones[ possibleClones[0] ] += 1
+		else:
+			#no matches found, probably ambiguous
+			# but check if its a singleton that never appeared with any other chain
+			if len(possibleClones) == 0 and len(cells[c]) == 1:
+				assignments[c] = frozenset([clusters[s] for s in cells[c]])
+				if c in natCells:
+					natClones[ frozenset([clusters[s] for s in cells[c]]) ].append( c )
+					cellClones[ frozenset([clusters[s] for s in cells[c]]) ] = 0
+				else:
+					cellClones[ frozenset([clusters[s] for s in cells[c]]) ] = 1
+
+			else:
+				#no assignment
+				ambiguous += 1
+
+
+	#issue warning if too many are ambiguous/unassignable
+	if ambiguous > len(cells)/20:
+		print( "Warning: More than 5% of cells had ambiguous or unassignable clonality.", file=sys.stderr)
+
+	#finally, collect the detailed 'chain clone' data for each 'cell clone'
+	cloneInfo = dict()
+	for cc in cellClones:
+		nt = []
+		aa = []
+		for chain in cc:
+			nt.append( f"{cdr3Info[chain]['genes']}:{cdr3Info[chain]['cdr3_seq']}" )
+			aa.append( f"{cdr3Info[chain]['genes']}:{cdr3Info[chain]['cdr3_seq'].translate()}" )
+
+		cloneInfo[cc] = { 'aa':",".join(sorted([x.upper() for x in aa])), 'nt':",".join(sorted([x.upper() for x in nt])), 'nats':"" }
+		if cc in natClones:
+			cloneInfo[cc]['nats'] = natClones[cc]
+
+	return assignments, cloneInfo, cellClones
+
 
 
 def main():
@@ -168,47 +243,89 @@ def main():
 	cdr3_info = dict()
 	seqSize = Counter()
 
-	#start off by getting size annotations
-	for read in generate_read_fasta(arguments['--full']):
-		seqSize[read.id] = 1
-		check = re.search( "cluster_count=(\d+)", read.description)
-		if check:
-			seqSize[read.id] = int(check.group(1))
+	#AIRR TSV has to be parsed differently
+	if arguments['--singlecell']:
 
+		cell_dict = defaultdict(list)
+		for r in filterAirrTsv(f"{prj_tree.tables}/{prj_name}_rearrangements_single-cell.tsv", [{'column':'cell_status','list':["^(?:(?!multi|none).)*$"]}]):
 
-	v_gene_pat = re.compile("(?:v_call|V_gene)=([^*]+)")
-	j_gene_pat = re.compile("(?:j_call|J_gene)=([^*]+)")
-	for sequence in SeqIO.parse(open(arguments['--cdr3'], "r"), "fasta"):
-		vgene = re.search(v_gene_pat, sequence.description)
-		jgene = re.search(j_gene_pat, sequence.description)
-		if vgene and jgene:
-			key = vgene.group(1) + "_" + jgene.group(1)
-			key = re.sub("[()/]","",key) #so /OR or (II) genes don't screw up the file system
+			#short CDR3s can't be clustered and probably indicate a bad sequence anyway
+			if r['junction_length'] < 15:
+				continue
+
+			#skip sequences with missing gene assignments
+			if r['v_call'] == "" or r['j_call'] == "":
+				continue
+
+			#for network analysis
+			cell_dict[ r['cell_id'] ].append(r['sequence_id'])
+
+			#get size
+			seqSize[ r['sequence_id'] ] = 1
+			if not r['duplicate_count'] == "":
+				seqSize[ r['sequence_id'] ] = r['duplicate_count']
+
+			#get gene assignments
+			key = r['v_call'].split("*")[0] + "_" + r['j_call'].split("*")[0]
 			if key not in vj_partition:
 				temp = "%s/%s.fa"%(prj_tree.lineage, key)
 				vj_partition[key] = { 'group':key, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
 
 			vj_partition[key]['count'] += 1
-			vj_partition[key]['ids'].append(sequence.id)
-			cdr3_info[sequence.id] = { 'cdr3_len' : int(len(sequence.seq)/3), 'cdr3_seq' : sequence.seq.translate() }
+			vj_partition[key]['ids'].append(r['sequence_id'])
+			cdr3_info[ r['sequence_id'] ] = { 'genes' : key, 'cdr3_seq' : Seq.Seq(r['junction']) }
 
-			#make sizes available to vsearch
-			sequence.id += ";size=%d" % seqSize[sequence.id] #do this even if there's no label
-									 #so I don't need to divide the cases for vsearch
+			#create a sequence object
+			tempSeq = SeqRecord( id=r['sequence_id'], seq=Seq.Seq(re.sub("[-.+]","",r['junction'])) )
+			tempSeq.id += ";size=%d" % seqSize[ r['sequence_id'] ] #do this even if there's no label
+									                               #so I don't need to divide the cases for vsearch
 			#and write
-			SeqIO.write([sequence], vj_partition[key]['handle'], 'fasta')
-		else:
-			print("Couldn't find V and J genes for %s %s, skipping..." % (sequence.id, sequence.description))
+			SeqIO.write([tempSeq], vj_partition[key]['handle'], 'fasta')
+
+	else:
+		#start off by getting size annotations
+		for read in generate_read_fasta(arguments['--full']):
+			seqSize[read.id] = 1
+			check = re.search( "cluster_count=(\d+)", read.description)
+			if check:
+				seqSize[read.id] = int(check.group(1))
+
+		v_gene_pat = re.compile("(?:v_call|V_gene)=([^*\s]+)")
+		j_gene_pat = re.compile("(?:j_call|J_gene)=([^*\s]+)")
+		for sequence in SeqIO.parse(open(arguments['--cdr3'], "r"), "fasta"):
+			vgene = re.search(v_gene_pat, sequence.description)
+			jgene = re.search(j_gene_pat, sequence.description)
+			if vgene and jgene:
+				key = vgene.group(1) + "_" + jgene.group(1)
+				key = re.sub("[()/]","",key) #so /OR or (II) genes don't screw up the file system
+				if key not in vj_partition:
+					temp = "%s/%s.fa"%(prj_tree.lineage, key)
+					vj_partition[key] = { 'group':key, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+
+				vj_partition[key]['count'] += 1
+				vj_partition[key]['ids'].append(sequence.id)
+				cdr3_info[sequence.id] = { 'genes' : key, 'cdr3_seq' : sequence.seq }
+
+				#make sizes available to vsearch
+				sequence.id += ";size=%d" % seqSize[sequence.id] #do this even if there's no label
+										 #so I don't need to divide the cases for vsearch
+				#and write
+				SeqIO.write([sequence], vj_partition[key]['handle'], 'fasta')
+			else:
+				print("Couldn't find V and J genes for %s %s, skipping..." % (sequence.id, sequence.description))
 
 
 	global natives
 	natives = dict()
+	natCellList = []
 	if arguments['--natives'] is not None:
 		natives = load_fastas(arguments['--natives'])
 		for n, s in natives.items():
 			if arguments['-v'] is not None:
 				key = arguments['-v'] + "_" + arguments['-j']
 			else:
+				v_gene_pat = re.compile("(?:v_call|V_gene)=([^*\s]+)")
+				j_gene_pat = re.compile("(?:j_call|J_gene)=([^*\s]+)")
 				vgene = re.search(v_gene_pat, s.description)
 				jgene = re.search(j_gene_pat, s.description)
 				if vgene and jgene:
@@ -219,14 +336,23 @@ def main():
 			key = re.sub("[()/]","",key) #wouldn't expect this to be relevant for natives, but just in case...
 
 			if key not in vj_partition:
-				print( "No NGS sequences with the same V/J genes as native sequence %s (%s); skipping..." % (n, key) )
-				continue
+				temp = "%s/%s.fa"%(prj_tree.lineage, key)
+				vj_partition[key] = { 'group':key, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+
+			if arguments['--singlecell']:
+				natCellID = re.search( "cell_id=(\S+)", s.description )
+				if natCellID:
+					cell_dict[ natCellID.group(1) ].append(n)
+					natCellList.append(natCellID.group(1))
+				else:
+					sys.exit( f"Couldn't find `cell_id=*` annotation for native sequence {n}. Please add this information to the fasta def line." )
+
 
 			seqSize[ n ] = 0
 			s.id += ";size=1"
 			vj_partition[key]['count'] += 1
 			vj_partition[key]['ids'].append( n )
-			cdr3_info[ n ] = { 'cdr3_len' : int(len(s.seq)/3), 'cdr3_seq' : s.seq.translate() }
+			cdr3_info[ n ] = { 'genes': key, 'cdr3_seq' : s.seq }
 			SeqIO.write([ s ], vj_partition[key]['handle'], 'fasta')
 
 	#close the file handles and delete the reference, so dict can be pickled for multithreading
@@ -255,54 +381,105 @@ def main():
 		centroidData.update(d['cd'])
 		clusterSizes.update(d['cs'])
 
-	#now process all clusters and do tabular output
-	with open( "%s/%s_lineages.txt" % (prj_tree.tables, prj_name), "w" ) as handle:
-		writer = csv.writer(handle, delimiter=sep)
-		writer.writerow([ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa",
-				  "junction_aa", "clone_count", "included_mAbs" ])
-		for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
-			centroidData[centroid]['rank'] = rank+1
-			writer.writerow([ "%05d"%(rank+1), centroid, centroidData[centroid]['vgene'], centroidData[centroid]['jgene'],
-					  cdr3_info[centroid]['cdr3_len'], cdr3_info[centroid]['cdr3_seq'], size, ",".join(centroidData[centroid]['nats']) ])
+	if arguments['--singlecell']:
+		clusterLookup,centroidData,clusterSizes = jointClonality(clusterLookup, cell_dict, cdr3_info, natCellList)
 
-	#do sequence output
-	notationFile = re.sub( "\.f.+", "_lineageNotations.fa", arguments['--full'] )
-	repFile	     = re.sub( "\.f.+", "_lineageRepresentatives.fa", arguments['--full'] )
+		#now process all clusters and do tabular output
+		with open( "%s/%s_lineages.txt" % (prj_tree.tables, prj_name), "w" ) as handle:
+			writer = csv.writer(handle, delimiter=sep)
+			writer.writerow([ "clone_id", "clone_count", "mAb_count", "junctions_nt", "junctions_aa", "included_mAbs" ])
+			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
+				if size < 0:
+					break
+				centroidData[centroid]['rank'] = "%05d" % (rank+1)
+				writer.writerow([ centroidData[centroid]['rank'], size, len(centroidData[centroid]['nats']), centroidData[centroid]['nt'],
+					  				centroidData[centroid]['aa'], ",".join(sorted(centroidData[centroid]['nats'])) ])
 
-	rep_seqs = []
-	with open( notationFile, "w" ) as handle:
-		for read in generate_read_fasta(arguments['--full']):
-			if ";" in read.id:
-				read.id = read.id[0:8] #this is for raw VSearch output with size annotations
-						       #shouldn't be relevant in pipeline context
-			if read.id not in clusterLookup: continue
-			read.description += " clone_id=%05d clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'],
-													   clusterLookup[read.id], clusterSizes[clusterLookup[read.id]] )
-			SeqIO.write([read],handle,"fasta")
-			if read.id in centroidData:
-				rep_seqs.append(read)
+		#update the cell_stats table
+		with open("updateCellStats.tsv", 'w') as outfh:
+			writer = csv.writer(outfh, delimiter="\t")
+			with open( f"{prj_tree.tables}/{prj_name}_cell_stats.tsv", 'r') as infh:
+				reader = csv.reader(infh, delimiter="\t")
+				header = next(reader)
+				hasClone = True
+				if 'clone' not in header:
+					hasClone = False
+					header.insert(2, 'clone')
+				writer.writerow(header)
+				for row in reader:
+					clone_id = ""
+					if row[0] in clusterLookup:
+						clone_id = centroidData[ clusterLookup[row[0]] ]['rank']
+					if hasClone:
+						row[2] = clone_id
+					else:
+						row.insert( 2, clone_id )
+					writer.writerow( row )
 
-	with open( repFile, "w" ) as handle:
-		#use a sort to put them out in order of lineage rank (ie size)
-		SeqIO.write( sorted(rep_seqs, key=lambda cent: centroidData[cent.id]['rank']), handle, "fasta" )
+		os.rename( "updateCellStats.tsv", f"{prj_tree.tables}/{prj_name}_cell_stats.tsv" )
 
-	#do AIRR output
-	if os.path.dirname(arguments['--full']) == prj_tree.nt:
-		if os.path.isfile("%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name)):
-			withLin = airr.derive_rearrangement( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name),
-							     fields=["clone_id", "clone_count"])
-			for r in airr.read_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) ):
-				if r['sequence_id'] in clusterLookup:
-					r['clone_id']	 = "%05d"%centroidData[ clusterLookup[ r['sequence_id'] ] ][ 'rank' ]
-					r['clone_count'] = clusterSizes[ clusterLookup[ r['sequence_id'] ] ]
-				else:
-					#prevent mix-and-match data if this gets run multiple times with multiple settings
-					r['clone_id']	 = ""
-					r['clone_count'] = ""
 
-				withLin.write(r)
-			withLin.close()
-			os.rename( "updateRearrangements.tsv", "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name) )
+	else:
+
+		#regular bulk sequencing
+
+		#now process all clusters and do tabular output
+		with open( "%s/%s_lineages.txt" % (prj_tree.tables, prj_name), "w" ) as handle:
+			writer = csv.writer(handle, delimiter=sep)
+			writer.writerow([ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa",
+					  "junction_aa", "clone_count", "mAb_count", "included_mAbs" ])
+			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
+				centroidData[centroid]['rank'] = "%05d" % (rank+1)
+				writer.writerow([ "%05d"%(rank+1), centroid, centroidData[centroid]['vgene'], centroidData[centroid]['jgene'],
+						  int(len(cdr3_info[centroid]['cdr3_seq'])/3), cdr3_info[centroid]['cdr3_seq'].translate(), size, len(centroidData[centroid]['nats']), ",".join(centroidData[centroid]['nats']) ])
+
+		#do sequence output
+		notationFile = re.sub( "\.f.+", "_lineageNotations.fa", arguments['--full'] )
+		repFile	     = re.sub( "\.f.+", "_lineageRepresentatives.fa", arguments['--full'] )
+
+		rep_seqs = []
+		with open( notationFile, "w" ) as handle:
+			for read in generate_read_fasta(arguments['--full']):
+				if ";" in read.id:
+					read.id = read.id[0:8] #this is for raw VSearch output with size annotations
+							       #shouldn't be relevant in pipeline context
+				if read.id not in clusterLookup: continue
+				read.description += " clone_id=%s clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'],
+														   clusterLookup[read.id], clusterSizes[clusterLookup[read.id]] )
+				SeqIO.write([read],handle,"fasta")
+				if read.id in centroidData:
+					rep_seqs.append(read)
+
+		with open( repFile, "w" ) as handle:
+			#use a sort to put them out in order of lineage rank (ie size)
+			SeqIO.write( sorted(rep_seqs, key=lambda cent: centroidData[cent.id]['rank']), handle, "fasta" )
+
+
+	#do AIRR output (both bulk and single cell)
+	if arguments['--singlecell'] or "output/sequences/nucleotide" in arguments['--full']:
+		if arguments['--singlecell']:
+			original = "%s/%s_rearrangements_single-cell.tsv"%(prj_tree.tables, prj_name)
+		elif os.path.isfile("%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name)):
+			original = "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name)
+		else:
+			sys.exit(0) #no rearrangements file, all done
+
+		withLin = airr.derive_rearrangement( "updateRearrangements.tsv", original, fields=["clone_id", "clone_count"])
+		for r in airr.read_rearrangement( original ):
+			if r['sequence_id'] in clusterLookup:
+				r['clone_id']	 = centroidData[ clusterLookup[ r['sequence_id'] ] ][ 'rank' ]
+				r['clone_count'] = clusterSizes[ clusterLookup[ r['sequence_id'] ] ]
+			elif arguments['--singlecell'] and r['cell_id'] in clusterLookup:
+				r['clone_id']	 = centroidData[ clusterLookup[ r['cell_id'] ] ][ 'rank' ]
+				r['clone_count'] = clusterSizes[ clusterLookup[ r['cell_id'] ] ]
+			else:
+				#prevent mix-and-match data if this gets run multiple times with multiple settings
+				r['clone_id']	 = ""
+				r['clone_count'] = ""
+
+			withLin.write(r)
+		withLin.close()
+		os.rename( "updateRearrangements.tsv", original )
 
 
 
@@ -330,7 +507,21 @@ if __name__ == '__main__':
 	prj_tree = ProjectFolders(os.getcwd())
 	prj_name = fullpath2last_folder(prj_tree.home)
 
-	if arguments['--full'] is not None:
+	if arguments['--singlecell']:
+
+		#check for the networkx package
+		try:
+			from networkx import Graph, find_cliques
+		except ModuleNotFoundError:
+			sys.exit("The networkx package is required for single cell clonal clustering.\nPlease run `pip3 install networkx --user` and then try again.")
+
+		#check for AIRR TSV
+		if not os.path.isfile(f"{prj_tree.tables}/{prj_name}_rearrangements_single-cell.tsv"):
+			sys.exit(f"{prj_tree.tables}/{prj_name}_rearrangements_single-cell.tsv does not exist.\nPlease run 1.5-single_cell_statistics.py and try again.")
+
+
+	#regular (old) way
+	elif arguments['--full'] is not None:
 		if not os.path.isfile(arguments['--full']):
 			sys.exit("Cannot find sequence file %s" % arguments['--full'])
 		if not os.path.isfile(arguments['--cdr3']):
