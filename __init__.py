@@ -6,8 +6,10 @@ Core functions for SONAR
 
 Created by Zhenhai Zhang on 2011-04-05 as mytools.py
 Edited and commented for publication by Chaim A Schramm on 2015-02-10.
+Added column comparisons and accept a RearrangementReader object for
+     filterAirrTsv by CA Schramm on 2020-06-11.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 """
 
@@ -429,18 +431,37 @@ def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=Fals
 def filterAirrTsv(rearrangementsFile, annotationList, exact=False):
 	good = 0
 
-	for r in airr.read_rearrangement( rearrangementsFile ):
+	try:
+		#see if it's a file name
+		reader = airr.read_rearrangement( rearrangementsFile )
+	except TypeError:
+		#assume it's an already open RearrangementReader object instead
+		reader = rearrangementsFile
+
+	for r in reader:
 		keep = True
 		for filter in annotationList:
-			if len(filter['list']) > 1 or exact:
-				#want exact matches (will break if trying to match exactly on a single value - use regex '^foo$')
+
+			#check first for backtick syntaxt to indicate comparison between columns
+			second_column = re.match( "^`(.+)`$", filter['list'][0] )
+			if second_column:
+				if not r[filter['column']] == r[ second_column.groups()[0] ]:
+					keep = False
+					break
+
+			#if not, check for multiple possible matches or the exact flag
+			elif len(filter['list']) > 1 or exact:
 				if str(r[filter['column']]) not in filter['list']:
 					keep = False
 					break
+
+			#if there's only one value and the exact flag is not set,
+			#   treat it as a regex pattern
 			elif not re.search( filter['list'][0], r[filter['column']] ):
 				keep = False
 				break
 
+		#if we've made it through all the filtering rules, yield the rearrangement
 		if keep:
 			good += 1
 			if good % 10000 == 0:
