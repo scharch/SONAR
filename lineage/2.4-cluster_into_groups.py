@@ -65,6 +65,7 @@ Generalized germline gene regexes by CAS 2020-01-02.
 Added joint heavy-light clonal partitioning for single cells by CAS 2020-01-16.
 Switched over to AIRR TSV input only by CAS 2020-05-19.
 Added --preserve option by CAS 2020-07-02.
+Updated filters to new syntax by CAS 2020-07-02.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -233,14 +234,14 @@ def main():
 	#first for cells, then for individual rearrangements
 	filter_rules = []
 	if arguments['--singlecell']:
-		filter_rules.append( {'column':'cell_status','list':["^(?:(?!multi|none).)*$"]} )
+		filter_rules.append( 're.search("^(?:(?!multi|none).)*$", r["cell_id"])' )
 
 	if arguments['--filter'] == "all":
-		filter_rules.append( {'column':'junction','list':["^.+$"]} )
+		filter_rules.append( "r['junction'] != ''" )
 	elif arguments['--filter'] == "good":
-		filter_rules.append( {'column':'status','list':["^good$"]} )
+		filter_rules.append( "r['status'] == 'good'")
 	elif arguments['--filter'] == "unique":
-		filter_rules.append( {'column':'centroid','list':["`sequence_id`"]} )
+		filter_rules.append( "r['centroid'] == r['sequence_id']" )
 
 
 	#first, open the input file and parse into groups with same V/J
