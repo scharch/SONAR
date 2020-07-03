@@ -77,7 +77,8 @@ def scoreSeqs( refSeq, querySeq, tempFile):
 	with open("%s.fa"%tempFile, "w") as handle:
 		handle.write(">%s\n%s\n>%s\n%s\n" % ( refSeq.id, refSeq.seq, querySeq.id, querySeq.seq ))
 
-	align_cline = MuscleCommandline(cmd=muscle, input="%s.fa"%tempFile, out="%s.aln"%tempFile)
+	align_cline = MuscleCommandline(cmd=muscle, input="%s.fa"%tempFile, out="%s.aln"%tempFile,
+									diags=True, maxiters=2, gapopen=-1000.0)
 	if arguments['--align'] == "clustalo":
 		align_cline = ClustalOmegaCommandline(cmd=clustalo, infile="%s.fa"%tempFile, outfile="%s.aln"%tempFile, force=True)
 	try:
