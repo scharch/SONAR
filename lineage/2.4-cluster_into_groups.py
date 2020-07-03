@@ -16,7 +16,7 @@ This script uses CDR3 identity to group unique sequences from a given data set
       Sequences are first grouped by unique V and J gene assignments and then
       VSearch is used to cluster the CDR3 sequences.
 
-Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --filter all --id <90> --gaps <0> --output TSV --singlecell -t 1 ]
+Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --filter all --id <90> --gaps <0> --output TSV --singlecell --preserve -t 1 ]
 
 Options:
     --rearrangements TSV   One or more AIRR-formatted rearrangements files with the sequences
@@ -43,6 +43,11 @@ Options:
                                be used jointly to define clones. `cell_id` column must be present
                                in all input rearrangements files. Note that if the `cell_status`
                                column is present, suspected multiplets will be filtered out.
+    --preserve              A flag to preserve the original clone IDs when adding new sequences to
+                               previously processed data. Use with caution, as it will silently
+                               join and/or split clones even if the actual underlying clustering
+                               came out differently. Only operates on the first TSV if multiple
+                               are provided.
     -t 1                    Number of threads used [default: 1]
 
 
@@ -59,6 +64,7 @@ Added multithreading by CAS 2019-02-05.
 Generalized germline gene regexes by CAS 2020-01-02.
 Added joint heavy-light clonal partitioning for single cells by CAS 2020-01-16.
 Switched over to AIRR TSV input only by CAS 2020-05-19.
+Added --preserve option by CAS 2020-07-02.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -241,6 +247,7 @@ def main():
 	vj_partition = dict()
 	cdr3_info = dict()
 	seqSize = Counter()
+	oldClones = dict()
 
 	cell_dict = defaultdict(list)
 	for index, inFile in enumerate(arguments['--rearrangements']):
@@ -251,6 +258,8 @@ def main():
 			sys.exit( f"`cell_id` column not found in {inFile}, cannot do single-cell lineage analysis" )
 		if arguments['--filter'] == "unique" and not "centroid" in reader.external_fields:
 			sys.exit( f"`centroid` column not found in {inFile}, cannot filter for unique sequences" )
+		if arguments['--preserve'] and index==0 and not "clone_id" in reader.fields:
+			print("Can't find existing clone_ids, `--preserve` will be ignored...", file=sys.stderr)
 
 		#now iterate through the rearrangements
 		for r in filterAirrTsv(reader, filter_rules):
@@ -270,6 +279,12 @@ def main():
 				#for network analysis
 				r[ 'cell_id' ] += f"-{index:03}"
 				cell_dict[ r['cell_id'] ].append(r['sequence_id'])
+
+			if arguments['--preserve'] and index==0 and 'clone_id' in r:
+				if arguments['--singlecell']:
+					oldClones[ r['cell_id'] ] = r['clone_id']
+				else:
+					oldClones[ r['sequence_id'] ] = r['clone_id']
 
 			#get size
 			seqSize[ r['sequence_id'] ] = 1
@@ -356,7 +371,17 @@ def main():
 				if size == 0:
 					break
 
-				centroidData[centroid]['rank'] = "%05d" % (rank+1)
+				if arguments['--preserve']:
+					#get cells with this centroid to look up old clone_id
+					oldCells = [k for k,v in clusterLookup.items() if v == centroid and k in oldClones]
+
+					if len(oldCells)>0:
+						centroidData[centroid]['rank'] = oldClones[ oldCells[0] ]
+					else:
+						centroidData[centroid]['rank'] = "%05d" % (len(oldClones.keys()) + rank)
+				else:
+					centroidData[centroid]['rank'] = "%05d" % (rank+1)
+
 				dataToWrite = [ centroidData[centroid]['rank'], size, centroidData[centroid]['nt'],
 					  				centroidData[centroid]['aa'] ]
 		
@@ -427,7 +452,14 @@ def main():
 			writer.writerow(header)
 
 			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
-				centroidData[centroid]['rank'] = "%05d" % (rank+1)
+				if arguments['--preserve']:
+					if centroid in oldClones:
+						centroidData[centroid]['rank'] = oldClones[centroid]
+					else:
+						centroidData[centroid]['rank'] = "%05d" % (len(oldClones.keys()) + rank)
+				else:
+					centroidData[centroid]['rank'] = "%05d" % (rank+1)
+
 				dataToWrite = [ "%05d"%(rank+1), centroid[:-4], centroidData[centroid]['vgene'], centroidData[centroid]['jgene'],
 						  int(len(cdr3_info[centroid]['cdr3_seq'])/3), cdr3_info[centroid]['cdr3_seq'].translate(), size ]
 				#find how many members are from each source file
