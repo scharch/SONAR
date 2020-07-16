@@ -9,14 +9,16 @@ This script uses CDR3 identity to group unique sequences from a given data set
       is no longer accepted, but multiple input rearrangements TSVs can be used
       to add sequences from other sources, like experimentally isolate monoclonals.
 
-      The default threshold of 90% identity with no in-dels is probably useful
-      for most cases, but more stringent or lenient criteria may sometimes be
-      more appropriate.
-
       Sequences are first grouped by unique V and J gene assignments and then
       VSearch is used to cluster the CDR3 sequences.
 
-Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --filter all --id <90> --gaps <0> --output TSV --singlecell --preserve -t 1 ]
+      The default threshold of 90% identity with no in-dels is probably useful
+      for most cases, but more stringent or lenient criteria may sometimes be
+      more appropriate. One possibility is to treat closely related V genes as
+      indistinguishable when partitioning reads for clustering. This is based
+      on the approach of Luo, Yu, and Song, PLoS Comp Biol 2016.
+
+Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --filter all --id <90> --gaps <0> --output TSV --geneClusters --singlecell --preserve -t 1 ]
 
 Options:
     --rearrangements TSV   One or more AIRR-formatted rearrangements files with the sequences
@@ -39,6 +41,12 @@ Options:
                                threshold accordingly. [default: 0]
     --output TSV            File where the output should be saved. If not specified, output will
                                overwrite the first input file.
+    --geneClusters          Flag to indicate that reads should be partitioned based on closely
+                               related V genes that may be prone to mutual misassignment, instead
+                               of using exact matches of assigned V and J genes. Using this option
+                               will turn off matching on J genes entirely. Currently only available
+                               for the included human and rhesus databases; predetermined clusters
+                               are in SONAR/sample_data/functionalClusters.
     --singlecell            A flag to indicate single cell data - heavy and light chain data will
                                be used jointly to define clones. `cell_id` column must be present
                                in all input rearrangements files. Note that if the `cell_status`
@@ -66,6 +74,7 @@ Added joint heavy-light clonal partitioning for single cells by CAS 2020-01-16.
 Switched over to AIRR TSV input only by CAS 2020-05-19.
 Added --preserve option by CAS 2020-07-02.
 Updated filters to new syntax by CAS 2020-07-02.
+Added geneClusters option by CAS on 2020-07-16.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -121,7 +130,10 @@ def processClusters( iter_tuple ):
 			single = cluster['ids'][0]
 			myGenes = cluster['group'].split("_")
 			clusterLookup[ single ] = single
-			centroidData[ single ] = dict( vgene = myGenes[0], jgene = myGenes[1] )
+			if arguments['--geneClusters']:
+				centroidData[ single ] = dict( vgene = myGenes[0], jgene = "" )
+			else:
+				centroidData[ single ] = dict( vgene = myGenes[0], jgene = myGenes[1] )
 			clusterSizes[ single ] = 1#seqSize[ single ]
 			countsByInput[ single ][ single[-3:] ] += 1
 			continue
@@ -148,7 +160,10 @@ def processClusters( iter_tuple ):
 				cent = re.sub(";size=\d+.*","",row[9]) # just a * for S rows, use hit as cent
 
 				if row[0] == "S":
-					centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1] )
+					if arguments['--geneClusters']:
+						centroidData[ hit ] = dict( vgene = myGenes[0], jgene = "" )
+					else:
+						centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1] )
 					clusterSizes[ hit ] = 1#seqSize[ hit ]
 					clusterLookup[ hit ] = hit
 					countsByInput[ hit ][ hit[-3:] ] += 1
@@ -297,9 +312,8 @@ def main():
 			#get gene assignments
 			key = r['v_call'].split("*")[0] + "_" + r['j_call'].split("*")[0]
 
-			#temporary VERY BAD shortcut code
-			#key = re.sub("D","",key)
-			#key = re.sub("(\d-\d+)-\d+","\\1",key)
+			if arguments['--geneClusters']:
+				key = geneClusters.get( r['v_call'].split(",")[0], r['v_call'].split("*")[0] )
 
 			if key not in vj_partition:
 				temp = "%s/%s.fa"%(prj_tree.lineage, key)
@@ -394,7 +408,7 @@ def main():
 				writer.writerow( dataToWrite )
 
 		#update the cell_stats table
-		with open("updateCellStats.tsv", 'w') as outfh:
+		with open("updateCellStats.tsv", 'w', newline="\n", encoding='utf-8') as outfh:
 			writer = csv.writer(outfh, delimiter="\t")
 			writer.writerow(["cell","status","clone","source","isotype","productive_IGH",
 								"total_IGH","IGH_junctions","productive_IGK","total_IGK","IGK_junctions",
@@ -551,6 +565,18 @@ if __name__ == '__main__':
 
 	if not arguments['--filter'] in ["all", "good", "unique"]:
 		sys.exit("Allowed values for `--filter` are 'all', 'good', and 'unique' only.")
+
+	geneClusters = dict()
+	if arguments['--geneClusters']:
+		with open(f"{prj_tree.internal}/gene_locus.txt", 'r') as check:
+			species = next(check).strip()
+			if species in SUPPORTED_SPECIES:
+				with open(f"{SCRIPT_FOLDER}/sample_data/functionalClusters/{species}_clusterLookup.txt", 'r') as database:
+					reader = csv.reader(database, delimiter="\t")
+					for row in reader:
+						geneClusters[ row[0] ] = row[1]
+			else:
+				sys.exit("--geneClusters not available for custom gene databases.")
 
 	if arguments['--singlecell']:
 		#check for the networkx package
