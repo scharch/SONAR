@@ -236,6 +236,11 @@ def jointClonality(clusters, cells, cdr3Info):
 		print( "Warning: More than 5% of cells had ambiguous or unassignable clonality.", file=sys.stderr)
 
 	#finally, collect the detailed 'chain clone' data for each 'cell clone'
+	# TODO: This produces unexpected output if the centroid of the chain cluster is not
+	#       in the cell clone, especially at low identity thresholds. Fix is probably to
+	#       make cellClones into a dict of lists (of the values of `cells`) instead of a 
+	#       Counter. Then test `any([chain in myCell for myCell in cellClones[cc]` 
+	#       and recluster somehow if False.
 	cloneInfo = dict()
 	for cc in cellClones:
 		nt = []
