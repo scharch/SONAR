@@ -81,6 +81,7 @@ Added --preserve option by CAS 2020-07-02.
 Updated filters to new syntax by CAS 2020-07-02.
 Added geneClusters option by CAS on 2020-07-16.
 Added short names option by CAS on 2020-07-16.
+Added numRepertoires column to lineage output by CAS, 2020-07-16.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -385,7 +386,7 @@ def main():
 
 			header = [ "clone_id", "clone_count", "junctions_nt", "junctions_aa" ]
 			if len(arguments['--rearrangements']) > 1:
-				header += ["source_count"]
+				header += ["source_count", "num_sources"]
 			writer.writerow(header)
 
 			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
@@ -408,8 +409,8 @@ def main():
 		
 				#find how many members are from each source file
 				if len(arguments['--rearrangements']) > 0:
-					breakdown = [ str(countsByInput[centroid][f"{i:03}"]) for i in range(len(arguments['--rearrangements'])) ]
-					dataToWrite += [ ":".join(breakdown) ]
+					breakdown = [ countsByInput[centroid][f"{i:03}"] for i in range(len(arguments['--rearrangements'])) ]
+					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 
 				writer.writerow( dataToWrite )
 
@@ -473,7 +474,7 @@ def main():
 			header = [ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa",
 					  "junction_aa", "clone_count" ]
 			if len(arguments['--rearrangements']) > 1:
-				header += ['source_count']
+				header += ['source_count', 'num_sources']
 			writer.writerow(header)
 
 			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
@@ -489,8 +490,8 @@ def main():
 						  int(len(cdr3_info[centroid]['cdr3_seq'])/3), cdr3_info[centroid]['cdr3_seq'].translate(), size ]
 				#find how many members are from each source file
 				if len(arguments['--rearrangements']) > 0:
-					breakdown = [ str(countsByInput[centroid][f"{i:03}"]) for i in range(len(arguments['--rearrangements'])) ]
-					dataToWrite += [ ":".join(breakdown) ]
+					breakdown = [ countsByInput[centroid][f"{i:03}"] for i in range(len(arguments['--rearrangements'])) ]
+					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 				writer.writerow(dataToWrite)
 
 		#do sequence output
