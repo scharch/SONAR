@@ -71,6 +71,7 @@ Fixed command line logging and rationalized cluster usage by CAS 2019-07-31.
 Added species option and updated daisy chaining to 1.4/1.5 by CAS 2020-01-02.
 Added locus consistency checks by CAS 2020-01-02.
 Moved species option to 1.1 and added consistent handling.
+Added `complete_vdj` flag by CAS 2020-07-16.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -144,7 +145,7 @@ def main():
 
 
 	#also open final rearrangements tsv
-	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','duplicate_count','length_raw','length_trimmed','indels','status','blast_identity','consensus_count','cell_id'])
+	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['complete_vdj','vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','duplicate_count','length_raw','length_trimmed','indels','status','blast_identity','consensus_count','cell_id'])
 
 
 	#initiate overall counters
