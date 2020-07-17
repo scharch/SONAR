@@ -263,7 +263,7 @@ def main():
 
 	#print out some statistics
 	handle = open("%s/%s_jgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-	writer	= csv.writer(handle, delimiter = sep)
+	writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 	keys	= sorted(dict_jcounts.keys())
 	writer.writerow(["gene", "count", "percent"])
 	for key in keys:
@@ -273,7 +273,7 @@ def main():
 
 	if len(dict_ccounts) > 0:
 		handle = open("%s/%s_cgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-		writer	= csv.writer(handle, delimiter = sep)
+		writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 		keys	= sorted(dict_ccounts.keys())
 		writer.writerow(["gene", "count", "percent"])
 		for key in keys:
@@ -283,7 +283,7 @@ def main():
 
 	if len(dict_dcounts) > 0:
 		handle = open("%s/%s_dgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-		writer	= csv.writer(handle, delimiter = sep)
+		writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 		keys	= sorted(dict_dcounts.keys())
 		writer.writerow(["gene", "count", "percent"])
 		for key in keys:

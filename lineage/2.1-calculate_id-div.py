@@ -244,11 +244,11 @@ def main():
 	nats = sorted( mature.keys() )
 	
 	covFile	 = open("%s_coverage.tab"%outFile, "w")
-	coverage = csv.writer( covFile, delimiter="\t" )
+	coverage = csv.writer( covFile, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE )
 	coverage.writerow( ['sequence_id', 'germ_cov'] + nats )
 	
 	idFile	 = open("%s_id-div.tab"%outFile, "w")
-	iddiv	 = csv.writer( idFile, delimiter="\t" )
+	iddiv	 = csv.writer( idFile, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE )
 	iddiv.writerow( ['sequence_id', 'v_gene', 'germ_div'] + nats )
 
 	#sort the freaking list and output

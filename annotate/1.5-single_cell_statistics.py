@@ -88,7 +88,7 @@ def main():
 	most_used = defaultdict( list )
 
 	output = open("%s/%s_cell_stats.tsv"%(prj_tree.tables,prj_name), 'w')
-	outwriter = csv.writer( output, delimiter="\t" )
+	outwriter = csv.writer( output, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE )
 	outheader = ["cell","status","isotype"]
 	if len(hashDict) > 0:
 		outheader += ["hash_sample"]

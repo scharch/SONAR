@@ -49,11 +49,11 @@ def main():
 
 	#open outputs
 	rHandle = open( "%s_rarity.txt"%arguments['<outHead>'], "w" )
-	rWriter = csv.writer(rHandle, delimiter = "\t")
+	rWriter = csv.writer(rHandle, delimiter = "\t", dialect='unix', quoting=csv.QUOTE_NONE)
 	rWriter.writerow( ['dataset', 'Vgene', 'position', 'germline', 'mutation', 'rarity', 'stdv_r'] )
 
 	eHandle = open( "%s_entropy.txt"%arguments['<outHead>'], "w" )
-	eWriter = csv.writer(eHandle, delimiter = "\t")
+	eWriter = csv.writer(eHandle, delimiter = "\t", dialect='unix', quoting=csv.QUOTE_NONE)
 	eWriter.writerow( ['dataset', 'Vgene', 'entropy'] )
 
 	#load all the data (hopefully this shouldn't kill memory)

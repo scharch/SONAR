@@ -116,7 +116,7 @@ def main():
 	raw_count, total, found, noV, noJ, f_ind = 0, 0, 0, 0, 0, 1
 	counts = Counter()
 
-	writer = csv.writer(open("%s/jtophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep)
+	writer = csv.writer(open("%s/jtophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 	writer.writerow(PARSED_BLAST_HEADER)
 	dict_jcounts = dict()
 	dict_ccounts = dict()
@@ -125,13 +125,13 @@ def main():
 	c = False
 	if os.path.isfile("%s/%s_C_%s.txt" % (prj_tree.jgene, prj_name, arguments['--chunk'])):
 		c = True
-		cWriter = csv.writer(open("%s/ctophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep)
+		cWriter = csv.writer(open("%s/ctophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 		cWriter.writerow(PARSED_BLAST_HEADER)
 
 	d = False
 	if os.path.isfile("%s/%s_D_%s.txt" % (prj_tree.jgene, prj_name, arguments['--chunk'])):
 		d = True
-		dWriter = csv.writer(open("%s/dtophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep)
+		dWriter = csv.writer(open("%s/dtophit_%s.txt" %(prj_tree.jgene, arguments['--chunk']), "w"), delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 		dWriter.writerow(PARSED_BLAST_HEADER)
 
 

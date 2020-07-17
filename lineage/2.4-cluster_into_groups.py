@@ -375,7 +375,7 @@ def main():
 
 		#now process all clusters and do tabular output
 		with open( lineageFile, "w" ) as handle:
-			writer = csv.writer(handle, delimiter=sep)
+			writer = csv.writer(handle, delimiter=sep, dialect='unix', quoting=csv.QUOTE_NONE)
 
 			header = [ "clone_id", "clone_count", "junctions_nt", "junctions_aa" ]
 			if len(arguments['--rearrangements']) > 1:
@@ -409,7 +409,7 @@ def main():
 
 		#update the cell_stats table
 		with open("updateCellStats.tsv", 'w', newline="\n", encoding='utf-8') as outfh:
-			writer = csv.writer(outfh, delimiter="\t")
+			writer = csv.writer(outfh, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE)
 			writer.writerow(["cell","status","clone","source","isotype","productive_IGH",
 								"total_IGH","IGH_junctions","productive_IGK","total_IGK","IGK_junctions",
 								"productive_IGL","total_IGL","IGL_junctions"])
@@ -459,7 +459,7 @@ def main():
 
 		#now process all clusters and do tabular output
 		with open( lineageFile, "w" ) as handle:
-			writer = csv.writer(handle, delimiter=sep)
+			writer = csv.writer(handle, delimiter=sep, dialect='unix', quoting=csv.QUOTE_NONE)
 			header = [ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa",
 					  "junction_aa", "clone_count" ]
 			if len(arguments['--rearrangements']) > 1:

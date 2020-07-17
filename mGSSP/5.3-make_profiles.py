@@ -225,7 +225,7 @@ def main():
 
 	#save output
 	with open(arguments["--output"], "w") as outHandle:
-		output = csv.writer(outHandle, delimiter="\t")
+		output = csv.writer(outHandle, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE)
 		output.writerow( ["Vgene", "prof#", "pos", "germ", "freq"] + aa_list )
 		for blob in profiles:
 			for row in blob:
