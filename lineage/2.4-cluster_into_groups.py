@@ -18,12 +18,17 @@ This script uses CDR3 identity to group unique sequences from a given data set
       indistinguishable when partitioning reads for clustering. This is based
       on the approach of Luo, Yu, and Song, PLoS Comp Biol 2016.
 
-Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --filter all --id <90> --gaps <0> --output TSV --geneClusters --singlecell --preserve -t 1 ]
+Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --names SAMPLE... --filter all --id <90> --gaps <0> --output TSV --geneClusters --singlecell --preserve -t 1 ]
 
 Options:
     --rearrangements TSV   One or more AIRR-formatted rearrangements files with the sequences
                                to be clustered into lineages.
                                [default: output/tables/<project>_rearrangements.tsv]
+    --names SAMPLE         Optional short names to keep track of which of multiple input files
+                               output rearrangements are derived from. If specified, the number
+                               of names provided *must* match the number of input `rearrangements`
+                               files. If no `names` are given, the full paths specified to
+                               `rearrangements` will be used.
     --filter all           Filter sequences by status before calculating lineages. Allowed values
                                are "all" (ie all CDR3), "good", and "unique" (determined by having
                                `centroid`==`sequence_id` --does not remove singletons!). 
@@ -75,6 +80,7 @@ Switched over to AIRR TSV input only by CAS 2020-05-19.
 Added --preserve option by CAS 2020-07-02.
 Updated filters to new syntax by CAS 2020-07-02.
 Added geneClusters option by CAS on 2020-07-16.
+Added short names option by CAS on 2020-07-16.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -361,8 +367,8 @@ def main():
 		countsByInput.update(d['ci'])
 
 	#make some output file names
-	lineageFile  = re.sub("_rearrangements.*\.tsv", "_lineages.txt", arguments['--output'])
-	cellStatFile = re.sub("_rearrangements.*\.tsv", "_cell_stats.tsv", arguments['--output'])
+	lineageFile  = re.sub("(_rearrangements.*)?\.tsv", "_lineages.txt", arguments['--output'])
+	cellStatFile = re.sub("(_rearrangements.*)?\.tsv", "_cell_stats.tsv", arguments['--output'])
 	#make sure we don't accidentally overwrite anything
 	if lineageFile == arguments['--output']:
 		lineageFile  = arguments['--output'] + "_lineages.txt"
@@ -415,12 +421,16 @@ def main():
 								"productive_IGL","total_IGL","IGL_junctions"])
 
 			#for each input try to guess the matching cell_stats file
-			for ind, airrFile in enumerate(arguments['--rearrangements']):
-				cell_stats = re.sub("_rearrangements.*\.tsv", "_cell_stats.tsv", airrFile)
+			for ind in range(len(arguments['--rearrangements'])):
+				cell_stats = re.sub("_rearrangements.*\.tsv", "_cell_stats.tsv", arguments['--rearrangements'][ind])
+
+				airrFile = arguments['--rearrangements'][ind]
+				if arguments['--names'] is not None:
+					airrFile = arguments['--names'][ind]
 
 				#check if it exists
 				if not os.path.isfile(cell_stats):
-					print( f"Warning: Cannot find cell stats file for {airrFile} (tried {cell_stats}).\nCells from this repertoire will not be included in output to {cellStatFile}\n", file=sys.stderr)
+					print( f"Warning: Cannot find cell stats file for {arguments['--rearrangements'][ind]} (tried {cell_stats}).\nCells from this repertoire will not be included in output to {cellStatFile}\n", file=sys.stderr)
 					continue
 
 				with open( cell_stats, 'r') as infh:
@@ -532,7 +542,10 @@ def main():
 
 			#add source repertoire if relevant
 			if len(arguments['--rearrangements']) > 1:
-				r['source_repertoire'] = inFile
+				if arguments['--names'] is not None:
+					r['source_repertoire'] = arguments['--names'][ index ]
+				else:
+					r['source_repertoire'] = inFile
 
 			withLin.write(r)
 	withLin.close()
@@ -555,6 +568,9 @@ if __name__ == '__main__':
 			sys.exit(f"Cannot find rearrangements file {airrTsv}")
 		elif not airr.validate_rearrangement(airrTsv):
 			sys.exit(f"File {airrTsv} is not in valid AIRR format.")
+
+	if arguments['--names'] is not None and len(arguments['--names']) != len(arguments['--rearrangements']):
+		sys.exit("Error: number of `names` must match number of `rearrangements`.")
 
 	if arguments['--output'] is None:
 		arguments['--output'] = arguments['--rearrangements'][0]
