@@ -28,10 +28,10 @@ for submodule in ['Align', 'AlignIO', 'Alphabet', 'Data.CodonTable', 'Phylo', 'S
 	except ImportError:
 		sys.exit(f"module Bio.{submodule} not found")
 
-#check for master script
+#check for main script
 import shutil
 if not shutil.which('sonar'):
-	print("Master script not found in PATH, programs will be invoked directly", file=sys.stderr)
+	print("Main script not found in PATH, programs will be invoked directly", file=sys.stderr)
 
 
 #test SONAR scripts

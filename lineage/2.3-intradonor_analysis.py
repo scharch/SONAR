@@ -118,7 +118,7 @@ def main():
 	currentIter = 0
 	log = open( "%s/intradonor.log" % prj_tree.logs, "a+" )
 
-	# master loop
+	# main loop
 	while not converged:
 		
 		# parse tree files and get all reads clustered with native antibodies

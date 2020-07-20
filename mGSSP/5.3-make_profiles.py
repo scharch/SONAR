@@ -67,8 +67,8 @@ def buildGSSP( vgene ):
 
 	results = []
 
-	if len(masterList[vgene]) < arguments["--numSequences"]:
-		print( "Skipping %s, not enough sequences (%d)..." % ( vgene, len(masterList[vgene]) ) )
+	if len(mainList[vgene]) < arguments["--numSequences"]:
+		print( "Skipping %s, not enough sequences (%d)..." % ( vgene, len(mainList[vgene]) ) )
 		return []
 		
 	if vgene not in germList:
@@ -86,11 +86,11 @@ def buildGSSP( vgene ):
 	for i in range(numProfiles):
 		seqs = [] + germList[vgene] #force a copy rather than an alias
 		if arguments["--profiles"] == 0:
-			seqs += list(masterList[vgene])
+			seqs += list(mainList[vgene])
 		else:
 			#get our sequence subset, add the germlines, and write them
 			#   to a temporary file for alignment
-			seqs += list(numpy.random.choice(masterList[vgene], size=arguments["--numSequences"], replace=False))
+			seqs += list(numpy.random.choice(mainList[vgene], size=arguments["--numSequences"], replace=False))
 
 		tempFile = "%s/work/mGSSP/%s_profileBuilder" % (prj_tree.home, vgene)
 		with open("%s.fa"%tempFile, "w") as temp:
@@ -164,10 +164,10 @@ def buildGSSP( vgene ):
 	
 def main():
 
-	global masterList, germList
+	global mainList, germList
 
 	#load sequences
-	masterList = defaultdict( list )
+	mainList = defaultdict( list )
 	with open(arguments["<sequences.fa>"], 'r') as handle:
 		for sequence in SeqIO.parse(handle, "fasta"):
 
@@ -181,7 +181,7 @@ def main():
 			if gene:
 				if not arguments["-a"]:
 					sequence.seq = sequence.seq.translate() #don't care about anything else in this script
-				masterList[ gene.group(1) ].append( sequence )
+				mainList[ gene.group(1) ].append( sequence )
 
 	#replace list with array
 	#have to build manually because otherwise numpy is turning SeqRecords
@@ -195,11 +195,11 @@ def main():
 	#	     there will be of each germline and numpy arrays have to be
 	#	     pre-allocated.
 
-	for v in masterList.keys():
-		a = numpy.empty( len(masterList[v]), dtype=object )
-		for i in range(len(masterList[v])):
-			a[i] = masterList[v][i]
-		masterList[v] = a
+	for v in mainList.keys():
+		a = numpy.empty( len(mainList[v]), dtype=object )
+		for i in range(len(mainList[v])):
+			a[i] = mainList[v][i]
+		mainList[v] = a
 
 
 	#load germlines
@@ -218,7 +218,7 @@ def main():
 
 	#now let's start building profiles
 	gsspPool = Pool( arguments['-t'] )
-	profiles = gsspPool.map( buildGSSP, sorted(masterList.keys()) )
+	profiles = gsspPool.map( buildGSSP, sorted(mainList.keys()) )
 	gsspPool.close()
 	gsspPool.join()
 	

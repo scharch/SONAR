@@ -5,7 +5,7 @@
 
 This script parses the BLAST output from 1.1-blast-V_assignment.py and
       1.2-blast_J.py. Sequences with successful assignments are
-      output into fasta files and a master table is created summarizing the
+      output into fasta files and a main table is created summarizing the
       properties of all input sequences.
 
 Usage:  1.3-finalize_assignments.py [ --jmotif TGGGG --nterm truncate --noclean ] [ options ]

@@ -316,7 +316,7 @@ def iLabel(node, *args, **kargs):
 	font.setLetterSpacing(1, 2) #add 2 pixels between letters for legibility
 	text.setFont(font)
 
-	#Center text according to masterItem size
+	#Center text according to mainItem size
 	tw = text.boundingRect().width()
 	th = text.boundingRect().height()
 	center = ellipse.boundingRect().center()

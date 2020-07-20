@@ -34,7 +34,7 @@ except ImportError:
 try:
     from fuzzywuzzy import fuzz
 except ImportError:
-    print("fuzzywuzzy is not installed - the master script will not work.\nYou can fix this later by running `pip3 install fuzzywuzzy --user`.\nProceeding with install...\n\n",file=sys.stderr)
+    print("fuzzywuzzy is not installed - the main script will not work.\nYou can fix this later by running `pip3 install fuzzywuzzy --user`.\nProceeding with install...\n\n",file=sys.stderr)
 
 try:
     from ete3 import *
@@ -70,7 +70,7 @@ if check == 1:
 
 #R library checks
 for lib in ["docopt","ggplot2","MASS","grid","ptinpoly"]:
-    s=subprocess.Popen(['R','--vanilla','--slave','-e', '"%s" %%in%% installed.packages()[,"Package"]'%lib],
+    s=subprocess.Popen(['R','--vanilla','--subordinate','-e', '"%s" %%in%% installed.packages()[,"Package"]'%lib],
                        stderr=subprocess.PIPE,stdout=subprocess.PIPE,universal_newlines=True)
     o,e = s.communicate()
     if o.strip().split(" ")[1] == "FALSE":
@@ -143,7 +143,7 @@ with open("%s/sonar"%SONAR_HOME, "w") as sonar:
 \"\"\"
 sonar
 
-This is a master script to allow easy access to SONAR scripts without
+This is a main script to allow easy access to SONAR scripts without
     needing to remember the exact commands or to add multiple
     directories to the path.
 
