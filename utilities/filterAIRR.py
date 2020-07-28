@@ -12,7 +12,7 @@ Options:
     --input INAIRR.tsv    An AIRR-formatted rearrangements file to be
                               [default: output/tables/<project>_rearrangements.tsv]
     --output OUTAIRR.tsv  Where to save the filtered rearrangements. Use
-                              `stdout` to print to screen. [default: stdout]
+                              `stdout` to print to screen. [default: STDOUT]
     --or                  Flag to indicate that RULEs should be applied using
                               OR logic instead of AND. [default: False]
     RULE                  Filtering rules to apply. A RULE consists of three
@@ -103,7 +103,6 @@ def processRule(sentence, reader):
 
 	else:
 		sys.exit(f"Invalid operator {parts[1]}\nAllowed choices are =~, !~, eq, ne, is, not, ==, !=, >=, >, <=, <, -, or !-.")
-
 
 	return rule
 

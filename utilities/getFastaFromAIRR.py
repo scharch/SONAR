@@ -8,7 +8,7 @@ This is a utility script to extract sequences from an AIRR-formatted TSV and
       To only save certain sequences, filter the AIRR TSV using utilities/filterAIRR.py
       and pipe the output to this script with `--rearrangements STDIN`.
 
-Usage: getFastaFromAIRR.py [ --rearrangements AIRR.tsv --column status... (--regex \d+... | --equal good... | --list ids.txt...) --output sequences.fa --sequence trim --aa]
+Usage: getFastaFromAIRR.py [ --rearrangements AIRR.tsv --output sequences.fa --sequence trim --aa]
 
 Options:
     --rearrangements AIRR.tsv    An AIRR-formatted rearrangements file. Use 'STDIN' to get a

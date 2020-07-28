@@ -118,7 +118,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 						else:
 							best_alignment.qstart = my_alignment.qstart
 
-				elif re.match("IG[HKL]J", my_alignment.sid) and my_alignment.score>=40 and my_alignment.qstart<best_alignment.qstart:
+				elif re.match("IG[HKL]J", my_alignment.sid) and my_alignment.score>=35 and my_alignment.qstart<best_alignment.qstart:
 					#a bit of kludge for double J matches. 
 					#Usually these are bad amplicons (or bad assemblies from single cell data)
 					#My assumption is that the one closer to the V is the more reliable one

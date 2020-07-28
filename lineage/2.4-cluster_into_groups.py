@@ -82,6 +82,7 @@ Updated filters to new syntax by CAS 2020-07-02.
 Added geneClusters option by CAS on 2020-07-16.
 Added short names option by CAS on 2020-07-16.
 Added numRepertoires column to lineage output by CAS, 2020-07-16.
+Fixed short names by CAS in 2002-07-28.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -261,7 +262,7 @@ def main():
 	#first for cells, then for individual rearrangements
 	filter_rules = []
 	if arguments['--singlecell']:
-		filter_rules.append( 're.search("^(?:(?!multi|none).)*$", r["cell_id"])' )
+		filter_rules.append( 're.search("^(?:(?!multi|none).)*$", r["cell_status"])' )
 
 	if arguments['--filter'] == "all":
 		filter_rules.append( "r['junction'] != ''" )
@@ -422,16 +423,19 @@ def main():
 		#update the cell_stats table
 		with open("updateCellStats.tsv", 'w', newline="\n", encoding='utf-8') as outfh:
 			writer = csv.writer(outfh, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE)
-			writer.writerow(["cell","status","clone","source","isotype","productive_IGH",
-								"total_IGH","IGH_junctions","productive_IGK","total_IGK","IGK_junctions",
-								"productive_IGL","total_IGL","IGL_junctions"])
+			columns = ["cell","status","clone","isotype","productive_IGH",
+					"total_IGH","IGH_junctions","productive_IGK","total_IGK","IGK_junctions",
+					"productive_IGL","total_IGL","IGL_junctions"]
+			if len(arguments['--rearrangements']) > 1:
+				columns.insert(3, "source")
+			writer.writerow(columns)
 
 			#for each input try to guess the matching cell_stats file
 			for ind in range(len(arguments['--rearrangements'])):
 				cell_stats = re.sub("_rearrangements.*\.tsv", "_cell_stats.tsv", arguments['--rearrangements'][ind])
 
 				airrFile = arguments['--rearrangements'][ind]
-				if arguments['--names'] is not None:
+				if len(arguments['--names']) > 0:
 					airrFile = arguments['--names'][ind]
 
 				#check if it exists
@@ -548,7 +552,7 @@ def main():
 
 			#add source repertoire if relevant
 			if len(arguments['--rearrangements']) > 1:
-				if arguments['--names'] is not None:
+				if len(arguments['--names']) > 0:
 					r['source_repertoire'] = arguments['--names'][ index ]
 				else:
 					r['source_repertoire'] = inFile
@@ -575,7 +579,7 @@ if __name__ == '__main__':
 		elif not airr.validate_rearrangement(airrTsv):
 			sys.exit(f"File {airrTsv} is not in valid AIRR format.")
 
-	if arguments['--names'] is not None and len(arguments['--names']) != len(arguments['--rearrangements']):
+	if len(arguments['--names']) > 0 and len(arguments['--names']) != len(arguments['--rearrangements']):
 		sys.exit("Error: number of `names` must match number of `rearrangements`.")
 
 	if arguments['--output'] is None:
