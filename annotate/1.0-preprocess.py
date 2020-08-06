@@ -154,6 +154,8 @@ Added code for feature barcoding by CAS 2019-10-08.
 Added species option by CAS 2020-02-06.
 Changed minUMIs to a per metaconsenus threshold and set default to 1 (for now)
     by CAS 2020-02-12.
+Switched filtering to one-step to avoid potential problems with merging
+    if reads are discarded by CAS 2020-08-06.
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -395,6 +397,12 @@ def main():
 		if arguments['--filterOptions'] != "None":
 			print("QCing %s" % inFile, file=sys.stderr)
 			filter_options = arguments['--filterOptions'].split(" ")
+
+			#filter R2 in one step to avoid problems with merging
+			if len(arguments['--reverse']) > 0:
+				filter_options += [ '-reverse', arguments['--reverse'][fileNum],
+						    '-fastqout_rev', "%s/r2_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)]
+
 			subprocess.call([vsearch,
 					 '-fastx_filter', inFile,
 					 '--fastqout', "%s/r1_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)] +
@@ -402,14 +410,8 @@ def main():
 
 			qc_input = "%s/r1_filtered.fq"%prj_tree.preprocess
 
-			#check for R2
+			#now merge
 			if len(arguments['--reverse']) > 0:
-				print("QCing %s" % arguments['--reverse'][fileNum], file=sys.stderr)
-				subprocess.call([vsearch,
-						 '-fastx_filter', arguments['--reverse'][fileNum],
-						 '--fastqout', "%s/r2_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)] +
-						filter_options, stderr = logFile)
-				#now merge
 				merge_options = arguments['--mergeOptions'].split(" ")
 				subprocess.call([vsearch,
 						 '-fastq_mergepairs', "%s/r1_f%d_filtered.fq"%(prj_tree.preprocess,fileNum),
