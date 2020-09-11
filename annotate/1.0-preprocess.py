@@ -156,6 +156,7 @@ Changed minUMIs to a per metaconsenus threshold and set default to 1 (for now)
     by CAS 2020-02-12.
 Switched filtering to one-step to avoid potential problems with merging
     if reads are discarded by CAS 2020-08-06.
+Changed structure of umi_dict by CAS 2020-08-07.
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -197,13 +198,11 @@ def callFinder(num, format, args, stem="chunk"):
 	os.system( cmd )
 
 
-def getUmiConsensus(num, minSize, workdir, isCell=False, feature=False, clustType="umi"):
-	if isCell:
-		clustType = "cell"
+def getUmiConsensus(num, minSize, workdir, clustType="umi"):
 	cmd = f"{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/{clustType}_cons_in_{num:04}.pickle {minSize} {workdir}"
-	if isCell:
+	if clustType == "cell":
 		cmd += " --isCell"
-	elif feature:
+	elif clustType == "feature":
 		cmd += " --isFeature"
 	os.system( cmd )
 
@@ -228,7 +227,7 @@ def processFeatures():
 	fInd = 0
 	with _open(arguments['--featureLibrary'][0]) as toSplit:
 		splitForID = SeqIO.parse( toSplit, format=fileformat )
-		for chunk in iterator_slice(splitForID, 50000):
+		for chunk in iterator_slice(splitForID, 500000):
 			fInd += 1
 			with open( "%s/features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
 				SeqIO.write( chunk, writeChunk, fileformat )
@@ -237,7 +236,7 @@ def processFeatures():
 		ind2 = 0
 		with _open(arguments['--featureLibrary'][1]) as toSplit:
 			splitForID = SeqIO.parse( toSplit, format=fileformat )
-			for chunk in iterator_slice(splitForID, 50000):
+			for chunk in iterator_slice(splitForID, 500000):
 				ind2 += 1
 				with open( "%s/r2features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
 					SeqIO.write( chunk, writeChunk, fileformat )
@@ -257,7 +256,7 @@ def processFeatures():
 	if arguments['--cluster']:
 		with open("%s/featuresjob.sh"%prj_tree.preprocess, 'w') as jobHandle:
 			jobHandle.write(f"#!/bin/bash\n#$ -N featureUMIs\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {prj_tree.preprocess}/features$NUM.{fileformat} {fileformat} {featureOpts}\n\n")
-		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%fInd, "%s/featuresjob.sh"%prj_tree.preprocess])
+		subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%fInd, "%s/featuresjob.sh"%prj_tree.preprocess])
 	else:
 		partial_finder = partial( callFinder, format=fileformat, args=featureOpts, stem="features" )
 		pool = Pool(arguments['--threads'])
@@ -271,16 +270,25 @@ def processFeatures():
 	for p in pickleFiles:
 		with open(p, 'rb') as pickle_in:
 			chunk_dict = pickle.load(pickle_in)
-			for (cb, mi) in chunk_dict:
-				if (cb, mi) not in feature_dict:
-					feature_dict[ (cb, mi) ] = chunk_dict[ (cb, mi) ].copy()
+			for cb in chunk_dict:
+				if cb not in feature_dict:
+					feature_dict[ cb ] = chunk_dict[ cb ].copy()
 				else:
-					feature_dict[ (cb, mi) ]['count'] += chunk_dict[ (cb, mi) ]['count']
-					feature_dict[ (cb, mi) ]['seqs']  += chunk_dict[ (cb, mi) ]['seqs']
+					for mi in chunk_dict[cb]:
+						if mi not in feature_dict[cb]:
+							feature_dict[ cb ][ mi ] = chunk_dict[ cb ][ mi ].copy()
+						else:
+							for s in chunk_dict[cb][mi]:
+								if s in feature_dict[cb][mi]:
+									feature_dict[cb][mi][s] += chunk_dict[cb][mi][s]
+								else:
+									feature_dict[cb][mi][s] = chunk_dict[cb][mi][s]
 
 	#generate pickles to pass to consensus algorithm
 	dInd = 0
-	for chunk in iterator_slice(feature_dict.values(), 5000):
+	fd = list(feature_dict.items())
+	random.shuffle( fd ) #try to keep the load balanced when we split up UMIs for clustering below
+	for chunk in iterator_slice(fd, 10000):
 		dInd += 1
 		with open( f"{prj_tree.preprocess}/feature_cons_in_{dInd:04}.pickle", 'wb') as pickle_out:
 			pickle.dump( chunk, pickle_out )
@@ -292,7 +300,7 @@ def processFeatures():
 	if arguments['--cluster']:
 		with open("%s/featurecons.sh"%prj_tree.preprocess, 'w') as jobHandle:
 			jobHandle.write(f"#!/bin/bash\n#$ -N clusterFeatureUMIs\n#$-l h_vmem=32G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/feature_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess} --isFeature\n\n")
-		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%dInd, "%s/featurecons.sh"%prj_tree.preprocess])
+		subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%dInd, "%s/featurecons.sh"%prj_tree.preprocess])
 	else:
 		partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess, clustType="feature")
 
@@ -322,21 +330,21 @@ def processFeatures():
 		with open(p, 'rb') as pickle_in:
 			chunk_dict = pickle.load(pickle_in)
 			for c in chunk_dict['results']:
-				for s in chunk_dict['results'][c]['seqs']:
-					for hash in hashingSeqs:
-						if hash in str(s.seq):
-							if hashingSeqs[hash] in cellHashes[c]:
-								cellHashes[ c ][ hashingSeqs[hash] ] += 1
+				for s in chunk_dict['results'][c]:
+					for aHash in hashingSeqs:
+						if aHash in s:
+							if hashingSeqs[aHash] in cellHashes[c]:
+								cellHashes[ c ][ hashingSeqs[aHash] ] += len(chunk_dict['results'][c][s])
 							else:
-								cellHashes[ c ][ hashingSeqs[hash] ] = 1
+								cellHashes[ c ][ hashingSeqs[aHash] ] = len(chunk_dict['results'][c][s])
 							break
-
+							
 					for oligo in featureSeqs:
-						if oligo in str(s.seq):
+						if oligo in s:
 							if featureSeqs[oligo] in cellFeatures[c]:
-								cellFeatures[ c ][ featureSeqs[oligo] ] += 1
+								cellFeatures[ c ][ featureSeqs[oligo] ] += len(chunk_dict['results'][c][s])
 							else:
-								cellFeatures[ c ][ featureSeqs[oligo] ] = 1
+								cellFeatures[ c ][ featureSeqs[oligo] ] = len(chunk_dict['results'][c][s])
 							break
 
 	if len(hashingSeqs) > 0:
@@ -387,8 +395,8 @@ def main():
 			else:
 				#ok, just don't try to do qual analysis
 				arguments['--filterOptions'] = "None"
-				arguments['--printQC']       =  None
-				fileformat                   = "fasta"
+				arguments['--printQC']	     =	None
+				fileformat		     = "fasta"
 
 
 		qc_input = inFile
@@ -453,7 +461,7 @@ def main():
 		for myFile in processedFiles:
 			with open(myFile, 'r') as toSplit:
 				splitForID = SeqIO.parse( toSplit, format=fileformat )
-				for chunk in iterator_slice(splitForID, 50000):
+				for chunk in iterator_slice(splitForID, 500000):
 					multiInd += 1
 					with open( "%s/chunk%04d.%s"%(prj_tree.preprocess, multiInd, fileformat), 'w' ) as writeChunk:
 						SeqIO.write( chunk, writeChunk, fileformat )
@@ -468,7 +476,7 @@ def main():
 		if arguments['--cluster']:
 			with open("%s/umijob.sh"%prj_tree.preprocess, 'w') as jobHandle:
 				jobHandle.write(f"#!/bin/bash\n#$ -N findUMIs\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {prj_tree.preprocess}/chunk$NUM.{fileformat} {fileformat} {umiOpts}\n\n")
-			subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%multiInd, "%s/umijob.sh"%prj_tree.preprocess])
+			subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%multiInd, "%s/umijob.sh"%prj_tree.preprocess])
 		else:
 			partial_finder = partial( callFinder, format=fileformat, args=umiOpts )
 			pool = Pool(arguments['--threads'])
@@ -479,32 +487,42 @@ def main():
 		#collect output of find_umis
 		umi_dict = {}
 		pickleFiles = glob.glob(f"{prj_tree.preprocess}/chunk*.pickle")
-		random.shuffle( pickleFiles ) #try to keep the load balanced when we split up UMIs for clustering below
-		maxUmiReads = 0 #try to estimate memory requirements for clustering
 		for p in pickleFiles:
 			with open(p, 'rb') as pickle_in:
 				chunk_dict = pickle.load(pickle_in)
-				for (cb, mi) in chunk_dict:
-					if (cb, mi) not in umi_dict:
-						umi_dict[ (cb, mi) ] = chunk_dict[ (cb, mi) ].copy()
+				for cb in chunk_dict:
+					if cb not in umi_dict:
+						umi_dict[ cb ] = chunk_dict[ cb ].copy()
 					else:
-						umi_dict[ (cb, mi) ]['count'] += chunk_dict[ (cb, mi) ]['count']
-						umi_dict[ (cb, mi) ]['seqs']  += chunk_dict[ (cb, mi) ]['seqs']
-					if umi_dict[ (cb, mi) ]['count'] > maxUmiReads:
-						maxUmiReads = umi_dict[ (cb, mi) ]['count']
+						for mi in chunk_dict[cb]:
+							if mi not in umi_dict[cb]:
+								umi_dict[ cb ][ mi ] = chunk_dict[ cb ][ mi ].copy()
+							else:
+								for s in chunk_dict[cb][mi]:
+									if s in umi_dict[cb][mi]:
+										umi_dict[cb][mi][s] += chunk_dict[cb][mi][s]
+									else:
+										umi_dict[cb][mi][s] = chunk_dict[cb][mi][s]
 
-		print("Total: %d sequences in %d UMIs" % ( sum([subdict['count'] for subdict in umi_dict.values()]), len(umi_dict)) )
+		maxUmiReads = max( [ len(s) for m in [c.values() for c in umi_dict.values()] for s in m] )
+		totalReads  = sum( [ len(x) for i in [ s.values() for m in [c.values() for c in umi_dict.values()] for s in m] for x in i ] )
+		totalUMIs   = sum( [ len(c) for c in umi_dict.values() ] )
+
+		print(f"Total: {totalReads} sequences in {totalUMIs} UMIs")
 
 		#if UMIs are present, generate UMI consensus
 		if arguments['--umi'] is not None or arguments['--r2umi'] is not None:
 			#print out some details that might be useful for QC
 			with open("%s/umi_stats.tsv"%prj_tree.logs, 'w') as handle:
-				for cb, mi in umi_dict:
-					handle.write("%s\t%s\t%s\n"%(cb,mi,umi_dict[(cb,mi)]['count']))
+				for cb in umi_dict:
+					for mi in umi_dict[cb]:
+						handle.write( "%s\t%s\t%s\n" % (cb,mi,sum([len(umi_dict[cb][mi][s]) for s in umi_dict[cb][mi]])) )
 
 			#generate pickles to pass to consensus algorithm
 			uInd = 0
-			for chunk in iterator_slice(umi_dict.values(), 5000):
+			ud = list(umi_dict.items())
+			random.shuffle( ud ) #try to keep the load balanced when we split up UMIs for clustering below
+			for chunk in iterator_slice(ud, 500):
 				uInd += 1
 				with open( f"{prj_tree.preprocess}/umi_cons_in_{uInd:04}.pickle", 'wb') as pickle_out:
 					pickle.dump( chunk, pickle_out )
@@ -521,9 +539,9 @@ def main():
 			if arguments['--cluster']:
 				with open("%s/umicons.sh"%prj_tree.preprocess, 'w') as jobHandle:
 					jobHandle.write(f"#!/bin/bash\n#$ -N clusterUMIs\n#$-l h_vmem={memNeeded}G\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/umi_cons_in_$NUM.pickle {arguments['--minReads']} {prj_tree.preprocess} --isFeature\n\n")
-				subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%uInd, "%s/umicons.sh"%prj_tree.preprocess])
+				subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%uInd, "%s/umicons.sh"%prj_tree.preprocess])
 			else:
-				partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess, feature=True)
+				partial_cons = partial( getUmiConsensus, minSize=arguments['--minReads'], workdir=prj_tree.preprocess )
 
 				pool = Pool(arguments['--threads'])
 				blob = pool.map( partial_cons, range(1,uInd+1) )
@@ -531,8 +549,7 @@ def main():
 				pool.join()
 
 			#collect output
-			reps  = list()
-			cells = defaultdict( dict )
+			cells = {}
 			small = 0
 			multi = 0
 
@@ -541,28 +558,37 @@ def main():
 					chunk_dict = pickle.load(pickle_in)
 					small += chunk_dict['small']
 					multi += chunk_dict['multi']
-					for c in chunk_dict['results']:
-						if c in cells:
-							cells[c]['count'] += chunk_dict['results'][c]['count']
-							cells[c]['seqs']  += chunk_dict['results'][c]['seqs']
+  
+					for cb in chunk_dict['results']:
+						if cb not in cells:
+							cells[ cb ] = chunk_dict['results'][ cb ].copy()
 						else:
-							cells[c].update( chunk_dict['results'][c] )
-						reps  += chunk_dict['results'][c]['seqs']
-
+							for s in chunk_dict['results'][cb]:
+								if s in cells[cb]:
+									cells[cb][s] += chunk_dict['results'][cb][s]
+								else:
+									cells[cb][s] = chunk_dict['results'][cb][s]
+											
+			totalUMIs   = len( [ x for i in [c.values() for c in cells.values()] for s in i for x in s ] )
 			print(datetime.datetime.now())
-			print( "UMIs saved: %d (in %d cells)\nUMIs with fewer than %d reads: %d\nUMIs with multiple clusters:%d\n\n" % (len(reps),len(cells), arguments['--minReads'],small,multi), file=sys.stderr )
-			print( "UMIs saved: %d (in %d cells)\nUMIs with fewer than %d reads: %d\nUMIs with multiple clusters:%d\n\n" % (len(reps),len(cells), arguments['--minReads'],small,multi), file=logFile )
+			print( "UMIs saved: %d (in %d cells)\nUMIs with fewer than %d reads: %d\nUMIs with multiple clusters:%d\n\n" % (totalUMIs,len(cells), arguments['--minReads'],small,multi), file=sys.stderr )
+			print( "UMIs saved: %d (in %d cells)\nUMIs with fewer than %d reads: %d\nUMIs with multiple clusters:%d\n\n" % (totalUMIs,len(cells), arguments['--minReads'],small,multi), file=logFile )
 
 			#write output
 			with open( arguments['--umiOutput'], "w" ) as handle:
-				SeqIO.write( reps, handle, "fasta" )
+				for c in cells:
+					for s in cells[c]:
+						for u in cells[c][s]:
+							handle.write(f">{u}\n{s}\n")
 
 			#now do cell barcodes, if present
 			if arguments['--cell'] is not None:
 
 				#generate pickles to pass to consensus algorithm
 				cInd = 0
-				for chunk in iterator_slice(cells.values(), 5000):
+				cd = list(cells.items())
+				random.shuffle(cd)
+				for chunk in iterator_slice(cd, 15000):
 					cInd += 1
 					with open( f"{prj_tree.preprocess}/cell_cons_in_{cInd:04}.pickle", 'wb') as pickle_out:
 						pickle.dump( chunk, pickle_out )
@@ -571,9 +597,9 @@ def main():
 				if arguments['--cluster']:
 					with open("%s/cellcons.sh"%prj_tree.preprocess, 'w') as jobHandle:
 						jobHandle.write(f"#!/bin/bash\n#$ -N clusterCells\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/cell_cons_in_$NUM.pickle {arguments['--minUMIs']} {prj_tree.preprocess} --isCell\n\n")
-					subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%cInd, "%s/cellcons.sh"%prj_tree.preprocess])
+					subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%cInd, "%s/cellcons.sh"%prj_tree.preprocess])
 				else:
-					partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMIs'], workdir=prj_tree.preprocess, isCell=True)
+					partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMIs'], workdir=prj_tree.preprocess, clustType="cell" )
 
 					pool = Pool(arguments['--threads'])
 					blob = pool.map( partial_cons, range(1,cInd+1) )
@@ -581,20 +607,20 @@ def main():
 					pool.join()
 
 				#collect output
-				final_seqs  = list()
 				small = 0
 
-				for p in glob.glob(f"{prj_tree.preprocess}/cell_cons_out_*.pickle"):
-					with open(p, 'rb') as pickle_in:
-						chunk_dict = pickle.load(pickle_in)
-						small += chunk_dict['small']
-						for c in chunk_dict['results']:
-							final_seqs  += chunk_dict['results'][c]['seqs']
+				with open( arguments['--cellOutput'], "w" ) as handle:
+					for p in glob.glob(f"{prj_tree.preprocess}/cell_cons_out_*.pickle"):
+						with open(p, 'rb') as pickle_in:
+							chunk_dict = pickle.load(pickle_in)
+							small += chunk_dict['small']
+							for c in chunk_dict['results']:
+								for s in chunk_dict['results'][c]:
+									for m in chunk_dict['results'][c][s]:
+										handle.write(f">{m}\n{s}\n")
 
 				print("%s: %d sequences discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']) , file=sys.stderr)
 				print("%s: %d sequences discarded because they contained fewer than %d UMIs..." % (datetime.datetime.now(), small, arguments['--minUMIs']) , file=logFile)
-				with open( arguments['--cellOutput'], "w" ) as handle:
-					SeqIO.write( final_seqs, handle, "fasta" )
 
 			else:
 				#UMIs only, do dereplication and collision removal
@@ -606,7 +632,9 @@ def main():
 
 			#generate pickles to pass to consensus algorithm
 			cInd = 0
-			for chunk in iterator_slice(umi_dict.values(), 5000):
+			ud = list(umi_dict.items())
+			random.shuffle(ud)
+			for chunk in iterator_slice(umi_dict.items(), 5000):
 				cInd += 1
 				with open( f"{prj_tree.preprocess}/cell_cons_in_{cInd:04}.pickle", 'wb') as pickle_out:
 					pickle.dump( chunk, pickle_out )
@@ -615,29 +643,29 @@ def main():
 			if arguments['--cluster']:
 				with open("%s/cellcons.sh"%prj_tree.preprocess, 'w') as jobHandle:
 					jobHandle.write(f"#!/bin/bash\n#$ -N clusterCells\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/cluster_umis.py {prj_tree.preprocess}/cell_cons_in_$NUM.pickle {arguments['--minUMIs']} {prj_tree.preprocess} --isCell\n\n")
-				subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%cInd, "%s/cellcons.sh"%prj_tree.preprocess])
+				subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%cInd, "%s/cellcons.sh"%prj_tree.preprocess])
 			else:
-				partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMIs'], workdir=prj_tree.preprocess, isCell=True)
+				partial_cons = partial( getUmiConsensus, minSize=arguments['--minUMIs'], workdir=prj_tree.preprocess, clustType="cell" )
 				pool = Pool(arguments['--threads'])
 				blob = pool.map( partial_cons, range(1,cInd+1) )
 				pool.close()
 				pool.join()
 
 			#collect output
-			final_seqs  = list()
 			small = 0
 
-			for p in glob.glob(f"{prj_tree.preprocess}/cell_cons_out_*.pickle"):
-				with open(p, 'rb') as pickle_in:
-					chunk_dict = pickle.load(pickle_in)
-					small += chunk_dict['small']
-					for c in chunk_dict['results']:
-						final_seqs  += chunk_dict['results'][c]['seqs']
+			with open( arguments['--cellOutput'], "w" ) as handle:
+				for p in glob.glob(f"{prj_tree.preprocess}/cell_cons_out_*.pickle"):
+					with open(p, 'rb') as pickle_in:
+						chunk_dict = pickle.load(pickle_in)
+						small += chunk_dict['small']
+						for c in chunk_dict['results']:
+							for s in chunk_dict['results'][c]:
+								for m in chunk_dict['results'][c][s]:
+									handle.write(f">{m}\n{s}\n")
 
 			print("%s: %d sequences discarded because they contained fewer than %d reads..." % (datetime.datetime.now(), small, arguments['--minUMIs']), file=sys.stderr)
 			print("%s: %d sequences discarded because they contained fewer than %d reads..." % (datetime.datetime.now(), small, arguments['--minUMIs']), file=logFile)
-			with open( arguments['--cellOutput'], "w" ) as handle:
-				SeqIO.write( final_seqs, handle, "fasta" )
 
 	else:
 		#anything special to do if there are no UMIs/barcodes at all?
@@ -656,14 +684,14 @@ def main():
 			arguments['--threads'] = None
 
 		for opt in [ '--locus', '--lib', '--species', '--npf', '--minl', '--maxl',
-           '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file',
-					 '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--threads']:
+			     '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file',
+			     '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--threads']:
 			if arguments[opt] is not None:
 				cmd += " %s '%s'" % (opt, arguments[opt])
 		for flag in ['--derep', '--cluster', '-f', '--runJBlast', '--noD', '--noC',
-		             '--runFinalize', '--noclean', '--runClustering', '--runCellStatistics']:
-		    if arguments[flag]:
-		        cmd += " %s" % flag
+			     '--runFinalize', '--noclean', '--runClustering', '--runCellStatistics']:
+			if arguments[flag]:
+				cmd += " %s" % flag
 		if arguments['--cell'] is not None:
 			cmd += " --fasta %s" % arguments['--cellOutput']
 		elif arguments['--umi'] is not None or arguments['--r2umi'] is not None:
@@ -691,10 +719,10 @@ if __name__ == '__main__':
 
 	arguments = docopt(__doc__)
 
-	arguments['--minQ']     = int( arguments['--minQ'] )
+	arguments['--minQ']	= int( arguments['--minQ'] )
 	arguments['--minReads'] = int( arguments['--minReads'] )
 	arguments['--minUMIs']	= int( arguments['--minUMIs'] )
-	arguments['--threads']  = int( arguments['--threads'] )
+	arguments['--threads']	= int( arguments['--threads'] )
 
 	if arguments['--cluster']:
 		if not clusterExists:

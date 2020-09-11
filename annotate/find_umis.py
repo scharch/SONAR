@@ -26,13 +26,16 @@ Options:
 
 Split out from 1.0-preprocess.py by Chaim A Schramm on 2019-06-18.
 Added PE and REVCOMP flags for handling feature barcoding by CA Schramm 2019-10-08.
+Changed structure of umi_dict by CAS 2020-08-07.
+Changed whitelists sets instead of lists by CAS 2020-08-07.
 
-Copyright (c) 2019 Vaccine Research Center, National Institutes of Health, USA.
+Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
     All rights reserved.
 
 """
 
-import sys, os, re, pickle
+import sys, os, re, pickle, gzip
+from functools import partial
 from docopt import docopt
 import datetime
 from collections import defaultdict
@@ -70,16 +73,14 @@ def main():
 			r2Handle = open( "r2" + arguments["FASTA"], "r" )
 			r2Parser = SeqIO.parse( r2handle, arguments["FORMAT"])
 
-		with open(arguments["FASTA"], "r") as handle:
+		if re.search("gz$", arguments['FASTA']):
+			_open = partial(gzip.open,mode='rt')
+		else:
+			_open = partial(open, mode='r')
+
+		with _open(arguments["FASTA"]) as handle:
 			for seq in SeqIO.parse( handle, arguments["FORMAT"]):
 				count += 1
-
-				#check for derep-ed ness
-				reads = 1
-				#check_derep = re.search(";size=(\d+)", seq.id)
-				#if check_derep:
-				#	reads = int( check_derep.group(1) )
-				#	seq.id = re.sub(";size=(\d+)", "", seq.id) #I don't remember why this is here, seems like not the correct behavior
 
 				cell_barcode = str(seq.seq[ cb_start:cb_end ])
 				fwd_id       = str(seq.seq[ umi_start:umi_end ])
@@ -90,7 +91,7 @@ def main():
 					if arguments["FORMAT"]=="fastq" and any([ x<arguments['--minQ'] for x in seq.letter_annotations['phred_quality'][cb_start:cb_end] ]):
 						low_qual += 1
 						continue
-					elif arguments['--cellWhiteList'] is not None:
+					if arguments['--cellWhiteList'] is not None:
 						if not cell_barcode in cellWhiteList:
 							bad_umi += 1
 							continue
@@ -141,17 +142,23 @@ def main():
 
 				if cell_barcode != "":
 					seq.id += ";cell=%s"%cell_barcode
+				else:
+					#no cell barcode, but store umi as the cell barcode in the data structure to prevent errors
+					cell_barcode = molecule_id
+					
 				if molecule_id	!= "":
 					seq.id += ";umi=%s"%molecule_id
 				else:
 					#no umi, but store cell barcode as the umi in the data structure to prevent errors
 					molecule_id = cell_barcode
 
-				if (cell_barcode, molecule_id) not in umi_dict:
-					umi_dict[ (cell_barcode, molecule_id) ] = { 'cell':cell_barcode, 'umi':molecule_id, 'count':reads, 'seqs':[seq] }
+				if cell_barcode not in umi_dict:
+					umi_dict[cell_barcode] = defaultdict( dict )
+
+				if str(seq.seq) not in umi_dict[cell_barcode][molecule_id]:
+					umi_dict[ cell_barcode ][ molecule_id ][ str(seq.seq) ] = [ seq.id ]
 				else:
-					umi_dict[ (cell_barcode, molecule_id) ]['count'] += reads
-					umi_dict[ (cell_barcode, molecule_id) ]['seqs'].append(seq)
+					umi_dict[ cell_barcode ][ molecule_id ][ str(seq.seq) ].append(seq.id)
 
 			print( "%s: Finished %s: %d sequences in %d UMIs; Discarded %d reads with low quality UMIs and %d additional reads with illegal UMIs." % (datetime.datetime.now(), arguments["FASTA"], count, len(umi_dict), low_qual, bad_umi) )
 
@@ -173,27 +180,27 @@ if __name__ == '__main__':
 	#logCmdLine(sys.argv)
 
 	iupac = { "A":"A", "C":"C", "G":"G", "T":"[UT]", "U":"[UT]", "M":"[AC]", "R":"[AG]", "W":"[AT]", "S":"[CG]", "Y":"[CT]", "K":"[GT]", "V":"[ACG]", "H":"[ACT]", "D":"[AGT]", "B":"[CGT]", "N":"[ACGTU]" }
-	cellWhiteList = []
-	umiWhiteList  = []
-	umi2WhiteList = []
+	cellWhiteList = set()
+	umiWhiteList  = set()
+	umi2WhiteList = set()
 	if arguments['--cellWhiteList'] is not None:
 		with open(arguments['--cellWhiteList'], "r") as codes:
 			for bc in codes.readlines():
-				cellWhiteList.append(bc.strip())
+				cellWhiteList.add(bc.strip())
 	elif arguments['--cellPattern'] is not None:
 		arguments['--cellPattern'] = re.sub("\w", lambda x: iupac[x.group().upper()], arguments['--cellPattern'])
 
 	if arguments['--umiWhiteList'] is not None:
 		with open(arguments['--umiWhiteList'], "r") as codes:
 			for bc in codes.readlines():
-				umiWhiteList.append(bc.strip())
+				umiWhiteList.add(bc.strip())
 	elif arguments['--umiPattern'] is not None:
 		arguments['--umiPattern'] = re.sub("\w", lambda x: iupac[x.group().upper()], arguments['--umiPattern'])
 
 	if arguments['--umi2WhiteList'] is not None:
 		with open(arguments['--umi2WhiteList'], "r") as codes:
 			for bc in codes.readlines():
-				umi2WhiteList.append(bc.strip())
+				umi2WhiteList.add(bc.strip())
 	elif arguments['--umi2Pattern'] is not None:
 		arguments['--umi2Pattern'] = re.sub("\w", lambda x: iupac[x.group().upper()], arguments['--umi2Pattern'])
 

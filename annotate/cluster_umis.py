@@ -20,6 +20,8 @@ Split out from 1.0-preprocess.py by Chaim A Schramm on 2019-06-18.
 Added option for feature barcodes by CA Schramm 2019-10-08.
 Tweaked clustering thresholds by CAS 2020-02-04.
 Changed minUMIs to a per metaconsenus (instead of per cell) threshold by CAS 2020-02-12.
+Changed structure of umi_dict by CAS 2020-08-07.
+
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
     All rights reserved.
@@ -51,91 +53,118 @@ def main():
 
 	print( f"{datetime.datetime.now()}: Generating consensus sequences from {arguments['PICKLE']}..." )
 
-	for umi in umi_iter:
+	for cell, cell_dict in umi_iter:
 
-		#check thresholds
-		#for UMIs (isCell==False) use count, in case I eventually implement dereplication
-		#for metaconsenus (isCell==True), use len(seqs), because care about the number of UMIs, not the total reads
-		if (arguments['--isCell'] and len(umi['seqs']) < arguments['MINSIZE']) or (umi['count'] < arguments['MINSIZE'] and not arguments['--isCell']):
-			small += 1  #not correct for metaconsenus case
-			continue
+		results[cell] = defaultdict( list )
 
-		if len(umi['seqs']) == 1:
-			#save time on singletons (if they weren't excluded by the read threshold)
-			if arguments['--isCell']:
-				umi['seqs'][0].id = "%s.1 cell_id=%s duplicate_count=1 consensus_count=%s"%( umi['cell'], umi['cell'], umi['count'] )
-				umi['seqs'][0].description = ""
+		#kludge to make data structure the same
+		if arguments['--isCell']:
+			cell_dict = { cell:cell_dict }
+
+		for umi in cell_dict:
+
+			#for isCell==True, numReads is actually 'numUMIs'
+			numReads = sum( [ len(cell_dict[umi][s]) for s in cell_dict[umi] ] )
+			numSeqs  = len( cell_dict[umi]	)
+
+			#check thresholds
+			if numReads < arguments['MINSIZE']:
+				small += 1  #not entirely correct for metaconsenus case because it might be 
+							#     more than one metaconsensus that doesn't have enough UMIs
+				continue
+
+			if numSeqs == 1:
+				#save time on singletons (if they weren't excluded by the read threshold)
+				seq   = next(iter(cell_dict[umi]))
+				seqid = cell_dict[umi][seq][0]
+
+				if arguments['--isCell']:
+					totalReads = sum( [ int(cc.group(1)) for cc in [ re.search("consensus_count=(\d+)",mi) for mi in cell_dict[umi][seq] ] ] )
+					seqid = "%s.1 cell_id=%s duplicate_count=%d consensus_count=%d"%( cell, cell, numReads, totalReads )
+				else:
+					seqid += ";seqs=1;size=%d;consensus_count=%d" % (numReads, numReads)
+
+				results[ cell ][ seq ].append( seqid )
+
 			else:
-				umi['seqs'][0].id += ";seqs=1;size=%d;consensus_count=%d" % (umi['count'],umi['count'])
-				umi['seqs'][0].description = ""
 
-			if (umi['cell']) not in results:
-				results[ umi['cell'] ] = { 'cell':umi['cell'], 'umi':umi['cell'], 'count':1, 'seqs':umi['seqs'].copy() }
-			else:
-				results[ umi['cell'] ]['count'] += 1
-				results[ umi['cell'] ]['seqs']  += umi['seqs']
+				subdir = arguments['DIR']
+				#iddef  = "3"
+				if not arguments['--isCell']:
+					subdir += "/%s" % cell
+					#iddef = "2"
 
-		else:
-
-			subdir = arguments['DIR']
-			#iddef  = "3"
-			if not arguments['--isCell']:
-				subdir += "/%s" % umi['cell']
-				#iddef = "2"
-
-			#cluster and rapid align with vsearch
-			os.makedirs(subdir, exist_ok=True)
-			with open("%s/%s.fa" % (subdir, umi['umi']), "w") as handle:
-				SeqIO.write(umi['seqs'], handle, "fasta")
-
-			idThreshold = "0.95"
-			if arguments['--isCell']:
-				idThreshold = "0.99"
-
-			lenOpts = [ "-mincols", '150' ] #VDJ alignment overlap
-			if arguments['--isFeature']:
-				lenOpts = [ "-minseqlength", '10' ] #in case of naked feature barcodes
-
-			subprocess.call([vsearch,
-					 "-cluster_fast", "%s/%s.fa" % (subdir, umi['umi']),
-					 "-consout", "%s/%s_cons.fa" % (subdir, umi['umi']),
-					 "-id", idThreshold,
-					 "-iddef", "3",
-					 "-sizein", "-sizeout",
-					 "-gapopen", "10I/10E", #lower gap open penalty to better account for internal indels
-					 "-gapext", "2I/2E", #don't make endgaps cheaper; encourages TSOs to align properly
-					 "-clusterout_sort", #so we can look at just the biggest
-					 "-quiet" #supress screen clutter
-					 ] + lenOpts )
-
-			with open("%s/%s_cons.fa" % (subdir, umi['umi']), 'r') as cons_file:
-				seq_number = 0
-				for cons in SeqIO.parse(cons_file, "fasta"):
-					seq_number += 1
-					if not arguments['--isCell'] and seq_number > 1:
-						#how to handle more than one cluster per umi?
-						#  -depends on presence/absence of cell barcodes, I guess. user param?
-						#use it to do error checking???
-						multi += 1
-						break
-
-					num_reads = re.search(";seqs=(\d+);size=(\d+)",cons.id)
-					if num_reads:
-						if int(num_reads.group(2)) < arguments['MINSIZE']:
-							small += 1
-							continue
-
+				#cluster and rapid align with vsearch
+				os.makedirs(subdir, exist_ok=True)
+				with open("%s/%s.fa" % (subdir, umi), "w") as handle:
+					for s in cell_dict[umi]:
 						if arguments['--isCell']:
-							cons.id	 = "%s.%d cell_id=%s duplicate_count=%s consensus_count=%s"%( umi['cell'], seq_number, umi['cell'], num_reads.group(1), num_reads.group(2) )
+							#second round clustering, don't collapse identical sequences
+							for mi in cell_dict[umi][s]:
+								handle.write(f">{mi}\n{s}\n")
 						else:
-							cons.id += ";consensus_count=%s" % num_reads.group(2) #save size annotation for further clustering/dereplication
+							#first round clustering, only write once per sequence
+							#   but need to add size annotation
+							handle.write(f">{cell_dict[umi][s][0]};size={len(cell_dict[umi][s])}\n{s}\n")
 
-						cons.description = ""
-						if (umi['cell']) not in results:
-							results[ umi['cell'] ] = { 'cell':umi['cell'], 'umi':umi['cell'], 'count':int(num_reads.group(2)), 'seqs':[cons] }
-						else:
-							results[ umi['cell'] ]['count'] += int(num_reads.group(2))
-							results[ umi['cell'] ]['seqs'].append(cons)
+				otherOpts = [ "-mincols", '150' ] #VDJ alignment overlap
+				if arguments['--isFeature']:
+					otherOpts = [ "-minseqlength", '10' ] #in case of naked feature barcodes
+				if arguments['--isCell']:
+					otherOpts += ['-id', '0.99', '-uc', f"{subdir}/{umi}.uc"]
+				else:
+					otherOpts += ['-id', '0.95', '-sizein'] #don't want to weight by abundance for cell metaconsensus
+
+				subprocess.call([vsearch,
+						 "-cluster_fast", "%s/%s.fa" % (subdir, umi),
+						 "-consout", "%s/%s_cons.fa" % (subdir, umi),
+						 "-iddef", "3",
+						 "-sizeout",
+						 "-gapopen", "10I/10E", #lower gap open penalty to better account for internal indels
+						 "-gapext", "2I/2E", #don't make endgaps cheaper; encourages TSOs to align properly
+						 "-clusterout_sort", #so we can look at just the biggest
+						 "-quiet" #supress screen clutter
+						 ] + otherOpts )
+
+				if arguments['--isCell']:
+					totalReads = dict()
+					with open(f"{subdir}/{umi}.uc", 'r') as ucfile:
+						reader = csv.reader(ucfile, delimiter="\t")
+						for row in reader:
+							if row[0]=="C": break
+							tr = re.search("size=(\d+)", row[8])
+							if tr:
+								if row[9] == "*":
+									totalReads[row[8].split(";")[0]] = int(tr.group(1))
+								else:
+									totalReads[row[9].split(";")[0]] += int(tr.group(1))
+
+				with open("%s/%s_cons.fa" % (subdir, umi), 'r') as cons_file:
+					seq_number = 0
+					for cons in SeqIO.parse(cons_file, "fasta"):
+						seq_number += 1
+						cons.id = re.sub("centroid=","",cons.id,count=1)
+						if not arguments['--isCell'] and seq_number > 1:
+							#how to handle more than one cluster per umi?
+							#  -depends on presence/absence of cell barcodes, I guess. user param?
+							#use it to do error checking???
+							multi += 1
+							break
+
+						clusterReads = re.search(";seqs=(\d+);size=(\d+)",cons.id)
+						if clusterReads:
+							if int(clusterReads.group(2)) < arguments['MINSIZE']:
+								small += 1
+								continue
+
+							if arguments['--isCell']:
+								cons.id	 = "%s.%d cell_id=%s duplicate_count=%s consensus_count=%s"%( cell, seq_number, cell, clusterReads.group(1), totalReads[cons.id.split(";")[0]] )
+							else:
+								cons.id += ";consensus_count=%s" % clusterReads.group(2) #save size annotation for further clustering/dereplication
+
+							cons.description = ""
+							seq = str(cons.seq)
+							results[ cell ][ seq ].append( cons.id )
 
 	with open(re.sub("cons_in","cons_out",arguments["PICKLE"]), 'wb') as pickle_out:
 		pickle.dump( {'results':results, 'small':small, 'multi':multi}, pickle_out )
