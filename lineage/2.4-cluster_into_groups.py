@@ -414,7 +414,7 @@ def main():
 					  				centroidData[centroid]['aa'] ]
 		
 				#find how many members are from each source file
-				if len(arguments['--rearrangements']) > 0:
+				if len(arguments['--rearrangements']) > 1:
 					breakdown = [ countsByInput[centroid][f"{i:03}"] for i in range(len(arguments['--rearrangements'])) ]
 					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 
