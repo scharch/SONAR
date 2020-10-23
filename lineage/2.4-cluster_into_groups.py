@@ -28,7 +28,9 @@ Options:
                                output rearrangements are derived from. If specified, the number
                                of names provided *must* match the number of input `rearrangements`
                                files. If no `names` are given, the full paths specified to
-                               `rearrangements` will be used.
+                               `rearrangements` will be used. As a special case, the usage
+                               `--names preserve` will extract the short names from an existing
+                               `source_repertoire` column.
     --filter all           Filter sequences by status before calculating lineages. Allowed values
                                are "all" (ie all CDR3), "good", and "unique" (determined by having
                                `centroid`==`sequence_id` --does not remove singletons!). 
@@ -82,7 +84,12 @@ Updated filters to new syntax by CAS 2020-07-02.
 Added geneClusters option by CAS on 2020-07-16.
 Added short names option by CAS on 2020-07-16.
 Added numRepertoires column to lineage output by CAS, 2020-07-16.
-Fixed short names by CAS in 2002-07-28.
+Fixed short names by CAS in 2020-07-28.
+Added ability to get short names from the input file to allow adding new data
+                         multiple times by CAS 2020-10-22.
+Fixed new clone numbers when using --preserve by CAS 2020-10-22.
+Fixed representative CDR3s for single cell clustering by CAS 2020-10-22. 
+
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -143,7 +150,8 @@ def processClusters( iter_tuple ):
 			else:
 				centroidData[ single ] = dict( vgene = myGenes[0], jgene = myGenes[1] )
 			clusterSizes[ single ] = 1#seqSize[ single ]
-			countsByInput[ single ][ single[-3:] ] += 1
+			origin = re.search("===(.+)$", single).groups()[0]
+			countsByInput[ single ][ origin ] += 1
 			continue
 
 		#cluster with vsearch
@@ -167,6 +175,8 @@ def processClusters( iter_tuple ):
 				hit  = re.sub(";size=\d+.*","",row[8])
 				cent = re.sub(";size=\d+.*","",row[9]) # just a * for S rows, use hit as cent
 
+				origin = re.search("===(.+)$", hit).groups()[0]
+
 				if row[0] == "S":
 					if arguments['--geneClusters']:
 						centroidData[ hit ] = dict( vgene = myGenes[0], jgene = "" )
@@ -174,11 +184,11 @@ def processClusters( iter_tuple ):
 						centroidData[ hit ] = dict( vgene = myGenes[0], jgene = myGenes[1] )
 					clusterSizes[ hit ] = 1#seqSize[ hit ]
 					clusterLookup[ hit ] = hit
-					countsByInput[ hit ][ hit[-3:] ] += 1
+					countsByInput[ hit ][ origin ] += 1
 				elif row[0] == "H":
 					clusterLookup[ hit ] = cent
 					clusterSizes[ cent ] += 1#seqSize[ hit ]
-					countsByInput[ cent ][ hit[-3:] ] += 1
+					countsByInput[ cent ][ origin ] += 1
 				else:
 					break #skip "C" lines
 
@@ -201,23 +211,23 @@ def jointClonality(clusters, cells, cdr3Info):
 	#now decompose the graph into "maximal cliques" to identify 'cell clones'
 	# probably overkill since the graph will mostly be disjoint, with clearly identifiable
 	# clones, but this way I don't have to think about edge cases (no pun intended)
-	cellClones = Counter()
+	cellClones = dict()
 	for cliq in find_cliques(cloneGraph):
-		cellClones[ frozenset(cliq) ] = 0
+		cellClones[ frozenset(cliq) ] = []
 
 	#Go back through the list of cells and assign them to clones
 	assignments = dict()
 	countsByInput = defaultdict( Counter )
 	ambiguous = 0
 	for c in cells:
-		origin = c[-3:]
+		origin = re.search("===(.+)$", c).groups()[0]
 		possibleClones = []
 		for cc in cellClones:
 			if frozenset([clusters[s] for s in cells[c]]) <= cc:
 				possibleClones.append(cc)
 		if len(possibleClones) == 1:
 				assignments[c] = possibleClones[0]
-				cellClones[ possibleClones[0] ] += 1
+				cellClones[ possibleClones[0] ].append(c)
 				countsByInput[ possibleClones[0] ][ origin ] += 1
 		else:
 			#no matches found, probably ambiguous
@@ -225,7 +235,7 @@ def jointClonality(clusters, cells, cdr3Info):
 			if len(possibleClones) == 0 and len(cells[c]) == 1:
 				cloneName = frozenset([clusters[s] for s in cells[c]])
 				assignments[c] = cloneName
-				cellClones[ cloneName ] = 1
+				cellClones[ cloneName ] = [c]
 				countsByInput[ cloneName ][ origin ] += 1
 			else:
 				#no assignment
@@ -237,22 +247,31 @@ def jointClonality(clusters, cells, cdr3Info):
 		print( "Warning: More than 5% of cells had ambiguous or unassignable clonality.", file=sys.stderr)
 
 	#finally, collect the detailed 'chain clone' data for each 'cell clone'
-	# TODO: This produces unexpected output if the centroid of the chain cluster is not
-	#       in the cell clone, especially at low identity thresholds. Fix is probably to
-	#       make cellClones into a dict of lists (of the values of `cells`) instead of a 
-	#       Counter. Then test `any([chain in myCell for myCell in cellClones[cc]` 
-	#       and recluster somehow if False.
 	cloneInfo = dict()
 	for cc in cellClones:
 		nt = []
 		aa = []
 		for chain in cc:
-			nt.append( f"{cdr3Info[chain]['genes']}:{cdr3Info[chain]['cdr3_seq']}" )
-			aa.append( f"{cdr3Info[chain]['genes']}:{cdr3Info[chain]['cdr3_seq'].translate()}" )
-
+			#The centroid of the original clustering (ie `chain`) is not guaranteed to be
+			#    in the final `cellClone`, especially at low identity thresholds. Rather
+			#    than trying to recluster to get a new centroid, just grab the first one:
+			found = False
+			for myCell in cellClones[cc]:
+				for myChain in cells[myCell]:
+					if cdr3Info[myChain]['genes'] == cdr3Info[chain]['genes']:
+						nt.append( f"{cdr3Info[myChain]['genes']}:{cdr3Info[myChain]['cdr3_seq']}" )
+						aa.append( f"{cdr3Info[myChain]['genes']}:{cdr3Info[myChain]['cdr3_seq'].translate()}" )
+						found = True
+						break
+				if found:
+					break
 		cloneInfo[cc] = { 'aa':",".join(sorted([x.upper() for x in aa])), 'nt':",".join(sorted([x.upper() for x in nt])) }
 
-	return assignments, cloneInfo, cellClones, countsByInput
+	#turn cellClones into a Counter for compatibility with code for bulk sequencing
+	cellCloneCounter = Counter()
+	for cc in cellClones:
+		cellCloneCounter[cc] = len(cellClones[cc])
+	return assignments, cloneInfo, cellCloneCounter, countsByInput
 
 
 
@@ -277,6 +296,7 @@ def main():
 	cdr3_info = dict()
 	seqSize = Counter()
 	oldClones = dict()
+	sourceList = list()
 
 	cell_dict = defaultdict(list)
 	for index, inFile in enumerate(arguments['--rearrangements']):
@@ -289,6 +309,8 @@ def main():
 			sys.exit( f"`centroid` column not found in {inFile}, cannot filter for unique sequences" )
 		if arguments['--preserve'] and index==0 and not "clone_id" in reader.fields:
 			print("Can't find existing clone_ids, `--preserve` will be ignored...", file=sys.stderr)
+		if len(arguments['--names']) > 0 and arguments['--names'][index] == "preserve" and not "source_repertoire" in reader.fields:
+			sys.exit("Can't find existing source_repertoire, please use a `--name` other than 'preserve'." )
 
 		#now iterate through the rearrangements
 		for r in filterAirrTsv(reader, filter_rules):
@@ -302,11 +324,19 @@ def main():
 				continue
 
 			#uniquify the sequence id in case of multiple file inputs
-			r[ 'sequence_id' ] += f"-{index:03}"
+			suffix = index
+			if len(arguments['--names']) > 0:
+				if arguments['--names'][index] == "preserve":
+					suffix = r[ 'source_repertoire' ]
+				else:
+					suffix = arguments['--names'][index]
+			if suffix not in sourceList:
+				sourceList.append(suffix)
+			r[ 'sequence_id' ] += f"==={suffix}"
 
 			if arguments['--singlecell']:
 				#for network analysis
-				r[ 'cell_id' ] += f"-{index:03}"
+				r[ 'cell_id' ] += f"==={suffix}"
 				cell_dict[ r['cell_id'] ].append(r['sequence_id'])
 
 			if arguments['--preserve'] and index==0 and 'clone_id' in r:
@@ -395,6 +425,12 @@ def main():
 				header += ["source_count", "num_sources"]
 			writer.writerow(header)
 
+			#if we are reclustering with the --preserve option, we need to figure out
+			#    the numbering
+			currentMaxCloneNum = 0
+			if len(oldClones.keys()) > 0:
+				currentMaxCloneNum = max( map(int, oldClones.values()) )
+
 			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
 				if size == 0:
 					break
@@ -406,7 +442,8 @@ def main():
 					if len(oldCells)>0:
 						centroidData[centroid]['rank'] = oldClones[ oldCells[0] ]
 					else:
-						centroidData[centroid]['rank'] = "%05d" % (len(oldClones.keys()) + rank)
+						currentMaxCloneNum += 1
+						centroidData[centroid]['rank'] = "%05d" % currentMaxCloneNum
 				else:
 					centroidData[centroid]['rank'] = "%05d" % (rank+1)
 
@@ -415,7 +452,7 @@ def main():
 		
 				#find how many members are from each source file
 				if len(arguments['--rearrangements']) > 1:
-					breakdown = [ countsByInput[centroid][f"{i:03}"] for i in range(len(arguments['--rearrangements'])) ]
+					breakdown = [ countsByInput[centroid][suffix] for suffix in sourceList ]
 					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 
 				writer.writerow( dataToWrite )
@@ -456,7 +493,13 @@ def main():
 
 					for row in reader:
 						clone_id = ""
-						unique_cell = row[0]+f"-{ind:03}"
+						suffix = ind
+						if len(arguments['--names']) > 0:
+							if arguments['--names'][ind] == "preserve":
+								suffix = row[3]
+							else:
+								suffix = arguments['--names'][ind]
+						unique_cell = row[0]+f"==={suffix}"
 						if unique_cell in clusterLookup:
 							clone_id = centroidData[ clusterLookup[ unique_cell ] ]['rank']
 						if hasClone:
@@ -465,7 +508,8 @@ def main():
 							row.insert( 2, clone_id )
 						if len(arguments['--rearrangements']) > 1:
 							if hasSource:
-								row[3] = airrFile
+								if airrFile != "preserve":
+									row[3] = airrFile
 							else:
 								row.insert( 3, airrFile )
 						writer.writerow( row )
@@ -499,7 +543,7 @@ def main():
 						  int(len(cdr3_info[centroid]['cdr3_seq'])/3), cdr3_info[centroid]['cdr3_seq'].translate(), size ]
 				#find how many members are from each source file
 				if len(arguments['--rearrangements']) > 0:
-					breakdown = [ countsByInput[centroid][f"{i:03}"] for i in range(len(arguments['--rearrangements'])) ]
+					breakdown = [ countsByInput[centroid][suffix] for suffix in sourceList ]
 					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 				writer.writerow(dataToWrite)
 
@@ -536,8 +580,15 @@ def main():
 		for r in airr.read_rearrangement( inFile ):
 
 			#get the uniquified ids
-			unique_seq  = r['sequence_id']     + f"-{index:03}"
-			unique_cell = r.get('cell_id', '') + f"-{index:03}"
+			suffix = index
+			if len(arguments['--names']) > 0:
+				if arguments['--names'][index] == "preserve":
+					suffix = r[ 'source_repertoire' ]
+				else:
+					suffix = arguments['--names'][index]
+
+			unique_seq  = r['sequence_id']     + f"==={suffix}"
+			unique_cell = r.get('cell_id', '') + f"==={suffix}"
 
 			if unique_seq in clusterLookup:
 				r['clone_id']	 = centroidData[ clusterLookup[ unique_seq ] ][ 'rank' ]
@@ -553,7 +604,8 @@ def main():
 			#add source repertoire if relevant
 			if len(arguments['--rearrangements']) > 1:
 				if len(arguments['--names']) > 0:
-					r['source_repertoire'] = arguments['--names'][ index ]
+					if arguments['--names'][ index ] != "preserve":
+						r['source_repertoire'] = arguments['--names'][ index ]
 				else:
 					r['source_repertoire'] = inFile
 
