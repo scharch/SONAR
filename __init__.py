@@ -418,7 +418,10 @@ def scoreAlign( alignDict, reference="ref", query="test", countTerminalGaps=Fals
 
 		coverage = covNum  / refLen
 
-	return matches/alignLen, coverage
+	if alignLen == 0:
+	    return 0, 0
+	else:
+	    return matches/alignLen, coverage
 
 #
 # -- END -- alignment functions
