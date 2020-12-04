@@ -212,29 +212,34 @@ def main():
 		aln = aln[ :, 0:-extra]
 		align_len -= extra
 
-	#kill the fasta def line and any usearch/vsearch annotations to avoid formatting foul-ups
 	germ_id	  = ""
+	if arguments["-v"] is not None:
+		germ_id = germ_seq.id
+	elif arguments['--root'] is not None:
+		germ_id = arguments['--root']
+
 	foundRoot = False
 	gaps	  = defaultdict( list )
 	for seq in aln:
+		#kill the fasta def line and any usearch/vsearch annotations to avoid formatting foul-ups
 		seq.id = re.sub("[;:].*", "", seq.id)
 		seq.description = ""
-		if re.search("(IG|VH|VK|VL|HV|KV|LV)", seq.id, re.I) is not None:
-			germ_id = seq.id
-
-		if arguments['--root'] is not None and seq.id == arguments['--root']:
+		if germ_id == "":
+			if re.search("(IG|VH|VK|VL|HV|KV|LV)", seq.id, re.I) is not None:
+				germ_id = seq.id
+				print( f"Using {germ_id} as root sequence. If this is not correct, please run again with the `--root` option specified.")
+				foundRoot = True
+		elif seq.id == germ_id:
 			foundRoot = True
 
 		for g in re.finditer("-+", str(seq.seq)):
 			#save gap. value is a field to help me determine what's real in assignGaps
 			gaps[ seq.id.upper() ].append( {'start':g.start(), 'end':g.end(), 'value':1} )
 
-	if arguments['--root'] is not None:
-		germ_id = arguments['--root']
-		if not foundRoot:
-			sys.exit("Couldn't find specified root sequence %s in input file"%arguments['--root'])
-	elif germ_id=="":
+	if germ_id=="":
 		sys.exit("Couldn't find a germline gene in the alignment, please use the --root option and try again.")
+	elif not foundRoot:
+		sys.exit("Couldn't find specified root sequence %s in input file"%germ_id)
 
 	with open("%s/infile" % prj_tree.phylo, "w") as output:
 		AlignIO.write(aln, output, "fasta")
