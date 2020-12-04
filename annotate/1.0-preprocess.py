@@ -238,7 +238,7 @@ def processFeatures():
 			splitForID = SeqIO.parse( toSplit, format=fileformat )
 			for chunk in iterator_slice(splitForID, 500000):
 				ind2 += 1
-				with open( "%s/r2features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
+				with open( "%s/features%04d-r2.%s"%(prj_tree.preprocess, ind2, fileformat), 'w' ) as writeChunk:
 					SeqIO.write( chunk, writeChunk, fileformat )
 
 

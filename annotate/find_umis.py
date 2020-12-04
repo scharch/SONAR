@@ -70,8 +70,8 @@ def main():
 		print("%s: Starting to look for UMIs in %s" % (datetime.datetime.now(), arguments["FASTA"]) )
 
 		if arguments['--pe']:
-			r2Handle = open( "r2" + arguments["FASTA"], "r" )
-			r2Parser = SeqIO.parse( r2handle, arguments["FORMAT"])
+			r2Handle = open( re.sub( f"(features\d\d\d\d)\.{arguments["FORMAT"]}", f"\\1-r2.{arguments["FORMAT"]}", arguments["FASTA"]), "r" )
+			r2Parser = SeqIO.parse( r2Handle, arguments["FORMAT"])
 
 		if re.search("gz$", arguments['FASTA']):
 			_open = partial(gzip.open,mode='rt')
@@ -80,6 +80,12 @@ def main():
 
 		with _open(arguments["FASTA"]) as handle:
 			for seq in SeqIO.parse( handle, arguments["FORMAT"]):
+				r2Seq = None
+				if arguments['--pe']:
+					r2Seq = next(r2Parser)
+					if re.sub("/1$","",seq.id) != re.sub("/2$","", r2Seq.id):
+						sys.exit( f"Error: sequence id mismatch between R1 and R2 in {arguments['FASTA']}: {seq.id} vs {tempseq.id}" )
+
 				count += 1
 
 				cell_barcode = str(seq.seq[ cb_start:cb_end ])
@@ -132,11 +138,7 @@ def main():
 				if umi2_end > 0:
 					seq = seq[ : -umi2_end]
 				if arguments['--pe']:
-					tempseq = next(r2Parser)
-					if re.sub("/1$","",seq.id) == re.sub("/2$","", tempseq.id):
-						seq = tempseq
-					else:
-						sys.exit( f"Error: sequence id mismatch between R1 and R2 in {arguments['FASTA']}: {seq.id} vs {tempseq.id}" )
+					seq = r2Seq
 				elif arguments['--revcomp']:
 					seq.seq = seq.seq.reverse_complement()
 
