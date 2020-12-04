@@ -70,7 +70,7 @@ def main():
 		print("%s: Starting to look for UMIs in %s" % (datetime.datetime.now(), arguments["FASTA"]) )
 
 		if arguments['--pe']:
-			r2Handle = open( re.sub( f"(features\d\d\d\d)\.{arguments["FORMAT"]}", f"\\1-r2.{arguments["FORMAT"]}", arguments["FASTA"]), "r" )
+			r2Handle = open( re.sub( f"(features\d\d\d\d)\.{arguments['FORMAT']}", f"\\1-r2.{arguments['FORMAT']}", arguments["FASTA"]), "r" )
 			r2Parser = SeqIO.parse( r2Handle, arguments["FORMAT"])
 
 		if re.search("gz$", arguments['FASTA']):
