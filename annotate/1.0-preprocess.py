@@ -26,7 +26,7 @@ TODO:
    * Come up with a better way to decide which cells are "real"; 1 UMI might be okay if it has 50
          reads; OTOH 3 UMIs might not be enough if they do not all cluster together.
 
-Usage: 1.0-preprocess.py --input read1.fq... [ --reverse read2.fq... ] [ ( --featureLibrary features.fq... --featureList features.tsv ) ] [ --cellWhiteList barcodes.txt | --cellPattern NNNNNN ] [ --umiWhiteList barcodes.txt | --umiPattern NNNNNN ] [ --umi2WhiteList barcodes.txt | --umi2Pattern NNNNNN ] [ options ]
+Usage: 1.0-preprocess.py --input read1.fq... [ --reverse read2.fq... ] [ ( --featureLibrary features.fq... --featureList features.tsv ) --featureR2 featureR2.fq...] [ --cellWhiteList barcodes.txt | --cellPattern NNNNNN ] [ --umiWhiteList barcodes.txt | --umiPattern NNNNNN ] [ --umi2WhiteList barcodes.txt | --umi2Pattern NNNNNN ] [ options ]
 
 Options:
     --input read1.fq               File with raw data to process. Can be used multiple times **IF**
@@ -35,12 +35,15 @@ Options:
                                        from the same physical source.
     --reverse read2.fq             File with reverse reads for paired ends. If used, must be provided
                                        the same number of times (and in the same order) as --input.
-    --featureLibrary features.fq   File with sequence reads from cell hashing/feature barcoding
-                                       libraries. Can be specified twice for 10x-recommended 26+25
-                                       seqeuncing strategies, in which case the cell barcode and UMI
-                                       will be looked for on R1 and the feature barcodes on R2. If
-                                       only one file is input, the script will look for the reverse
-                                       complements of the feature barcodes downstream of the UMI.
+    --featureLibrary features.fq   File(s) with sequence reads from cell hashing/feature barcoding
+                                       libraries. If `--featureR2` is not specified, the script will
+                                       look for the reverse complements of the feature barcodes 
+                                       downstream of the UMI.
+    --featureR2 featureR2.fq      File(s) with R2 reads from cell hashing/feature barcoding
+                                       libraries for 10x-recommended 26+25 seqeuncing strategies.
+                                       Cell barcode and UMI will be looked for on R1 and the feature 
+                                       barcodes on R2. Must be specified the same number of times as 
+                                       `--featureLibrary`.
     --cell 0,16                    Python-style zero-indexed, semi-open interval with the expected
                                        position of the cell barcode, if present.
     --umi 16,26                    Python-style zero-indexed, semi-open interval with the expected
@@ -157,6 +160,8 @@ Changed minUMIs to a per metaconsenus threshold and set default to 1 (for now)
 Switched filtering to one-step to avoid potential problems with merging
     if reads are discarded by CAS 2020-08-06.
 Changed structure of umi_dict by CAS 2020-08-07.
+Split featureLibrary and featureR2 options so that multiple feature libraries
+    can be specified by CAS 2020-12-16.
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -225,21 +230,22 @@ def processFeatures():
 
 
 	fInd = 0
-	with _open(arguments['--featureLibrary'][0]) as toSplit:
-		splitForID = SeqIO.parse( toSplit, format=fileformat )
-		for chunk in iterator_slice(splitForID, 500000):
-			fInd += 1
-			with open( "%s/features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
-				SeqIO.write( chunk, writeChunk, fileformat )
-	#10x PE short read strategy
-	if len(arguments['--featureLibrary']) == 2:
-		ind2 = 0
-		with _open(arguments['--featureLibrary'][1]) as toSplit:
+	ind2 = 0
+	for fileNum, fileID in enumerate(arguments['--featureLibrary'][0]):
+		with _open(fileID) as toSplit:
 			splitForID = SeqIO.parse( toSplit, format=fileformat )
 			for chunk in iterator_slice(splitForID, 500000):
-				ind2 += 1
-				with open( "%s/features%04d-r2.%s"%(prj_tree.preprocess, ind2, fileformat), 'w' ) as writeChunk:
+				fInd += 1
+				with open( "%s/features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
 					SeqIO.write( chunk, writeChunk, fileformat )
+		#10x PE short read strategy
+		if len(arguments['--featureR2']) > 0:
+			with _open(arguments['--featureR2'][fileNum]) as toSplit:
+				splitForID = SeqIO.parse( toSplit, format=fileformat )
+				for chunk in iterator_slice(splitForID, 500000):
+					ind2 += 1
+					with open( "%s/features%04d-r2.%s"%(prj_tree.preprocess, ind2, fileformat), 'w' ) as writeChunk:
+						SeqIO.write( chunk, writeChunk, fileformat )
 
 
 	#construct the command for find_umis
@@ -409,7 +415,7 @@ def main():
 			#filter R2 in one step to avoid problems with merging
 			if len(arguments['--reverse']) > 0:
 				filter_options += [ '-reverse', arguments['--reverse'][fileNum],
-						    '-fastqout_rev', "%s/r2_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)]
+								'-fastqout_rev', "%s/r2_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)]
 
 			subprocess.call([vsearch,
 					 '-fastx_filter', inFile,
@@ -558,7 +564,7 @@ def main():
 					chunk_dict = pickle.load(pickle_in)
 					small += chunk_dict['small']
 					multi += chunk_dict['multi']
-  
+	
 					for cb in chunk_dict['results']:
 						if cb not in cells:
 							cells[ cb ] = chunk_dict['results'][ cb ].copy()
@@ -684,12 +690,12 @@ def main():
 			arguments['--threads'] = None
 
 		for opt in [ '--locus', '--lib', '--species', '--npf', '--minl', '--maxl',
-			     '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file',
-			     '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--threads']:
+					 '--jlib', '--dlib', '--clib', '--jmotif', '--nterm', '--file',
+					 '--min1', '--min2', '--id', '--maxgaps', '--rearrangements', '--threads']:
 			if arguments[opt] is not None:
 				cmd += " %s '%s'" % (opt, arguments[opt])
 		for flag in ['--derep', '--cluster', '-f', '--runJBlast', '--noD', '--noC',
-			     '--runFinalize', '--noclean', '--runClustering', '--runCellStatistics']:
+					 '--runFinalize', '--noclean', '--runClustering', '--runCellStatistics']:
 			if arguments[flag]:
 				cmd += " %s" % flag
 		if arguments['--cell'] is not None:
@@ -731,10 +737,14 @@ if __name__ == '__main__':
 	if len(arguments['--input']) != len(arguments['--reverse']) and len(arguments['--reverse']) > 0:
 		sys.exit( "The --reverse option must be specified the same number of times as --input!" )
 
-	if len(arguments['--featureLibrary']) > 2:
-		sys.exit( "The --featureLibrary option takes a maximum of 2 files.")
-	if len(arguments['--featureLibrary']) > 0 and (arguments['--cell'] is None or arguments['--umi'] is None):
-		sys.exit( "Cell hashing and feature barcoding require both --cell and --umi to be specificed.")
+	if len(arguments['--featureLibrary']) > 0:
+		if (arguments['--cell'] is None) or (arguments['--umi'] is None):
+			sys.exit( "Cell hashing and feature barcoding require both --cell and --umi to be specificed.")
+		if arguments['--featureList'] is None:
+			sys.exit( "List of features must be specified to process feature libraries.")
+
+	if len(arguments['--featureR2']) > 0 and len(arguments['--featureR2']) != len(arguments['--featureLibrary']):
+		sys.exit("The same number of files must be specified for both --featureLibrary and --featureR2.")
 
 	if not all([os.path.isfile(x) for x in arguments['--input']]):
 		sys.exit( "One or more input files are missing" )
