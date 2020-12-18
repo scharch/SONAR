@@ -21,6 +21,8 @@ Added option for feature barcodes by CA Schramm 2019-10-08.
 Tweaked clustering thresholds by CAS 2020-02-04.
 Changed minUMIs to a per metaconsenus (instead of per cell) threshold by CAS 2020-02-12.
 Changed structure of umi_dict by CAS 2020-08-07.
+Added a level to the subdirectory structure and fixed a minor bug that was
+    reporting phantom cells having "fewer than 1 UMI" by CAS 2020-12-17.
 
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
@@ -55,8 +57,6 @@ def main():
 
 	for cell, cell_dict in umi_iter:
 
-		results[cell] = defaultdict( list )
-
 		#kludge to make data structure the same
 		if arguments['--isCell']:
 			cell_dict = { cell:cell_dict }
@@ -84,11 +84,20 @@ def main():
 				else:
 					seqid += ";seqs=1;size=%d;consensus_count=%d" % (numReads, numReads)
 
+				if not cell in results:
+					results[cell] = defaultdict( list )
 				results[ cell ][ seq ].append( seqid )
 
 			else:
 
-				subdir = arguments['DIR']
+				#use the first half of the cell barcode as an intermediate
+				#directory to avoid breaking the file system with large
+				#datasets - the number of "cells" that we may have to process
+				#here is many fold greater than the 10s of 1000s of actual
+				#cells in an experiment
+				intermed = cell[ : int(len(cell)/2) ]
+				subdir = arguments['DIR'] + "/" + intermed
+
 				#iddef  = "3"
 				if not arguments['--isCell']:
 					subdir += "/%s" % cell
@@ -164,6 +173,8 @@ def main():
 
 							cons.description = ""
 							seq = str(cons.seq)
+							if not cell in results:
+								results[cell] = defaultdict( list )
 							results[ cell ][ seq ].append( cons.id )
 
 	with open(re.sub("cons_in","cons_out",arguments["PICKLE"]), 'wb') as pickle_out:
