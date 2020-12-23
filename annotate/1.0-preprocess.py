@@ -162,6 +162,7 @@ Switched filtering to one-step to avoid potential problems with merging
 Changed structure of umi_dict by CAS 2020-08-07.
 Split featureLibrary and featureR2 options so that multiple feature libraries
     can be specified by CAS 2020-12-16.
+Using pyfastx to speed up chunking by CAS 2020-12-16.
 
 Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
@@ -178,6 +179,7 @@ from multiprocessing import Pool
 import datetime
 from functools import partial
 import random, math
+import pyfastx
 try:
 	from SONAR.annotate import *
 except ImportError:
@@ -198,8 +200,8 @@ def iterator_slice(iterator, length):
 		yield res
 
 
-def callFinder(num, format, args, stem="chunk"):
-	cmd = f"{SCRIPT_FOLDER}/annotate/find_umis.py  {prj_tree.preprocess}/{stem}{num:04}.{format} {format} {args}"
+def callFinder(input, num, args, offset, npf=500000, stem="chunk"):
+	cmd = f"{SCRIPT_FOLDER}/annotate/find_umis.py  {input} {npf} {num} {prj_tree.preprocess}/{stem}{offset+num:04}.pickle {args}"
 	os.system( cmd )
 
 
@@ -214,61 +216,45 @@ def getUmiConsensus(num, minSize, workdir, clustType="umi"):
 
 def processFeatures():
 
-	fileformat = "fastq"
-	try:
-		#gzip?
-		if re.search("gz$", arguments['--featureLibrary'][0]):
-			_open = partial(gzip.open,mode='rt')
-		else:
-			_open = partial(open, mode='r')
-		with _open(arguments['--featureLibrary'][0]) as checkInput:
-			parser = SeqIO.parse(checkInput, "fastq")
-			testSeq = next(parser)
-	except StopIteration:
-		#fasta input
-		fileformat		     = "fasta"
-
-
-	fInd = 0
-	ind2 = 0
-	for fileNum, fileID in enumerate(arguments['--featureLibrary'][0]):
-		with _open(fileID) as toSplit:
-			splitForID = SeqIO.parse( toSplit, format=fileformat )
-			for chunk in iterator_slice(splitForID, 500000):
-				fInd += 1
-				with open( "%s/features%04d.%s"%(prj_tree.preprocess, fInd, fileformat), 'w' ) as writeChunk:
-					SeqIO.write( chunk, writeChunk, fileformat )
-		#10x PE short read strategy
-		if len(arguments['--featureR2']) > 0:
-			with _open(arguments['--featureR2'][fileNum]) as toSplit:
-				splitForID = SeqIO.parse( toSplit, format=fileformat )
-				for chunk in iterator_slice(splitForID, 500000):
-					ind2 += 1
-					with open( "%s/features%04d-r2.%s"%(prj_tree.preprocess, ind2, fileformat), 'w' ) as writeChunk:
-						SeqIO.write( chunk, writeChunk, fileformat )
-
-
 	#construct the command for find_umis
 	featureOpts = ""
 	for opt in ['--cell', '--umi', '--r2umi', '--cellWhiteList', '--cellPattern', '--umiWhiteList', '--umiPattern', '--umi2WhiteList', '--umi2Pattern', '--minQ' ]:
 		if arguments[opt] is not None:
 			featureOpts += " %s '%s'" % (opt, arguments[opt])
-	if len(arguments['--featureLibrary']) == 2:
-		featureOpts += " --pe"
-	else:
-		featureOpts += " --revcomp"
 
-	#call find_umis either on cluster or locally
-	if arguments['--cluster']:
-		with open("%s/featuresjob.sh"%prj_tree.preprocess, 'w') as jobHandle:
-			jobHandle.write(f"#!/bin/bash\n#$ -N featureUMIs\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {prj_tree.preprocess}/features$NUM.{fileformat} {fileformat} {featureOpts}\n\n")
-		subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%fInd, "%s/featuresjob.sh"%prj_tree.preprocess])
-	else:
-		partial_finder = partial( callFinder, format=fileformat, args=featureOpts, stem="features" )
-		pool = Pool(arguments['--threads'])
-		pool.map( partial_finder, range(1,fInd+1) )
-		pool.close()
-		pool.join()
+	offset = 0
+	for fileNum, fileID in enumerate(arguments['--featureLibrary']):
+		try:
+			seqFile = pyfastx.Fastq(fileID)
+		except RuntimeError:
+			seqFile = pyfastx.Fasta(fileID)
+		#10x PE short read strategy
+		if len(arguments['--featureR2']) > 0:
+			try:
+				r2File = pyfastx.Fastq(arguments['--featureR2'][fileNum])
+			except RuntimeError:
+				r2File = pyfastx.Fasta(arguments['--featureR2'][fileNum])
+
+			specificOpts = featureOpts + f" --pe {arguments['--featureR2'][fileNum]}"
+		else:
+			specificOpts = featureOpts + " --revcomp"
+
+		#how many jobs is it?
+		numJobs = math.ceil( len(seqFile) / 500_000 )
+
+		#call find_umis either on cluster or locally
+		if arguments['--cluster']:
+			with open("%s/featuresjob.sh"%prj_tree.preprocess, 'w') as jobHandle:
+				jobHandle.write(f"#!/bin/bash\n#$ -N featureUMIs\n#$-cwd\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {fileID} 500000 $(($SGE_TASK_ID-1)) {prj_tree.preprocess}/features$(printf \"%04d\" $(({offset} + $SGE_TASK_ID))).pickle {specificOpts}\n\n")
+			subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%numJobs, '-tc', '200', "%s/featuresjob.sh"%prj_tree.preprocess])
+		else:
+			partial_finder = partial( callFinder, input=fileID, npf=500_000, offset=offset, args=specificOpts, stem="features" )
+			pool = Pool(arguments['--threads'])
+			pool.map( partial_finder, range(numJobs) )
+			pool.close()
+			pool.join()
+
+		offset += numJobs
 
 	#collect output of find_umis
 	feature_dict = {}
@@ -294,7 +280,7 @@ def processFeatures():
 	dInd = 0
 	fd = list(feature_dict.items())
 	random.shuffle( fd ) #try to keep the load balanced when we split up UMIs for clustering below
-	for chunk in iterator_slice(fd, 10000):
+	for chunk in iterator_slice(fd, 1000):
 		dInd += 1
 		with open( f"{prj_tree.preprocess}/feature_cons_in_{dInd:04}.pickle", 'wb') as pickle_out:
 			pickle.dump( chunk, pickle_out )
@@ -462,33 +448,37 @@ def main():
 	#now start processing for umis as long as at least one is defined
 	if arguments['--cell'] is not None or arguments['--umi'] is not None or arguments['--r2umi'] is not None:
 
-		#split input into managable chunks
-		multiInd = 0
-		for myFile in processedFiles:
-			with open(myFile, 'r') as toSplit:
-				splitForID = SeqIO.parse( toSplit, format=fileformat )
-				for chunk in iterator_slice(splitForID, 500000):
-					multiInd += 1
-					with open( "%s/chunk%04d.%s"%(prj_tree.preprocess, multiInd, fileformat), 'w' ) as writeChunk:
-						SeqIO.write( chunk, writeChunk, fileformat )
-
 		#construct the command for find_umis
 		umiOpts = ""
 		for opt in ['--cell', '--umi', '--r2umi', '--cellWhiteList', '--cellPattern', '--umiWhiteList', '--umiPattern', '--umi2WhiteList', '--umi2Pattern', '--minQ' ]:
 			if arguments[opt] is not None:
 				umiOpts += " %s '%s'" % (opt, arguments[opt])
 
-		#call find_umis either on cluster or locally
-		if arguments['--cluster']:
-			with open("%s/umijob.sh"%prj_tree.preprocess, 'w') as jobHandle:
-				jobHandle.write(f"#!/bin/bash\n#$ -N findUMIs\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {prj_tree.preprocess}/chunk$NUM.{fileformat} {fileformat} {umiOpts}\n\n")
-			subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%multiInd, "%s/umijob.sh"%prj_tree.preprocess])
-		else:
-			partial_finder = partial( callFinder, format=fileformat, args=umiOpts )
-			pool = Pool(arguments['--threads'])
-			pool.map( partial_finder, range(1,multiInd+1) )
-			pool.close()
-			pool.join()
+		#index input and dispatch workers
+		offset = 0
+		for myFile in processedFiles:
+
+			try:
+				seqFile = pyfastx.Fastq( myFile )
+			except RuntimeError:
+				seqFile = pyfastx.Fasta( myFile )
+
+			#how many jobs is it?
+			numJobs = math.ceil( len(seqFile) / 500_000 )
+
+			#call find_umis either on cluster or locally
+			if arguments['--cluster']:
+				with open("%s/umijob.sh"%prj_tree.preprocess, 'w') as jobHandle:
+					jobHandle.write(f"#!/bin/bash\n#$ -N findUMIs\n#$-cwd\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/find_umis.py {myFile} 500000 $(($SGE_TASK_ID-1)) {prj_tree.preprocess}/chunk$(printf \"%04d\" $(({offset} + $SGE_TASK_ID))).pickle {umiOpts}\n\n")
+				subprocess.call([qsub, '-l', 'quick', '-sync', 'y', '-t', "1-%d"%numJobs, "%s/umijob.sh"%prj_tree.preprocess])
+			else:
+				partial_finder = partial( callFinder, input=myFile, npf=500_000, offset=offset, args=umiOpts )
+				pool = Pool(arguments['--threads'])
+				pool.map( partial_finder, range(numJobs) )
+				pool.close()
+				pool.join()
+
+			offset += numJobs
 
 		#collect output of find_umis
 		umi_dict = {}

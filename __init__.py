@@ -133,6 +133,8 @@ class MyAlignment:
 		self.score	= float(row[11])		# bit score
 		self.strand	= str(row[12])			# strand
 
+		self.others = ""                    #other possible gene assignments
+
 		self.qlen	= 0
 		self.slen	= 0
 
