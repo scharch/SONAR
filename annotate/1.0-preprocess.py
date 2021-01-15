@@ -200,7 +200,7 @@ def iterator_slice(iterator, length):
 		yield res
 
 
-def callFinder(input, num, args, offset, npf=500000, stem="chunk"):
+def callFinder(num, input, args, offset, npf=500000, stem="chunk"):
 	cmd = f"{SCRIPT_FOLDER}/annotate/find_umis.py  {input} {npf} {num} {prj_tree.preprocess}/{stem}{offset+num:04}.pickle {args}"
 	os.system( cmd )
 
