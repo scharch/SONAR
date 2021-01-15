@@ -73,10 +73,10 @@ def main():
 		bad_umi   = 0
 		low_qual  = 0
 
-		#introduce a small random delay to try and prevent segfaults
-		#when loading the index file
-		sleeptime = 15 * random.uniform(0, 10)
-		sleep(sleeptime)
+		# #introduce a small random delay to try and prevent segfaults
+		# #when loading the index file
+		# sleeptime = 15 * random.uniform(0, 10)
+		# sleep(sleeptime)
 
 		try:
 			seqFile = pyfastx.Fastq( arguments['FASTA'])
@@ -100,11 +100,11 @@ def main():
 
 			cell_barcode = seq.seq[ cb_start:cb_end ]
 			fwd_id       = seq.seq[ umi_start:umi_end ]
-			try:
-				rev_id       = seq.antisense[ umi2_start:umi2_end ]
-			except:
-				#temporary kludge until pyfastx supports `antisense` on fastqs
-				rev_id = str( Seq.Seq(seq.seq).reverse_complement()[umi2_start:umi2_end] )
+			#try:
+			rev_id       = seq.antisense[ umi2_start:umi2_end ]
+			# except:
+			# 	#temporary kludge until pyfastx supports `antisense` on fastqs
+			# 	rev_id = str( Seq.Seq(seq.seq).reverse_complement()[umi2_start:umi2_end] )
 
 			#check whitelists/patterns
 			if cell_barcode != "":
@@ -159,11 +159,11 @@ def main():
 				if arguments['--revcomp']:
 					if rightEnd == None:
 						rightEnd = 0
-					try:
-						finalSeq = seq.antisense[ -rightEnd : -leftEnd ]
-					except:
-						#temporary kludge until pyfastx supports `antisense` on fastqs
-						finalSeq = str( Seq.Seq(seq.seq).reverse_complement()[ -rightEnd : -leftEnd ] )
+					#try:
+					finalSeq = seq.antisense[ -rightEnd : -leftEnd ]
+					# except:
+					# 	#temporary kludge until pyfastx supports `antisense` on fastqs
+					# 	finalSeq = str( Seq.Seq(seq.seq).reverse_complement()[ -rightEnd : -leftEnd ] )
 				else:
 					finalSeq = seq.seq[ leftEnd : rightEnd ]
 
