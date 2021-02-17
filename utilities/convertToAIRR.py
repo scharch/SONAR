@@ -38,7 +38,7 @@ def main():
 	raw_seqs  = defaultdict( dict )
 	file_list = glob.glob("*.fa") + glob.glob("*.fas") + glob.glob("*.fst") + glob.glob("*.fasta") + glob.glob("*.fna") + glob.glob("*.fq") + glob.glob("*.fastq")
 	for myseq, myqual, file_name in generate_read_fasta_folder( file_list ):
-		raw_seqs[file_name][myseq.seq_id] = myseq.seq
+		raw_seqs[file_name][myseq.id] = myseq.seq
 
 
 	#get trimmed sequences
