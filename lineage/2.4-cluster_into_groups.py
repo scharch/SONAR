@@ -241,7 +241,6 @@ def jointClonality(clusters, cells, cdr3Info):
 				#no assignment
 				ambiguous += 1
 
-
 	#issue warning if too many are ambiguous/unassignable
 	if ambiguous > len(cells)/20:
 		print( "Warning: More than 5% of cells had ambiguous or unassignable clonality.", file=sys.stderr)
@@ -427,9 +426,9 @@ def main():
 
 			#if we are reclustering with the --preserve option, we need to figure out
 			#    the numbering
-			currentMaxCloneNum = 0
-			if len(oldClones.keys()) > 0:
-				currentMaxCloneNum = max( map(int, oldClones.values()) )
+			currentMaxCloneNum = len(set(oldClones.values()))
+			# if len(oldClones.keys()) > 0:
+			# 	currentMaxCloneNum = max( map(int, oldClones.values()) )
 
 			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
 				if size == 0:
@@ -496,7 +495,7 @@ def main():
 						suffix = ind
 						if len(arguments['--names']) > 0:
 							if arguments['--names'][ind] == "preserve":
-								suffix = row[3]
+								suffix = row[2+int(hasClone)]
 							else:
 								suffix = arguments['--names'][ind]
 						unique_cell = row[0]+f"==={suffix}"
@@ -645,6 +644,10 @@ if __name__ == '__main__':
 		sys.exit("Allowed values for `--filter` are 'all', 'good', and 'unique' only.")
 
 	geneClusters = dict()
+	# with open(arguments['--geneClusters'], 'r') as database:
+	# 	reader = csv.reader(database, delimiter="\t")
+	# 	for row in reader:
+	# 		geneClusters[ row[0] ] = row[1]
 	if arguments['--geneClusters']:
 		with open(f"{prj_tree.internal}/gene_locus.txt", 'r') as check:
 			species = next(check).strip()
