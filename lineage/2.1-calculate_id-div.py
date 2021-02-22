@@ -102,7 +102,7 @@ def scoreSeqs( refSeq, querySeq, tempFile):
 		alignment = alignment[:, leftGap.end():]
 	rightGap = re.search( "-+$", str(alignment[refRow].seq) )
 	if not rightGap:
-		rightGap = re.match( "-+", str(alignment[1-refRow].seq) )
+		rightGap = re.search( "-+$", str(alignment[1-refRow].seq) )
 	if rightGap:
 		alignment = alignment[:, 0:rightGap.start()]
 
