@@ -70,7 +70,7 @@ RUN cpanm \
   Array::Compare \
   Convert::Binary::C \
   Error \
-  Graph \
+  Graph@0.9711 \
   GraphViz \
   Inline::C \
   PostScript::TextBlock \
