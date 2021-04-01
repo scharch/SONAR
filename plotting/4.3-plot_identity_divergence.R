@@ -106,16 +106,16 @@ for ( time in seq_along(dataFileList) ) {
 
     	#main plot
         #specify the "ID" column as "character" so that we don't have to worry about mismatches between strings and ints
-	bigdata   <- read.table( dataFileList[time], h=T, colClasses=c("ID"="character") )
+	bigdata   <- read.table( dataFileList[time], h=T, colClasses=c("sequence_id"="character") )
 	smalldata <- bigdata
         if ( ! is.null(subsetFileList) ) {
             subset    <- scan(subsetFileList[time], what='character', quiet=T)
-            smalldata <- bigdata[which(bigdata$ID %in% subset),]
+            smalldata <- bigdata[which(bigdata$sequence_id %in% subset),]
         }
 
 
         #get a default reference antibody if one was not provided
-	if ( is.null(natAbList) )  natAbList <- c( names(bigdata)[3] )
+	if ( is.null(natAbList) )  natAbList <- c( names(bigdata)[4] )
 
 
 	#only show axis labels on edges
@@ -165,13 +165,13 @@ for ( time in seq_along(dataFileList) ) {
 
 	    if ( ! is.null(firstSieveList) ) {
 	       subset <- scan(firstSieveList[time], what='character', quiet=T)
-	       s1data <- bigdata[which(bigdata$ID %in% subset),]
+	       s1data <- bigdata[which(bigdata$sequence_id %in% subset),]
 	       p <- p + geom_point(data=s1data,aes_string(x="germ_div",y=mab.R,z=NA),colour='goldenrod', shape=16, size=.5)
 	    }
 
 	    if ( ! is.null(secondSieveList) ) {
 	       subset <- scan(secondSieveList[time], what='character', quiet=T)
-	       s2data <- bigdata[which(bigdata$ID %in% subset),]
+	       s2data <- bigdata[which(bigdata$sequence_id %in% subset),]
 	       p <- p + geom_point(data=s2data,aes_string(x="germ_div",y=mab.R,z=NA),colour='magenta', shape=16, size=.5)
 	    }
 
