@@ -42,6 +42,8 @@ RUN apt-get install -y \
   gcc-multilib \
   perl \
   cpanminus \
+  liblwp-protocol-https-perl \
+  libnet-https-any-perl \
   libdb-dev \
   graphviz \
   make \
@@ -81,10 +83,6 @@ RUN cpanm \
   Data::Stag \
   CGI \
   Bio::Phylo \
-  Net::HTTPS \
-  LWP::UserAgent \
-  LWP::Protocol::http \
-  LWP::Protocol::https \
   Switch
 
 #now actually install BioPerl
