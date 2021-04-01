@@ -81,6 +81,9 @@ RUN cpanm \
   Data::Stag \
   CGI \
   Bio::Phylo \
+  Net::HTTPS \
+  LWP::UserAgent \
+  LWP::Protocol::http \
   LWP::Protocol::https \
   Switch
 
