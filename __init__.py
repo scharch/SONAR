@@ -9,8 +9,9 @@ Edited and commented for publication by Chaim A Schramm on 2015-02-10.
 Added column comparisons and accept a RearrangementReader object for
      filterAirrTsv by CA Schramm on 2020-06-11.
 Changed filterAirrTsv to use eval by CA Schramm on 2020-07-02.
+Added `name` option to airrToFasta by CA Schramm on 2021-04-19.
 
-Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2021 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 """
 
@@ -456,12 +457,16 @@ def filterAirrTsv(rearrangementsFile, ruleList, useOR=False):
 			yield r
 
 
-def airrToFasta( rearrangements, field='sequence_alignment', aa=False):
+def airrToFasta( rearrangements, field='sequence_alignment', name='sequence_id', aa=False):
+
+	if not name in rearrangements.fields:
+		sys.exit(f"Can't find id field '{name}' in rearrangements file!")
+
 	for r in rearrangements:
 		if r[field] == "":
 			continue
 
-		tempSeq = SeqRecord( id=r['sequence_id'], seq=Seq.Seq(re.sub("[-.+]","",r[field])) )
+		tempSeq = SeqRecord( id=r[ name ], seq=Seq.Seq(re.sub("[-.+]","",r[field])) )
 		if aa:
 			tempSeq.seq = tempSeq.seq.translate()
 

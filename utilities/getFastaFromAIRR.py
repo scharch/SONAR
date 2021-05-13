@@ -8,7 +8,7 @@ This is a utility script to extract sequences from an AIRR-formatted TSV and
       To only save certain sequences, filter the AIRR TSV using utilities/filterAIRR.py
       and pipe the output to this script with `--rearrangements STDIN`.
 
-Usage: getFastaFromAIRR.py [ --rearrangements AIRR.tsv --output sequences.fa --sequence trim --aa]
+Usage: getFastaFromAIRR.py [ --rearrangements AIRR.tsv --output sequences.fa --sequence trim --id sequence_id --aa]
 
 Options:
     --rearrangements AIRR.tsv    An AIRR-formatted rearrangements file. Use 'STDIN' to get a
@@ -17,6 +17,8 @@ Options:
                                     [default: STDOUT]
     --sequence trim             Which sequence to save. Options are raw, trim, and junction.
                                     [default: trim]
+    --id sequence_id            Which column to use as the sequence id for the fasta output. Does
+                                    not check for uniqueness. [default: sequence_id]
     --aa                        Flag to request output in amino acids instead of nucleotides.
                                     [default: False]
 
@@ -24,8 +26,9 @@ Created by Chaim A Schramm on 2020-01-02.
 Added --equal option by CA Schramm on 2020-02-21.
 Removed filtering options (use filterAIRR.py)  and added streaming
                          input by CA Schramm 2020-07-02.
+Added option to use other columns as ids by CA Schramm 2021-04-19.
 
-Copyright (c) 2020 Vaccine Research Center, National Institutes of
+Copyright (c) 2021 Vaccine Research Center, National Institutes of
                          Health, USA. All rights reserved.
 
 """
@@ -61,7 +64,7 @@ def main():
 		infile = "-"
 	reader = airr.io.RearrangementReader(fileinput.input(infile))
 
-	SeqIO.write(airrToFasta(reader, field=field, aa=arguments['--aa']), sys.stdout, "fasta")
+	SeqIO.write(airrToFasta(reader, field=field, aa=arguments['--aa'], name=arguments['--id']), sys.stdout, "fasta")
 
 
 
