@@ -281,7 +281,8 @@ def main():
 	filter_rules = []
 	if arguments['--singlecell']:
 		filter_rules.append( 're.search("^(?:(?!multi|none).)*$", r["cell_status"])' )
-
+		if arguments['--filter'] == "paired":
+			filter_rules = [ "r['cell_status'] == 'canonical_pair'" ]
 	if arguments['--filter'] == "all":
 		filter_rules.append( "r['junction'] != ''" )
 	elif arguments['--filter'] == "good":
@@ -640,7 +641,7 @@ if __name__ == '__main__':
 	arguments['--gaps'] = int( arguments['--gaps'] )
 	arguments['-t']     = int( arguments['-t'] )
 
-	if not arguments['--filter'] in ["all", "good", "unique"]:
+	if not arguments['--filter'] in ["all", "good", "unique", "paired"]:
 		sys.exit("Allowed values for `--filter` are 'all', 'good', and 'unique' only.")
 
 	geneClusters = dict()
