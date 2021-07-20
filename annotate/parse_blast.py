@@ -19,8 +19,10 @@ Added `sequence_alignment` field for noJ reads as v gene region found by BLAST b
 Added `locus`, `rev-comp`, and `productive` fields for noJ reads by CA Schramm 2019-05-23.
 Added locus consistency checks by CAS 2020-01-02.
 Added `complete_vdj` flag by CAS 2020-07-16.
+Tried to fix `complete_vdj` determination a bit (but it still needs more work) by
+    CA Schramm 2021-0707.
 
-Copyright (c) 2019-2020 Vaccine Research Center, National Institutes of Health, USA.
+Copyright (c) 2019-2021 Vaccine Research Center, National Institutes of Health, USA.
 All rights reserved.
 
 """
@@ -212,6 +214,7 @@ def main():
 			myV = dict_vgerm_aln[entry.id]
 			myJ = dict_jgerm_aln[entry.id]
 			added5 = 0
+			added3 = 0
 			productive = "T"
 			indel = "F"
 			stop = "F"
@@ -233,12 +236,9 @@ def main():
 				 ( (myV.strand == "plus" and myV.qstart + v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send) <= len(entry.seq)) or \
 					(myV.strand == "minus" and myV.qend - (v_len + myJ.qend + (len(dict_j[myJ.sid].seq)-myJ.send)) >= 0) ):
 					vdj_len = v_len + myJ.qend + (len(dict_j[myJ.sid].seq) - myJ.send)
+					added3 = len(dict_j[myJ.sid].seq) - myJ.send
 			else:
 				vdj_len = v_len + myJ.qend
-
-			#check for complete VDJ
-			if min(myV.sstart, myV.send) == 1 and max(myJ.sstart, myJ.send) >= len(dict_j[myJ.sid].seq)-1: #-1 because the last nucleotide is part of the constant region
-				rearrangement['complete_vdj'] = True
 
 			const_seq = ""
 			if (myV.strand == 'plus'):
@@ -278,6 +278,10 @@ def main():
 
 				else: #blast found full V gene
 					entry.seq = entry.seq[ myV.qend - vdj_len : myV.qend ].reverse_complement()
+
+			#check for complete VDJ
+			if min(myV.sstart, myV.send)+added5 == 1 and max(myJ.sstart, myJ.send)+added3 >= len(dict_j[myJ.sid].seq)-1: #-1 because the last nucleotide is part of the constant region
+				rearrangement['complete_vdj'] = True
 
 			#get CDR3 boundaries
 			cdr3_start,cdr3_end,WF_motif = find_cdr3_borders(myV.sid,str(dict_v[myV.sid].seq), v_len, min(myV.sstart, myV.send), max(myV.sstart, myV.send), str(dict_j[myJ.sid].seq), myJ.sstart, myJ.qstart, myJ.gaps, str(entry.seq[ added5 : ])) #min and max statments take care of switching possible minus strand hit
