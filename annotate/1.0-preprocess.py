@@ -530,6 +530,8 @@ def main():
 			memNeeded = 1<<math.ceil( maxUmiReads / 150 ).bit_length()
 			if memNeeded < 8:
 				memNeeded = 8 #no need to go below default allocation
+			if memNeeded > 240:
+				memNeeded = 240 #max available, hope for the best
 
 			#spawn subprocesses
 			if arguments['--cluster']:
