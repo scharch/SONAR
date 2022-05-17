@@ -329,9 +329,11 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
          X11()
       }
       
+      png(sprintf("%s/%s.png",outDir,outFile),h=3,w=2*length(natAbList),unit="in",res=300)
       multiplot( plotlist=pl, layout=myLayout )
-      ggsave(sprintf("%s/%s.png",outDir,outFile),multiplot( plotlist=pl, layout=myLayout ),h=3,w=2*length(natAbList),dpi=300)
+      #ggsave(sprintf("%s/%s.png",outDir,outFile),multiplot( plotlist=pl, layout=myLayout ),h=3,w=2*length(natAbList),dpi=300)
       #Sys.sleep(10)
+      dev.off()
   }
   
   #output
