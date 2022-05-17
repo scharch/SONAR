@@ -7,63 +7,83 @@ This script uses CDR3 identity to group unique sequences from a given data set
       into pseudo-lineages that can help define groups of related B cells.
       Uses the AIRR-formatted rearrangements.tsv as default input. FASTA input
       is no longer accepted, but multiple input rearrangements TSVs can be used
-      to add sequences from other sources, like experimentally isolate monoclonals.
+      to add sequences from other sources, like experimentally isolated
+      monoclonals.
 
       Sequences are first grouped by unique V and J gene assignments and then
-      VSearch is used to cluster the CDR3 sequences.
+      VSearch is used to cluster the CDR3 sequences. Alternatively, closely 
+      related V genes may be treated as indistinguishable when partitioning 
+      reads for clustering, using the `--geneClusters` flag. This is based
+      on the approach of Luo, Yu, and Song, PLoS Comp Biol 2016. Predetermined
+      clusters are provided for default databases using heirarchical
+      clustering with a 4% threshold, based on an analysis of interderminate
+      gene assignments in a variety of historical datasets. Custom clusters
+      can be supplied using `--customClusters`.
 
       The default threshold of 90% identity with no in-dels is probably useful
       for most cases, but more stringent or lenient criteria may sometimes be
-      more appropriate. One possibility is to treat closely related V genes as
-      indistinguishable when partitioning reads for clustering. This is based
-      on the approach of Luo, Yu, and Song, PLoS Comp Biol 2016.
+      more appropriate. 
 
-Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --names SAMPLE... --filter all --id <90> --gaps <0> --output TSV --geneClusters --singlecell --preserve -t 1 ]
+Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --names SAMPLE... --filter all --id <90> --gaps <0> --output TSV --geneClusters --customClusters <clusters.txt> --species <human> --singlecell --preserve -t 1 ]
 
 Options:
-    --rearrangements TSV   One or more AIRR-formatted rearrangements files with the sequences
-                               to be clustered into lineages.
-                               [default: output/tables/<project>_rearrangements.tsv]
-    --names SAMPLE         Optional short names to keep track of which of multiple input files
-                               output rearrangements are derived from. If specified, the number
-                               of names provided *must* match the number of input `rearrangements`
-                               files. If no `names` are given, the full paths specified to
-                               `rearrangements` will be used. As a special case, the usage
-                               `--names preserve` will extract the short names from an existing
-                               `source_repertoire` column.
-    --filter all           Filter sequences by status before calculating lineages. Allowed values
-                               are "all" (ie all CDR3), "good", and "unique" (determined by having
-                               `centroid`==`sequence_id` --does not remove singletons!). 
-                               [default: all]
-    --id <90>              Clustering threshold (%) for CDR3 sequence identity (nucleotide).
-                               [default: 90]
-    --gaps <0>             Maximum number of in-dels to allow between CDR3 sequences in the
-                               same group. NOTE: This is implemented in nucleotide space using
-                               vsearch's --maxgaps parameter, which counts gap openings, rather
-                               than gap columns, so probably shouldn't be set to more than 1.
-                               There is no guarantee an even codon in-del in the alignment used for
-                               for clustering! Also, vsearch will still count the gap columns as
-                               mismatches, so a CDR3 of 20AA will be counted as 95% id to an
-                               identical-other-than-deletion 19AA CDR3. Set your --id
-                               threshold accordingly. [default: 0]
-    --output TSV            File where the output should be saved. If not specified, output will
-                               overwrite the first input file.
-    --geneClusters          Flag to indicate that reads should be partitioned based on closely
-                               related V genes that may be prone to mutual misassignment, instead
-                               of using exact matches of assigned V and J genes. Using this option
-                               will turn off matching on J genes entirely. Currently only available
-                               for the included human and rhesus databases; predetermined clusters
-                               are in SONAR/sample_data/functionalClusters.
-    --singlecell            A flag to indicate single cell data - heavy and light chain data will
-                               be used jointly to define clones. `cell_id` column must be present
-                               in all input rearrangements files. Note that if the `cell_status`
-                               column is present, suspected multiplets will be filtered out.
-    --preserve              A flag to preserve the original clone IDs when adding new sequences to
-                               previously processed data. Use with caution, as it will silently
-                               join and/or split clones even if the actual underlying clustering
-                               came out differently. Only operates on the first TSV if multiple
-                               are provided.
-    -t 1                    Number of threads used [default: 1]
+    --rearrangements TSV               One or more AIRR-formatted rearrangements files with the 
+                                          sequences to be clustered into lineages.
+                                          [default: output/tables/<project>_rearrangements.tsv]
+    --names SAMPLE                     Optional short names to keep track of which of multiple 
+                                          input files output rearrangements are derived from. If 
+                                          specified, the number of names provided *must* match the 
+                                          number of input `rearrangements` files. If no `names` are
+                                          given, the full paths specified to `rearrangements` will 
+                                          be used. As a special case, the usage `--names preserve` 
+                                          will extract the short names from an existing 
+                                          `source_repertoire` column.
+    --filter all                       Filter sequences by status before calculating lineages. 
+                                          Allowed values are "all" (ie all CDR3), "good", and 
+                                          "unique" (determined by having `centroid`==`sequence_id`,
+                                           does NOT remove singletons!).  [default: all]
+    --id <90>                          Clustering threshold (%) for CDR3 sequence identity 
+                                          (nucleotide). [default: 90]
+    --gaps <0>                         Maximum number of in-dels to allow between CDR3 sequences in
+                                          the same group. NOTE: This is implemented in nucleotide 
+                                          space using vsearch's --maxgaps parameter, which counts 
+                                          gap openings, rather than gap columns, so probably 
+                                          shouldn't be set to more than 1. There is no guarantee an
+                                          even codon in-del in the alignment used for clustering! 
+                                          Also, vsearch will still count the gap columns as 
+                                          mismatches, so a CDR3 of 20AA will be counted as 95% id 
+                                          to an identical-other-than-deletion 19AA CDR3. Set your
+                                          threshold for --id accordingly. [default: 0]
+    --output TSV                       File where the output should be saved. If not specified, 
+                                          output will overwrite the first input file.
+    --geneClusters                     Flag to indicate that reads should be partitioned based on 
+                                          closely related V genes that may be prone to mutual 
+                                          misassignment, instead of using exact matches of assigned
+                                          V and J genes. Using this option will turn off matching 
+                                          on J genes entirely. Predetermined clusters for supported
+                                          species are in SONAR/sample_data/functionalClusters. 
+                                          Otherwise, use `--customClusters` to specify.
+    --customClusters <clusters.txt>    Option specifiying a file with gene clusters for non-default
+                                          gene databases. Format is a tab-delimited file with one
+                                          line for each allele in the V gene database (first
+                                          column), with the cluster name/id indicated in the second
+                                          column. Only relevant if `--geneClusters` is used.
+                                          Takes priority over default clusters (and `--species`).
+    --species <human>                  Option to indicate the (supported) species to use for 
+                                          geneClusters if the clonality analysis is being done in a
+                                          different directory than the original annotation (ie. 
+                                          work/internal/gene_locus.txt is missing).
+    --singlecell                       A flag to indicate single cell data - heavy and light chain 
+                                          data will be used jointly to define clones. `cell_id` 
+                                          column must be present in all input rearrangements files.
+                                          Note that if the `cell_status` column is present, 
+                                          suspected multiplets will be filtered out.
+    --preserve                         A flag to preserve the original clone IDs when adding new 
+                                          sequences to previously processed data. Use with caution,
+                                          as it will silently join and/or split clones even if the 
+                                          actual underlying clustering came out differently. Only 
+                                          operates on the first TSV if multiple are provided.
+    -t 1                               Number of threads used [default: 1]
 
 
 Created by Chaim A Schramm on 2015-04-27.
@@ -89,9 +109,11 @@ Added ability to get short names from the input file to allow adding new data
                          multiple times by CAS 2020-10-22.
 Fixed new clone numbers when using --preserve by CAS 2020-10-22.
 Fixed representative CDR3s for single cell clustering by CAS 2020-10-22. 
+Added support for --species and --customClusters to make --geneClusters
+                         more flexible/useful by CA Schramm 2022-05-16.
 
 
-Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2022 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -645,20 +667,40 @@ if __name__ == '__main__':
 		sys.exit("Allowed values for `--filter` are 'all', 'good', and 'unique' only.")
 
 	geneClusters = dict()
-	# with open(arguments['--geneClusters'], 'r') as database:
-	# 	reader = csv.reader(database, delimiter="\t")
-	# 	for row in reader:
-	# 		geneClusters[ row[0] ] = row[1]
 	if arguments['--geneClusters']:
-		with open(f"{prj_tree.internal}/gene_locus.txt", 'r') as check:
-			species = next(check).strip()
-			if species in SUPPORTED_SPECIES:
-				with open(f"{SCRIPT_FOLDER}/sample_data/functionalClusters/{species}_clusterLookup.txt", 'r') as database:
+
+		if arguments['--customClusters'] is not None:
+			if os.path.exists(arguments['--customClusters']):
+				with open(arguments['--customClusters'], 'r') as database:
 					reader = csv.reader(database, delimiter="\t")
 					for row in reader:
 						geneClusters[ row[0] ] = row[1]
 			else:
-				sys.exit("--geneClusters not available for custom gene databases.")
+				sys.exit(f"Can't find cluster file {arguments['--customClusters']}")
+
+		elif arguments['--species'] is not None:
+			if arguments['--species'] not in SUPPORTED_SPECIES:
+				sys.exit( "Error: `--species` must be one of: " + ",".join(SUPPORTED_SPECIES.keys()) )
+			else:
+				with open(f"{SCRIPT_FOLDER}/sample_data/functionalClusters/{species}_clusterLookup.txt", 'r') as database:
+					reader = csv.reader(database, delimiter="\t")
+					for row in reader:
+						geneClusters[ row[0] ] = row[1]
+
+		else:
+			if os.path.exists(f"{prj_tree.internal}/gene_locus.txt"):
+				with open(f"{prj_tree.internal}/gene_locus.txt", 'r') as check:
+					species = next(check).strip()
+					if species in SUPPORTED_SPECIES:
+						with open(f"{SCRIPT_FOLDER}/sample_data/functionalClusters/{species}_clusterLookup.txt", 'r') as database:
+							reader = csv.reader(database, delimiter="\t")
+							for row in reader:
+								geneClusters[ row[0] ] = row[1]
+					else:
+						sys.exit("Please use --customClusters for external gene databases.")
+			else:
+				sys.exit(f"{prj_tree.internal}/gene_locus.txt not found, please use --species or --customClusters")
+
 
 	if arguments['--singlecell']:
 		#check for the networkx package
