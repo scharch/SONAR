@@ -428,8 +428,8 @@ def main():
 			#if we are reclustering with the --preserve option, we need to figure out
 			#    the numbering
 			currentMaxCloneNum = len(set(oldClones.values()))
-			# if len(oldClones.keys()) > 0:
-			# 	currentMaxCloneNum = max( map(int, oldClones.values()) )
+			if len(oldClones.keys()) > 0:
+				currentMaxCloneNum = max( map(int, oldClones.values()) )
 
 			for rank, (centroid, size) in enumerate(clusterSizes.most_common()):
 				if size == 0:
