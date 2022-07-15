@@ -5,40 +5,30 @@ getFastaFromAIRR.py
 
 This is a utility script to extract sequences from an AIRR-formatted TSV and
       save them as a fasta file for use with eg alignment or phylogenetic tools.
+      To only save certain sequences, filter the AIRR TSV using utilities/filterAIRR.py
+      and pipe the output to this script with `--rearrangements STDIN`.
 
-Usage: getFastaFromAIRR.py [ --rearrangements AIRR.tsv --column status... (--regex \d+... | --equal good... | --list ids.txt...) --output sequences.fa --sequence trim --aa]
+Usage: getFastaFromAIRR.py [ --rearrangements AIRR.tsv --output sequences.fa --sequence trim --id sequence_id --aa]
 
 Options:
-    --rearrangements AIRR.tsv    An AIRR-formatted rearrangements file.
-                                    [default: output/tables/<project>_rearrangements.tsv]
-    --column sequence_id        Which column of the AIRR tsv to filter on. Can be specified
-                                    multiple times for multiple filters, in which case the
-                                    output will be the subset of sequences passing *all*
-                                    filters. [default: status]
-    --regex \d+                 A regular expression to be matched by the value of `column`
-                                    in each row. Can be specified multiple times for
-                                    multiple filters, in which case the output will be the
-                                    subset of sequences passing *all* filters. Defaults to
-                                    no filter (save all sequences).
-    --equal good                An exact value to be found in `column`. Can be specified
-                                    multiple times as for --regex.
-    --list ids.txt              Instead of a pattern to match, a list of explicit values
-                                    (eg sequence_ids) can be specified in a text file, one
-                                    value per line. Multiple files can be specified for
-                                    filtering different columns, as for --regex. A single
-                                    list can also be specified via STDIN instead of a file
-                                    name.
+    --rearrangements AIRR.tsv    An AIRR-formatted rearrangements file. Use 'STDIN' to get a
+                                    stream. [default: output/tables/<project>_rearrangements.tsv]
     --output sequences.fa       File in which to save extracted ids or sequences.
                                     [default: STDOUT]
     --sequence trim             Which sequence to save. Options are raw, trim, and junction.
                                     [default: trim]
+    --id sequence_id            Which column to use as the sequence id for the fasta output. Does
+                                    not check for uniqueness. [default: sequence_id]
     --aa                        Flag to request output in amino acids instead of nucleotides.
                                     [default: False]
 
 Created by Chaim A Schramm on 2020-01-02.
 Added --equal option by CA Schramm on 2020-02-21.
+Removed filtering options (use filterAIRR.py)  and added streaming
+                         input by CA Schramm 2020-07-02.
+Added option to use other columns as ids by CA Schramm 2021-04-19.
 
-Copyright (c) 2020 Vaccine Research Center, National Institutes of
+Copyright (c) 2021 Vaccine Research Center, National Institutes of
                          Health, USA. All rights reserved.
 
 """
@@ -59,19 +49,6 @@ except ImportError:
 
 def main():
 
-	annotationList = []
-	exact = False
-	for ind,col in enumerate(arguments['--column']):
-		annotationList.append( {'column':col, 'list':[]} )
-		if len(arguments['--list']) > 0:
-			for line in fileinput.input( arguments['--list'][ind] ):
-				annotationList[ind]['list'].append(line.strip())
-		elif len(arguments['--equal']) > 0:
-			annotationList[ind]['list'].append(arguments['--equal'][ind])
-			exact = True
-		else:
-			annotationList[ind]['list'].append(arguments['--regex'][ind])
-
 	if arguments['--output'] != "STDOUT":
 		sys.stdout = open(arguments['--output'], "w")
 
@@ -81,7 +58,13 @@ def main():
 	elif arguments['--sequence'] == 'junction':
 		field = 'junction'
 
-	SeqIO.write(airrToFasta(filterAirrTsv(arguments['--rearrangements'], annotationList, exact=exact),field=field,aa=arguments['--aa']), sys.stdout, "fasta")
+
+	infile = arguments['--rearrangements']
+	if arguments['--rearrangements'] == "STDIN":
+		infile = "-"
+	reader = airr.io.RearrangementReader(fileinput.input(infile))
+
+	SeqIO.write(airrToFasta(reader, field=field, aa=arguments['--aa'], name=arguments['--id']), sys.stdout, "fasta")
 
 
 
@@ -93,34 +76,11 @@ if __name__ == '__main__':
 	prj_name	= fullpath2last_folder(prj_tree.home)
 	arguments['--rearrangements'] = re.sub("<project>", prj_name, arguments["--rearrangements"])
 
-	if not os.path.isfile(arguments['--rearrangements']):
+	if not os.path.isfile(arguments['--rearrangements']) and arguments['--rearrangements'] != "STDIN":
 		sys.exit(f"Cannot find specified rearrangement file {arguments['--rearrangements']}")
 
 	if not arguments['--sequence'] in ['raw', 'trim', 'junction']:
 		sys.exit("Error: options for --sequence are raw, trim, or junction only.")
-
-	if len(arguments['--list'])==0 and len(arguments['--regex'])==0 and len(arguments['--equal'])==0:
-		arguments['--list'][0] = "-"
-
-	if len(arguments['--list'])==1 and arguments['--list'][0] == "STDIN":
-		arguments['--list'][0] = "-"
-
-	#kludge to make sure everything is aligned properly
-	if len(arguments['--column']) > 1:
-		if max( len(arguments['--regex']),len(arguments['--equal']),len(arguments['--list']) ) > 1:
-			if not len(arguments['--column']) == max( len(arguments['--regex']),len(arguments['--equal']),len(arguments['--list']) ):
-				sys.exit("Unequal number of columns and filters!")
-		else:
-			#one filter but multiple columns
-			if len(arguments['--list']) > 0:
-				arguments['--list'] = arguments['--list'] * len(arguments['--column'])
-			elif len(arguments['--equal']) > 0:
-				arguments['--equal'] = arguments['--equal'] * len(arguments['--column'])
-			else:
-				arguments['--regex'] = arguments['--regex'] * len(arguments['--column'])
-	elif max( len(arguments['--regex']),len(arguments['--equal']),len(arguments['--list']) ) > 1:
-		#multiple filters but one columns
-		arguments['--column'] = arguments['--column'] * max( len(arguments['--regex']),len(arguments['--equal']),len(arguments['--list']) )
 
 	#log command line
 	logCmdLine(sys.argv)

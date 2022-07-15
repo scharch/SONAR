@@ -26,6 +26,7 @@ Options:
     --maxgaps 0           vsearch parameter specifying how many (non-terminal) gaps are
                               allowed in an alignment for two sequences to cluster together.
                               Should not be changed, in most cases. [default: 0]
+    --threads 1           Number of threads vsearch should use [default: 1]
     --runCellStatistics   Flag to call 1.5 script when finished. Additional options to that
                               script are listed below. This script will not check the validity
                               of options passed downstream, so user beware. [default: False]
@@ -92,7 +93,8 @@ def main():
 			   "-output", "temp_dedup.fa",
 			   "-uc", "temp.uc",
 			   "-sizein", "-sizeout",
-			   "-minuniquesize", arguments['--min1'] ] )
+			   "-minuniquesize", arguments['--min1'],
+                           "-threads", arguments['--threads'] ] )
 
 	#process the uc file
 	centroid = dict()
@@ -107,7 +109,8 @@ def main():
 			   "-sizein", "-sizeout",
 			   "-maxgaps", arguments['--maxgaps'],
 			   "-id", arguments['--id'],
-			   "-uc", "%s.cluster"%os.path.splitext(arguments['--file'])[0] ] )
+			   "-uc", "%s.cluster"%os.path.splitext(arguments['--file'])[0],
+                           "-threads", arguments['--threads'] ] )
 
 	#process the uc file
 	size = dict()

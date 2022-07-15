@@ -145,7 +145,7 @@ def main():
 	# open output files
 	fasta	  = open("%s/%s_%03d.fasta"  % (folder_tree.vgene,  prj_name, f_ind), 'w')
 	id_handle = open("%s/lookup_%03d.txt"  % (folder_tree.internal, f_ind),	      'w')
-	id_map	  = csv.writer(id_handle, delimiter=sep)
+	id_map	  = csv.writer(id_handle, delimiter=sep, dialect='unix', quoting=csv.QUOTE_NONE)
 
 
 	#if we decide to use quals for something, can add this block back in
@@ -204,7 +204,7 @@ def main():
 
 					id_handle.close()
 					id_handle = open("%s/lookup_%03d.txt"  % (folder_tree.internal, f_ind),	      'w')
-					id_map	  = csv.writer(id_handle, delimiter=sep)
+					id_map	  = csv.writer(id_handle, delimiter=sep, dialect='unix', quoting=csv.QUOTE_NONE)
 
 					'''
 					if arguments['--qual']:

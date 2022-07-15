@@ -14,20 +14,20 @@ def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=Fa
 	if os.path.isfile(db + ".nhr"):
 		if constant:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize, perc_identity=100)
 		else:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
 	else:
 		if constant:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, subject=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize, perc_identity=100)
 		else:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, subject=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
 
 			
@@ -118,7 +118,7 @@ def get_top_hits(infile, topHitWriter=None, dict_germ_count=dict(), maxQEnd=dict
 						else:
 							best_alignment.qstart = my_alignment.qstart
 
-				elif re.match("IG[HKL]J", my_alignment.sid) and my_alignment.score>=40 and my_alignment.qstart<best_alignment.qstart:
+				elif re.match("IG[HKL]J", my_alignment.sid) and my_alignment.score>=35 and my_alignment.qstart<best_alignment.qstart:
 					#a bit of kludge for double J matches. 
 					#Usually these are bad amplicons (or bad assemblies from single cell data)
 					#My assumption is that the one closer to the V is the more reliable one

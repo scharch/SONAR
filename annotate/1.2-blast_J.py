@@ -90,7 +90,7 @@ def main():
 	dict_germ_count	= dict()
 
 	topHandle = open("%s/%s_vgerm_tophit.txt" %(prj_tree.tables, prj_name), "w")
-	writer	  = csv.writer(topHandle, delimiter = sep)
+	writer	  = csv.writer(topHandle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 	writer.writerow(PARSED_BLAST_HEADER)
 
 	while os.path.isfile("%s/%s_%03d.fasta" % (prj_tree.vgene, prj_name, f_ind)):
@@ -134,7 +134,7 @@ def main():
 
 	#print statistics
 	handle = open("%s/%s_vgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-	writer	= csv.writer(handle, delimiter = sep)
+	writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 	keys	= sorted(dict_germ_count.keys())
 	writer.writerow(["gene", "count", "percent"])
 	for key in keys:

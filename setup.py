@@ -16,56 +16,64 @@ if len(glob.glob("%s/commonVars.py"%SONAR_HOME))==0:
 if not sys.platform.startswith("linux") and not sys.platform.startswith("darwin"):
     sys.exit("Error, cannot recognize OS. Expected 'linux' or 'darwin' (macos), but got '%s'"%sys.platform)
 
+errors = list()
+warnings = list()
+
 try:
     from docopt import docopt
 except ImportError:
-    sys.exit("DocOpt is a required library for SONAR. Please run `pip3 install docopt --user`")
+    errors.append("DocOpt is a required library for SONAR. Please run `pip3 install docopt --user`")
 
 try:
     from Bio import SeqIO
 except ImportError:
-    sys.exit("Biopython is required for SONAR. Please run `pip3 install Biopython --user`")
+    errors.append("Biopython is required for SONAR. Please run `pip3 install Biopython --user`")
 
 try:
     import airr
 except ImportError:
-    sys.exit("AIRR is a required library for SONAR. Please run `pip3 install airr --user`")
+    errors.append("AIRR is a required library for SONAR. Please run `pip3 install airr --user`")
 
 try:
     from fuzzywuzzy import fuzz
 except ImportError:
-    print("fuzzywuzzy is not installed - the master script will not work.\nYou can fix this later by running `pip3 install fuzzywuzzy --user`.\nProceeding with install...\n\n",file=sys.stderr)
+    warnings.append("fuzzywuzzy is not installed - the master script will not work.\nYou can fix this later by running `pip3 install fuzzywuzzy --user`.")
+
+try:
+    import networkx
+except ImportError:
+    warnings.append("networkx is not installed - single cell clonal clustering will not work.\nYou can fix this later by running `pip3 install networkx --user`.")
 
 try:
     from ete3 import *
 except ImportError:
-    print("ete3 is not installed - tree plotting will not work.\nYou can fix this later by running `pip3 install ete3 --user`.\nProceeding with install...\n\n",file=sys.stderr)
+    warnings.append("ete3 is not installed - tree plotting will not work.\nYou can fix this later by running `pip3 install ete3 --user`.")
 
 try:
     from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush, QPen
 except ImportError:
-    print("PyQt4 is not installed - tree plotting will not work.\nYou can fix this later by running `sudo apt-get install python-numpy python-qt4 python-lxml python-six`.\nProceeding with install...\n\n",file=sys.stderr)
+    warnings.append("PyQt4 is not installed - tree plotting will not work.\nYou can fix this later by running `sudo apt-get install python-numpy python-qt4 python-lxml python-six`.")
 
 try:
     import pandas
 except ImportError:
-    print("pandas is not installed - comparison of GSSPs (5.4) will not work.\nYou can fix this later by running `pip3 install pandas --user`.\nProceeding with install...\n\n",file=sys.stderr)
+    warnings.append("pandas is not installed - comparison of GSSPs (5.4) will not work.\nYou can fix this later by running `pip3 install pandas --user`.")
 
 check = subprocess.call(["perl", "-MBio::SeqIO", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
-    sys.exit("BioPerl is a required for SONAR. Please run `cpanm Bio::Perl`")
+    errors.append("BioPerl is a required for SONAR. Please run `cpanm Bio::Perl`")
 
 check = subprocess.call(["perl", "-MList::Util", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
-    sys.exit("List::Util is a required library for SONAR. Please run `cpanm List::Util`")
+    errors.append("List::Util is a required library for SONAR. Please run `cpanm List::Util`")
 
 check = subprocess.call(["perl", "-MAlgorithm::Combinatorics", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
-    sys.exit("Algorithm::Combinatorics is a required library for SONAR. Please run `cpanm Algorithm::Combinatorics`")
+    errors.append("Algorithm::Combinatorics is a required library for SONAR. Please run `cpanm Algorithm::Combinatorics`")
 
 check = subprocess.call(["perl", "-MPDL::LinearAlgebra::Trans", '-e', '1'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 if check == 1:
-    sys.warn("PDL::LinearAlgebra::Trans is not installed - ancestor inference will not work.\nYou can fix this later by running `cpanm PDL::LinearAlgebra::Trans`.\nProceeding with install...\n\n")
+    warnings.append("PDL::LinearAlgebra::Trans is not installed - ancestor inference will not work.\nYou can fix this later by running `cpanm PDL::LinearAlgebra::Trans`.\nProceeding with install...\n\n")
 
 
 #R library checks
@@ -74,7 +82,13 @@ for lib in ["docopt","ggplot2","MASS","grid","ptinpoly"]:
                        stderr=subprocess.PIPE,stdout=subprocess.PIPE,universal_newlines=True)
     o,e = s.communicate()
     if o.strip().split(" ")[1] == "FALSE":
-        sys.exit("R Package %s is not installed. Please start R and run the command `install.packages('%s')`"%(lib,lib))
+        errors.append("R Package %s is not installed. Please start R and run the command `install.packages('%s')`"%(lib,lib))
+
+if len(warnings) > 0:
+	print( "The following warnings were generated:\n\t" + "\n\t".join(warnings) + "\n\n", file=sys.stderr )
+
+if len(errors) > 0:
+	sys.exit( "The following errors were generated.\nPlease install the indicated prerequisites and rerun setup.py:\n\t" + "\n\t".join(errors) + "\n\n" )
 
 #cluster?
 cluster_exists = ""

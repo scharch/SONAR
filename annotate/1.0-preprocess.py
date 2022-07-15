@@ -339,7 +339,7 @@ def processFeatures():
 
 	if len(hashingSeqs) > 0:
 		with open( f"{prj_tree.tables}/{prj_name}_hashes.tsv", 'w' ) as handle:
-			writer = csv.writer( handle, delimiter="\t")
+			writer = csv.writer( handle, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE )
 			for cell in sorted(cellHashes.keys()):
 				sample = "unknown"
 				if len(cellHashes[cell]) > 1:
@@ -350,7 +350,7 @@ def processFeatures():
 
 	if len(featureSeqs) > 0:
 		with open( f"{prj_tree.tables}/{prj_name}_features.tsv", 'w' ) as handle:
-			writer = csv.writer( handle, delimiter="\t")
+			writer = csv.writer( handle, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE)
 			writer.writerow( ["cell_id"] + sorted(featureSeqs.values()) )
 			for cell in sorted(cellFeatures.keys()):
 				writer.writerow( [cell] + [ cellFeatures[cell].get(f, 0) for f in sorted(featureSeqs.values()) ] )

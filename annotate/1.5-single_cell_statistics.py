@@ -88,7 +88,7 @@ def main():
 	most_used = defaultdict( list )
 
 	output = open("%s/%s_cell_stats.tsv"%(prj_tree.tables,prj_name), 'w')
-	outwriter = csv.writer( output, delimiter="\t" )
+	outwriter = csv.writer( output, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE )
 	outheader = ["cell","status","isotype"]
 	if len(hashDict) > 0:
 		outheader += ["hash_sample"]
@@ -134,16 +134,16 @@ def main():
 					#shortcut: assume identical junctions means duplicates
 					if previous['junction_aa'] == rep['junction_aa']:
 						keep = False
-						if previous['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
-						if previous['consensus_count'] is not None: previous['consensus_count'] += rep['consensus_count']
+						if previous['duplicate_count'] is not None and rep['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
+						if previous['consensus_count'] is not None and rep['duplicate_count'] is not None: previous['consensus_count'] += rep['consensus_count']
 						break
 					#heuristic (for 10x data as of March 2019):  omit gaps and cut off possible noise at 5' end
 					else:
 						score, cov = scoreAlign( quickAlign(previous['sequence_alignment'],rep['sequence_alignment']), countInternalGaps=False, skip=50 )
 						if score >= 0.95:
 							keep = False
-							if previous['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
-							if previous['consensus_count'] is not None: previous['consensus_count'] += rep['consensus_count']
+							if previous['duplicate_count'] is not None and rep['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
+							if previous['consensus_count'] is not None and rep['duplicate_count'] is not None: previous['consensus_count'] += rep['consensus_count']
 							break
 
 				if keep:

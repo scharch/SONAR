@@ -9,8 +9,9 @@ This script updates an _all_seq_stats.txt file from older versions of SONAR to
 Usage: convertToAIRR.py
 
 Created by Chaim A. Schramm 2018-10-18.
+Bug fix by CA SChramm 2021-04-19.
 
-Copyright (c) 2011-2018 Vaccine Research Center, National Institutes of Health,
+Copyright (c) 2011-2021 Vaccine Research Center, National Institutes of Health,
                    USA. All rights reserved.
 
 """

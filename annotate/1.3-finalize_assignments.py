@@ -71,6 +71,7 @@ Fixed command line logging and rationalized cluster usage by CAS 2019-07-31.
 Added species option and updated daisy chaining to 1.4/1.5 by CAS 2020-01-02.
 Added locus consistency checks by CAS 2020-01-02.
 Moved species option to 1.1 and added consistent handling.
+Added `complete_vdj` flag by CAS 2020-07-16.
 
 Copyright (c) 2011-2020 Columbia University and Vaccine Research Center, National
                                Institutes of Health, USA. All rights reserved.
@@ -144,7 +145,7 @@ def main():
 
 
 	#also open final rearrangements tsv
-	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','duplicate_count','length_raw','length_trimmed','indels','status','blast_identity','consensus_count','cell_id'])
+	seq_stats = airr.create_rearrangement( "%s/%s_rearrangements.tsv"%(prj_tree.tables, prj_name), fields=['complete_vdj','vj_in_frame','stop_codon','locus','c_call','junction_length','source_file','source_id','duplicate_count','length_raw','length_trimmed','indels','status','blast_identity','consensus_count','cell_id'])
 
 
 	#initiate overall counters
@@ -263,7 +264,7 @@ def main():
 
 	#print out some statistics
 	handle = open("%s/%s_jgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-	writer	= csv.writer(handle, delimiter = sep)
+	writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 	keys	= sorted(dict_jcounts.keys())
 	writer.writerow(["gene", "count", "percent"])
 	for key in keys:
@@ -273,7 +274,7 @@ def main():
 
 	if len(dict_ccounts) > 0:
 		handle = open("%s/%s_cgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-		writer	= csv.writer(handle, delimiter = sep)
+		writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 		keys	= sorted(dict_ccounts.keys())
 		writer.writerow(["gene", "count", "percent"])
 		for key in keys:
@@ -283,7 +284,7 @@ def main():
 
 	if len(dict_dcounts) > 0:
 		handle = open("%s/%s_dgerm_stat.txt" %(prj_tree.tables, prj_name),'w')
-		writer	= csv.writer(handle, delimiter = sep)
+		writer	= csv.writer(handle, delimiter = sep, dialect='unix', quoting=csv.QUOTE_NONE)
 		keys	= sorted(dict_dcounts.keys())
 		writer.writerow(["gene", "count", "percent"])
 		for key in keys:
