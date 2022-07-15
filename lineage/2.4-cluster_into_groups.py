@@ -20,9 +20,9 @@ This script uses CDR3 identity to group unique sequences from a given data set
       gene assignments in a variety of historical datasets. Custom clusters
       can be supplied using `--customClusters`.
 
-      The default threshold of 90% identity with no in-dels is probably useful
-      for most cases, but more stringent or lenient criteria may sometimes be
-      more appropriate. 
+      The default threshold of 90% identity (bulk) or 80% identity (single cell)
+      with no in-dels is probably useful for most cases, but more stringent or 
+      lenient criteria may sometimes be more appropriate. 
 
 Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --names SAMPLE... --filter all --id <90> --gaps <0> --output TSV --geneClusters --customClusters <clusters.txt> --species <human> --singlecell --preserve -t 1 ]
 
@@ -39,11 +39,12 @@ Options:
                                           will extract the short names from an existing 
                                           `source_repertoire` column.
     --filter all                       Filter sequences by status before calculating lineages. 
-                                          Allowed values are "all" (ie all CDR3), "good", and 
-                                          "unique" (determined by having `centroid`==`sequence_id`,
-                                           does NOT remove singletons!).  [default: all]
+                                          Allowed values are "all" (ie all CDR3), "good", "unique", 
+                                          (determined by having `centroid`==`sequence_id` --does 
+                                          NOT remove singletons!) and "paired" (with `--singlecell`
+                                          only).  [default: all]
     --id <90>                          Clustering threshold (%) for CDR3 sequence identity 
-                                          (nucleotide). [default: 90]
+                                          (nucleotide). (default: 90, or 80 with `--singlecell`)
     --gaps <0>                         Maximum number of in-dels to allow between CDR3 sequences in
                                           the same group. NOTE: This is implemented in nucleotide 
                                           space using vsearch's --maxgaps parameter, which counts 
@@ -111,7 +112,8 @@ Fixed new clone numbers when using --preserve by CAS 2020-10-22.
 Fixed representative CDR3s for single cell clustering by CAS 2020-10-22. 
 Added support for --species and --customClusters to make --geneClusters
                          more flexible/useful by CA Schramm 2022-05-16.
-
+Changed default id threshold for single cells to 80% by CAS 2022-07-14.
+Added clean up to end of run by CA Schramm 2022-07-14.
 
 Copyright (c) 2011-2022 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -637,6 +639,14 @@ def main():
 	#Put the output TSV in the desired destination
 	os.rename( "temp.tsv", arguments['--output'] )
 
+	to_clean = glob.glob("%s/*fa"%prj_tree.lineage) + glob.glob("%s/*fa"%prj_tree.lineage)
+	if len(to_clean) > 0:
+		print("Cleaning up...",file=sys.stderr)
+		for f in to_clean:
+			try:
+				os.remove(f)
+			except:
+				pass
 
 
 if __name__ == '__main__':
@@ -659,12 +669,18 @@ if __name__ == '__main__':
 	if arguments['--output'] is None:
 		arguments['--output'] = arguments['--rearrangements'][0]
 
-	arguments['--id']   = int( arguments['--id'] )
+	if arguments['--id'] is None:
+		if arguments['--singlecell']:
+			arguments['--id'] = 80
+		else:
+			arguments['--id'] = 90
+	else:
+		arguments['--id']   = int( arguments['--id'] )
 	arguments['--gaps'] = int( arguments['--gaps'] )
 	arguments['-t']     = int( arguments['-t'] )
 
 	if not arguments['--filter'] in ["all", "good", "unique", "paired"]:
-		sys.exit("Allowed values for `--filter` are 'all', 'good', and 'unique' only.")
+		sys.exit("Allowed values for `--filter` are 'all', 'good', 'unique', and 'paired' only.")
 
 	geneClusters = dict()
 	if arguments['--geneClusters']:
