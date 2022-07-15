@@ -114,6 +114,8 @@ Added support for --species and --customClusters to make --geneClusters
                          more flexible/useful by CA Schramm 2022-05-16.
 Changed default id threshold for single cells to 80% by CAS 2022-07-14.
 Added clean up to end of run by CA Schramm 2022-07-14.
+Lineage table will print actual V genes instead of OTU centroid when in
+                         geneClusters mode by CA Schramm 2022-07-14.
 
 Copyright (c) 2011-2022 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
@@ -378,9 +380,11 @@ def main():
 
 			#get gene assignments
 			key = r['v_call'].split("*")[0] + "_" + r['j_call'].split("*")[0]
+			cdr3_info[ r['sequence_id'] ] = { 'genes' : key, 'cdr3_seq' : Seq.Seq(r['junction']) }
 
 			if arguments['--geneClusters']:
 				key = geneClusters.get( r['v_call'].split(",")[0], r['v_call'].split("*")[0] )
+				cdr3_info[ r['sequence_id'] ] = { 'genes' : r['v_call'].split("*")[0], 'cdr3_seq' : Seq.Seq(r['junction']) }
 
 			if key not in vj_partition:
 				temp = "%s/%s.fa"%(prj_tree.lineage, key)
@@ -388,7 +392,6 @@ def main():
 
 			vj_partition[key]['count'] += 1
 			vj_partition[key]['ids'].append(r['sequence_id'])
-			cdr3_info[ r['sequence_id'] ] = { 'genes' : key, 'cdr3_seq' : Seq.Seq(r['junction']) }
 
 			#create a sequence object
 			tempSeq = SeqRecord( id=r['sequence_id'], seq=Seq.Seq(re.sub("[-.+]","",r['junction'])) )
