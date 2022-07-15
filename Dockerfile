@@ -97,6 +97,9 @@ RUN pip3 install --upgrade ete3
 #install AIRR reference library
 RUN pip3 install airr
 
+#install networkx for single cell clonality
+RUN pip3 install networkx
+
 #install Levensthein
 RUN pip3 install python-Levenshtein
 
