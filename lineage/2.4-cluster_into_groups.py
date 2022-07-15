@@ -361,7 +361,7 @@ def main():
 				r[ 'cell_id' ] += f"==={suffix}"
 				cell_dict[ r['cell_id'] ].append(r['sequence_id'])
 
-			if arguments['--preserve'] and index==0 and 'clone_id' in r:
+			if arguments['--preserve'] and index==0 and 'clone_id' in r and r['clone_id']!="":
 				if arguments['--singlecell']:
 					oldClones[ r['cell_id'] ] = r['clone_id']
 				else:
@@ -473,7 +473,7 @@ def main():
 					  				centroidData[centroid]['aa'] ]
 		
 				#find how many members are from each source file
-				if len(arguments['--rearrangements']) > 1:
+				if len(sourceList) > 1:
 					breakdown = [ countsByInput[centroid][suffix] for suffix in sourceList ]
 					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 
@@ -682,7 +682,7 @@ if __name__ == '__main__':
 			if arguments['--species'] not in SUPPORTED_SPECIES:
 				sys.exit( "Error: `--species` must be one of: " + ",".join(SUPPORTED_SPECIES.keys()) )
 			else:
-				with open(f"{SCRIPT_FOLDER}/sample_data/functionalClusters/{species}_clusterLookup.txt", 'r') as database:
+				with open(f"{SCRIPT_FOLDER}/sample_data/functionalClusters/{arguments['--species']}_clusterLookup.txt", 'r') as database:
 					reader = csv.reader(database, delimiter="\t")
 					for row in reader:
 						geneClusters[ row[0] ] = row[1]
