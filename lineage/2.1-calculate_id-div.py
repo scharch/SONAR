@@ -12,7 +12,7 @@ This script uses MUSCLE or ClustalO to calculate sequence identity between
       for making I-D plots with 4.3-plot_identity_divergence.R. Germline V
       identity will also be added to the AIRR rearrangements file.
 
-Usage: 2.1-calculate_id-div.py [ -f input.fa -g germlines.fa -a antibodies.fa -o output -t 1 --align muscle --gap mismatch -d ]
+Usage: 2.1-calculate_id-div.py [ -f input.fa (-g germlines.fa | --species human) -a antibodies.fa -o output -t 1 --align muscle --gap mismatch -d ]
 
 Options:
      -f input.fa        Sequence file to be annotated. In order to calulate
@@ -20,8 +20,13 @@ Options:
                            present in the fasta def line as eg "v_call=IGHV1-2*02"
                            (the old format of "V_gene=" will also still work).
                            [default: output/sequences/nucleotide/<project>_goodVJ_unique.fa]
-     -g germline.fa     File with germline genes used in annotation step.
-                           [default: <SONAR>/germDB/IgHKLV_cysTruncated.fa]
+     -g germline.fa     File with germline genes used in annotation step. Defaults
+                           to the (Cys-truncated) HKL V gene database for 
+                           `--species`.
+     --species human    Option to indicate the (supported) species to access
+                           default the germline set for. Will attempt to pull from
+                           work/internal/gene_locus.txt (from 1.1) if neither `-g`
+                           nor `--species` is specified.
      -a antibodies.fa   Fasta file with the sequences of known antibodies that the
                            NGS data should be compared to.
      -o output          Specify directory and file stem for output; "_coverage.tab"
@@ -43,8 +48,10 @@ Options:
 Created by Zizhang Sheng.
 Modified to use VSearch by Chaim A Schramm 2018-07-30.
 Ported to Python to handle AIRR-formatted data by CAS 2018-10-17.
+Added species options for non-human default germlines
+                        by CA Schramm 2022-07-14.
 
-Copyright (c) 2011-2018 Columbia University and Vaccine Research Center, National 
+Copyright (c) 2011-2022 Columbia University and Vaccine Research Center, National 
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -308,7 +315,32 @@ if __name__ == '__main__':
 	if arguments['--gap'] not in ['mismatch', 'ignore']:
 		sys.exit( "Error: recognized gap options are 'mismatch' and 'ignore' only" )	
 	
-	arguments['-g'] = re.sub( "<SONAR>", SCRIPT_FOLDER, arguments['-g'] )
+
+	if arguments['-g'] is not None:
+		if not os.path.exists(arguments['-g']):
+			sys.exit(f"Can't find gene database {arguments['-g']}")
+	elif arguments['--species'] is not None:
+		if arguments['--species'] not in SUPPORTED_SPECIES:
+			sys.exit( "Error: `--species` must be one of: " + ",".join(SUPPORTED_SPECIES.keys()) )
+		else:
+			arguments['-g'] = eval( SUPPORTED_SPECIES[arguments['--species']] + "_Vtrunc_DB" )
+	else:
+		if os.path.exists(f"{prj_tree.internal}/gene_locus.txt"):
+			with open(f"{prj_tree.internal}/gene_locus.txt", 'r') as check:
+				species = next(check).strip()
+				if species in SUPPORTED_SPECIES:
+					arguments['-g'] = eval( SUPPORTED_SPECIES[arguments['--species']] + "_Vtrunc_DB" )
+				else:
+					#this should mean a custom lib was passed to 1.1
+					locus=next(check)
+					lib = next(check).strip()
+					if os.path.exists(lib):
+						print(f("Using V gene lib {lib}..."))
+						arguments['-g'] = lib
+					else:
+						sys.exit("Please use --species or -g to specify gene databases.")
+		else:
+			sys.exit(f"{prj_tree.internal}/gene_locus.txt not found, please use --species or -g")
 
 	prj_tree = ProjectFolders(os.getcwd())
 	prj_name = fullpath2last_folder(prj_tree.home)

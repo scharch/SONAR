@@ -40,6 +40,7 @@ HU_VK_DB	= "%s/germDB/IgKV.fa"   %SCRIPT_FOLDER
 HU_VL_DB	= "%s/germDB/IgLV.fa"   %SCRIPT_FOLDER
 HU_VKL_DB	= "%s/germDB/IgKLV.fa"  %SCRIPT_FOLDER
 HU_VHKL_DB	= "%s/germDB/IgHKLV.fa" %SCRIPT_FOLDER
+HU_Vtrunc_DB= "%s/germDB/IgHKLV_cysTruncated.fa" %SCRIPT_FOLDER
 
 HU_JH_DB	= "%s/germDB/IgHJ.fa"   %SCRIPT_FOLDER
 HU_JK_DB	= "%s/germDB/IgKJ.fa"   %SCRIPT_FOLDER
@@ -61,6 +62,7 @@ RH_VK_DB	= "%s/germDB/IgKV_BU_DD.fasta"   %SCRIPT_FOLDER
 RH_VL_DB	= "%s/germDB/IgLV_BU_DD.fasta"   %SCRIPT_FOLDER
 RH_VKL_DB	= "%s/germDB/IgKLV_BU_DD.fasta"  %SCRIPT_FOLDER
 RH_VHKL_DB	= "%s/germDB/IgHKLV_BU_DD.fasta" %SCRIPT_FOLDER
+RH_Vtrunc_DB= "%s/germDB/IgHKLV_BU_DD_cysTruncated.fasta" %SCRIPT_FOLDER
 
 RH_JH_DB	= "%s/germDB/IgHJ_BU_DD.fasta"   %SCRIPT_FOLDER
 RH_JK_DB	= "%s/germDB/IgKJ_BU_DD.fasta"   %SCRIPT_FOLDER
