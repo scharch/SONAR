@@ -14,20 +14,20 @@ def blastProcess(threadID, filebase, db, outbase, wordSize, hits=10, constant=Fa
 	if os.path.isfile(db + ".nhr"):
 		if constant:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize, perc_identity=100)
 		else:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, db=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
 	else:
 		if constant:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, subject=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize, perc_identity=100)
 		else:
 			cline = NcbiblastnCommandline(blast_cmd, query=fasta, subject=db, out=output,
-						      outfmt="\'6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand\'",
+						      outfmt='"6 qseqid sseqid pident length mismatch gaps qstart qend sstart send evalue bitscore sstrand"',
 						      gapopen=5, gapextend=2, penalty=-1, reward=1, evalue=1e-3, max_target_seqs=hits, word_size=wordSize)
 
 			
