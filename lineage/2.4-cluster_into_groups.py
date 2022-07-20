@@ -551,7 +551,7 @@ def main():
 		#now process all clusters and do tabular output
 		with open( lineageFile, "w" ) as handle:
 			writer = csv.writer(handle, delimiter=sep, dialect='unix', quoting=csv.QUOTE_NONE)
-			header = [ "clone_id", "sequence_id", "v_call", "j_call", "junction_length_aa",
+			header = [ "clone_id", "centroid", "v_call", "j_call", "junction_length_aa",
 					  "junction_aa", "clone_count" ]
 			if len(arguments['--rearrangements']) > 1:
 				header += ['source_count', 'num_sources']
@@ -566,7 +566,7 @@ def main():
 				else:
 					centroidData[centroid]['rank'] = "%05d" % (rank+1)
 
-				dataToWrite = [ "%05d"%(rank+1), centroid[:-4], centroidData[centroid]['vgene'], centroidData[centroid]['jgene'],
+				dataToWrite = [ "%05d"%(rank+1), re.search("(.+)===.+$", centroid).groups()[0], centroidData[centroid]['vgene'], centroidData[centroid]['jgene'],
 						  int(len(cdr3_info[centroid]['cdr3_seq'])/3), cdr3_info[centroid]['cdr3_seq'].translate(), size ]
 				#find how many members are from each source file
 				if len(arguments['--rearrangements']) > 0:
