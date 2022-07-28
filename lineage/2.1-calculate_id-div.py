@@ -307,6 +307,9 @@ if __name__ == '__main__':
 
 	arguments = docopt(__doc__)
 
+	prj_tree = ProjectFolders(os.getcwd())
+	prj_name = fullpath2last_folder(prj_tree.home)
+
 	arguments['-t'] = int( arguments['-t'] )
 
 	if arguments['--align'] not in ['muscle', 'clustalo']:
@@ -329,7 +332,7 @@ if __name__ == '__main__':
 			with open(f"{prj_tree.internal}/gene_locus.txt", 'r') as check:
 				species = next(check).strip()
 				if species in SUPPORTED_SPECIES:
-					arguments['-g'] = eval( SUPPORTED_SPECIES[arguments['--species']] + "_Vtrunc_DB" )
+					arguments['-g'] = eval( SUPPORTED_SPECIES[species] + "_Vtrunc_DB" )
 				else:
 					#this should mean a custom lib was passed to 1.1
 					locus=next(check)
@@ -341,9 +344,6 @@ if __name__ == '__main__':
 						sys.exit("Please use --species or -g to specify gene databases.")
 		else:
 			sys.exit(f"{prj_tree.internal}/gene_locus.txt not found, please use --species or -g")
-
-	prj_tree = ProjectFolders(os.getcwd())
-	prj_name = fullpath2last_folder(prj_tree.home)
 
 	arguments['-f'] = re.sub("<project>", prj_name, arguments['-f'])
 	if not os.path.isfile(arguments['-f']):
