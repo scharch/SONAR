@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 
-"Usage: 2.2-get_island_interactive.R <idDivFile> [ --plot <ids.list> ] [ --mab <abID>... ] [ --outdir <output/tables> --output <islandSeqs.txt> --reference <idDivFile> ]
+"Usage: 2.2-get_island_interactive.R <idDivFile> [ --plot <ids.list> ] [ --mab <abID>... ] [ --outdir <output/tables> --output <islandSeqs.txt> --reference <idDivFile> --plotmethod <plotmethod>]
 
 Options:
   -h --help  	             Show this documentation.
@@ -18,6 +18,10 @@ Options:
 				 [default: islandSeqs]
   --reference <idDivFile>    Other data points to display on plots, eg other members of
                                  the antibody lineage of interest.
+  --plotmethod <plotmethod>  Plotting method to use. 'original' uses kernel density
+                                 estimation to show smoothed distribution of sequences.
+                                 'binned' directly plots counts of sequences
+                                 for tiled ID/DIV regions [default: original]
 
 
 Created by Chaim A Schramm 2016-08-30.
@@ -200,7 +204,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
     
       #generate initial plot; supress color bar and increase size of plot title from default
       #   keep title separate, because we'll want to use different titles at different stages
-      pp <- plot_all(smalldata, mab.R, mab, "germline V") + guides(fill=F) + theme( plot.title=element_text(size = 18) )
+      pp <- plot_all(smalldata, mab.R, mab, "germline V", plotmethod=opts$plotmethod) + guides(fill=F) + theme( plot.title=element_text(size = 18) )
 
       #want referents to look different on interactive and final figure (mostly about size)
       #   so save this first, then add
