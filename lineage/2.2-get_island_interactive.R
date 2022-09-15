@@ -29,7 +29,7 @@ Copyright (c) 2016 Columbia University and Vaccine Research Center, National
 
 
 #### WRAPPER FOR gglocator() TO LIMIT TO POINTS WITHIN PLOT ####
-getLocation <- function(xmin=0,xmax=50,ymin=50,ymax=100) {
+getLocation <- function(xmin=-1,xmax=50,ymin=50,ymax=101) {
   
   myPoint <- data.frame( x=c(xmin-1), y=c(ymax+1) )
   while( myPoint$x<xmin || myPoint$x>xmax || myPoint$y<ymin || myPoint$y>ymax ) {

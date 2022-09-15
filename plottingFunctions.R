@@ -36,8 +36,8 @@ plot_all <- function (data, native, pretty, heavy, plot_title=NULL, color=TRUE, 
 				na.value="white", breaks=r, labels=signif(r/b,1),
 			        guide = guide_colorbar( title="number of\nsequences", title.theme=element_text(size=4,angle=0),
 				        barheight = unit(.5,"in"), barwidth = unit(.1,"in"), label.theme=element_text(size=3,angle=0,) ) )+
-			theme_bw() + scale_x_continuous(expand=c(0,0),limits=c(0,50)) +
-			scale_y_continuous(expand=c(0,1),limits=c(50,100)) +
+			theme_bw() + scale_x_continuous(expand=c(0,0),limits=c(-1,50)) +
+			scale_y_continuous(expand=c(0,1),limits=c(50,101)) +
 	     		theme(plot.background = element_blank(),panel.grid.major = element_blank(),
 				axis.ticks.length = unit(.02,"in"), axis.ticks = element_line(size = .5),
 		          	panel.grid.minor = element_blank(), axis.text = element_text(size = 6),
