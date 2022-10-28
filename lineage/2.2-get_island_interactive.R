@@ -298,7 +298,6 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
   }
 
   #generate a final set of plots for inspection
-  if( length(natAbList) > 1 ) {
       dev.off()
       pl <- list()
       titlePlot <- ggplot( data.frame(x=1,y=1,text=sprintf( "Final Selections (total %d transcripts)",length(idsOnly) )) ) +
@@ -338,7 +337,6 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
       #ggsave(sprintf("%s/%s.png",outDir,outFile),multiplot( plotlist=pl, layout=myLayout ),h=3,w=2*length(natAbList),dpi=300)
       #Sys.sleep(10)
       dev.off()
-  }
   
   #output
   write.table( idsOnly, file=sprintf("%s/%s.txt",outDir,outFile), quote=F, row.names=F, col.names=F )
