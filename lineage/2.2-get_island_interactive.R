@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
 
-"Usage: 2.2-get_island_interactive.R <idDivFile> [ --plot <ids.list> ] [ --mab <abID>... ] [ --outdir <output/tables> --output <islandSeqs.txt> --reference <idDivFile> ]
+"Usage: 2.2-get_island_interactive.R <idDivFile> [ --plot <ids.list> ] [ --mab <abID>... ] [ --outdir <output/tables> --output <islandSeqs.txt> --reference <idDivFile> --plotmethod <plotmethod>]
 
 Options:
   -h --help  	             Show this documentation.
@@ -18,6 +18,10 @@ Options:
 				 [default: islandSeqs]
   --reference <idDivFile>    Other data points to display on plots, eg other members of
                                  the antibody lineage of interest.
+  --plotmethod <plotmethod>  Plotting method to use. 'original' uses kernel density
+                                 estimation to show smoothed distribution of sequences.
+                                 'binned' directly plots counts of sequences
+                                 for tiled ID/DIV regions [default: original]
 
 
 Created by Chaim A Schramm 2016-08-30.
@@ -29,7 +33,7 @@ Copyright (c) 2016 Columbia University and Vaccine Research Center, National
 
 
 #### WRAPPER FOR gglocator() TO LIMIT TO POINTS WITHIN PLOT ####
-getLocation <- function(xmin=0,xmax=50,ymin=50,ymax=100) {
+getLocation <- function(xmin=-1,xmax=50,ymin=50,ymax=101) {
   
   myPoint <- data.frame( x=c(xmin-1), y=c(ymax+1) )
   while( myPoint$x<xmin || myPoint$x>xmax || myPoint$y<ymin || myPoint$y>ymax ) {
@@ -200,7 +204,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
     
       #generate initial plot; supress color bar and increase size of plot title from default
       #   keep title separate, because we'll want to use different titles at different stages
-      pp <- plot_all(smalldata, mab.R, mab, "germline V") + guides(fill=F) + theme( plot.title=element_text(size = 18) )
+      pp <- plot_all(smalldata, mab.R, mab, "germline V", plotmethod=opts$plotmethod) + guides(fill=F) + theme( plot.title=element_text(size = 18) )
 
       #want referents to look different on interactive and final figure (mostly about size)
       #   so save this first, then add
@@ -294,7 +298,6 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
   }
 
   #generate a final set of plots for inspection
-  if( length(natAbList) > 1 ) {
       dev.off()
       pl <- list()
       titlePlot <- ggplot( data.frame(x=1,y=1,text=sprintf( "Final Selections (total %d transcripts)",length(idsOnly) )) ) +
@@ -334,7 +337,6 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
       #ggsave(sprintf("%s/%s.png",outDir,outFile),multiplot( plotlist=pl, layout=myLayout ),h=3,w=2*length(natAbList),dpi=300)
       #Sys.sleep(10)
       dev.off()
-  }
   
   #output
   write.table( idsOnly, file=sprintf("%s/%s.txt",outDir,outFile), quote=F, row.names=F, col.names=F )
