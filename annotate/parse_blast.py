@@ -9,10 +9,10 @@ This script is called internally from 1.3-finalize_assignments.py to allow the p
 Usage:	parse_blast.py --jmotif MOTIF --nterm OPT --chunk NUM [options]
 
 Options:
-    --jmotif TGGGG
-    --nterm OPT
-    --chunk NUM
-    --noFallBack [default: False]
+    --jmotif TGGGG     conserved j motif
+    --nterm OPT        n terminal handling
+    --chunk NUM        for parallelization
+    --noFallBack       isotype assignment [default: False]
 
 Split out from original 1.3-finalize_assignments.py by Chaim A Schramm on 2019-04-01.
 Added `sequence_alignment` field for noJ reads as v gene region found by BLAST by CAS 2019-05-08.
