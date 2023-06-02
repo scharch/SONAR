@@ -439,7 +439,7 @@ def filterAirrTsv(rearrangementsFile, ruleList, useOR=False):
 	try:
 		#see if it's a file name
 		reader = airr.read_rearrangement( rearrangementsFile )
-	except TypeError:
+	except:
 		#assume it's an already open RearrangementReader object instead
 		reader = rearrangementsFile
 
