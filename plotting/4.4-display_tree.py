@@ -238,7 +238,7 @@ def layout(node):
 			ns['fgcolor'] = '#000000'
 
 		#label germline outgroup, if desired
-		elif re.search("(IG|VH|VK|VL)", node.name) and not arguments['--noV']:
+		elif re.search("(IG|VH|VK|VL|HX)", node.name) and not arguments['--noV']:
 			tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-right')
 			ns['fgcolor'] = '#000000'
@@ -343,8 +343,10 @@ def main():
 
 	#tell the mAbs that's what they are and mark the pathway down from UCA
 	for mAb in natNodes:
-		mAb.isNat = True
 		mAb.timepoint = natives[mAb.name]['timepoint']
+		if natives[mAb.name]['display'] == "":
+			continue #not really a native, don't want to do the rest of this
+		mAb.isNat = True
 		mAb.name = natives[mAb.name]['display']
 		level = mAb
 		while level.up:
@@ -383,7 +385,7 @@ def main():
 				
 	#for everything else, read off its timepoint
 	for leaf in myTree.iter_leaves():
-		if leaf.isNat or re.search("(IG|VH|VK|VL)", leaf.name):
+		if leaf.timepoint is not None or re.search("(IG|VH|VK|VL)", leaf.name):
 			# these nodes are not expected to fit the standard time-labeling scheme
 			continue
 		leafTime = re.match(timeRegex,leaf.name)
