@@ -30,7 +30,9 @@ import glob
 import re
 import subprocess
 import atexit
+import sys, fileinput, gzip
 
+from functools import partial
 
 from numpy import mean, array, zeros, ones, nan, std, isnan
 
@@ -294,12 +296,18 @@ def generate_read_fasta(f):
 	"""read fasta file and yield one reads per time """
 
 	filetype = "fasta"
-	if re.search("\.(fq|fastq)$", f) is not None:
+	if re.search("\.(fq|fastq)", f) is not None:
 		filetype = "fastq"
 
-	reader = SeqIO.parse(open(f, "r"), filetype)
-	for entry in reader:
-		yield entry
+	#gzip?
+	if re.search("gz$", f):
+		_open = partial(gzip.open,mode='rt')
+	else:
+		_open=open
+		
+	with _open(f) as seqs:
+		for entry in SeqIO.parse(seqs, filetype):
+			yield entry
 
 
 def generate_read_fasta_folder(fastas):
@@ -307,12 +315,18 @@ def generate_read_fasta_folder(fastas):
 	for fasta_file in fastas:
 
 		filetype = "fasta"
-		if re.search("\.(fq|fastq)$", fasta_file) is not None:
+		if re.search("\.(fq|fastq)", fasta_file) is not None:
 			filetype = "fastq"
 
-		for entry in SeqIO.parse(open(fasta_file, "r"), filetype):
-
-			yield entry, None, fasta_file
+		#gzip?
+		if re.search("gz$", fasta_file):
+			_open = partial(gzip.open,mode='rt')
+		else:
+			_open=open
+		
+		with _open(fasta_file) as seqs:
+			for entry in SeqIO.parse(seqs, filetype):
+				yield entry, None, fasta_file
 
 			#if we reimplement qual handling uncomment next section
 			#if filetype == "fastq":
