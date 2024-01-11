@@ -147,7 +147,7 @@ def runAlign( fileName ):
 	reader = SeqIO.parse(open(fileName, "r"), "fasta")
 	for entry in reader:
 		results[entry.id] = dict()
-		gene = re.search("(v_call|V_gene)=((IG[HKL]V[^*]+)[^,\s]+)",entry.description)
+		gene = re.search("(v_call|V_gene)=((IG[HKL]V[^*]+|V[HKL][^*,\s]+)[^,\s]+)",entry.description)
 		if gene:
 			germline = gene.groups()[1]
 			results[entry.id]['vlookup'] = gene.groups()[2]
@@ -338,7 +338,7 @@ if __name__ == '__main__':
 					locus=next(check)
 					lib = next(check).strip()
 					if os.path.exists(lib):
-						print(f("Using V gene lib {lib}..."))
+						print( f"Using V gene lib {lib}..." )
 						arguments['-g'] = lib
 					else:
 						sys.exit("Please use --species or -g to specify gene databases.")

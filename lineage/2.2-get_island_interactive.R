@@ -204,7 +204,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
     
       #generate initial plot; supress color bar and increase size of plot title from default
       #   keep title separate, because we'll want to use different titles at different stages
-      pp <- plot_all(smalldata, mab.R, mab, "germline V", plotmethod=opts$plotmethod) + guides(fill=F) + theme( plot.title=element_text(size = 18) )
+      pp <- plot_all(smalldata, mab.R, mab, "germline V", plotmethod=opts$plotmethod) + guides(fill="none") + theme( plot.title=element_text(size = 18) )
 
       #want referents to look different on interactive and final figure (mostly about size)
       #   so save this first, then add
@@ -280,7 +280,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
                         theme( plot.title=element_text(colour="red") ) )
 	} else if( length(idsOnly)==0 ) {
 	    print( pp + labs( title=sprintf("Found %d transcripts in region\nLeft click to accept, right click to reselect region for %s",length(included$sequence_id), mab) ) +
-	      	        guides(colour=F) )
+	      	        guides(colour="none") )
 	} else {
 	    print( pp + labs( title=sprintf("%d transcripts previously identified\nFound %d transcripts (%d new) in current region\nLeft click to accept, right click to re-select region for %s", length(idsOnly), length(included$sequence_id), sum( ! included$sequence_id %in% idsOnly ), mab) ) )
 	}
@@ -319,7 +319,7 @@ getIsland <- function (dataFile, subsetFile, natAbList, outDir, outFile, refPoin
 	   lineageReads$round[current] <- rep( "current", length(current) )
 	   lineageReads <- lineageReads[ order(lineageReads$round, decreasing=T), ] #put reads from current mAb at the bottom so they plot on top
 	   pl[[i+1]] <- allPlots[[i]] + geom_point( inherit.aes=F, data=lineageReads, aes_string(x="germ_div",y=make.names(thisAb),colour="referent"), size=0.5 ) +
-		  		        guides(colour=F) + labs( title=thisAb ) + theme( plot.title=element_text(size = 10) )
+		  		        guides(colour="none") + labs( title=thisAb ) + theme( plot.title=element_text(size = 10) )
 	   if ( ! is.null(refPointsData) ) {
       	      	  pl[[i+1]] <- pl[[i+1]] + geom_point( inherit.aes=F, data=refData, aes_string(x="germ_div",y=make.names(thisAb)), shape=5, stroke=.5, size=.75, colour="black" )
       	   }

@@ -76,6 +76,8 @@ def main():
 		sys.stdout = open(arguments['-o'], "w")
 		if ".fq" in arguments['-o'] or ".fastq" in arguments['-o']:
 			outMode="fastq"
+	elif re.search("\.(fq|fastq)", arguments['-f']) is not None:
+		outMode = "fastq"
 	SeqIO.write(loadAndAnnotate(arguments['-f'], toSave), sys.stdout, outMode)
 
 
