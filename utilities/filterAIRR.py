@@ -96,7 +96,7 @@ def processRule(sentence, reader):
 	elif parts[1] in ["-", "!-"]:
 		if parts[2] == "STDIN":
 			parts[2] = "-"
-		toKeep = [ line.strip() for line in fileinput.input(parts[2]) ]
+		toKeep = set( [ line.strip() for line in fileinput.input(parts[2]) ] )
 		rule = f"r['{parts[0]}'] in {toKeep}"
 		if parts[1] == "!-":
 			rule = f"r['{parts[0]}'] not in {toKeep}"
@@ -132,8 +132,8 @@ if __name__ == '__main__':
 	arguments['--input'] = re.sub("<project>", prj_name, arguments['--input'])
 	if not os.path.isfile(arguments['--input']):
 		sys.exit(f"Cannot find rearrangements file {arguments['--input']}")
-	elif not airr.validate_rearrangement(arguments['--input']):
-		sys.exit(f"File {arguments['--input']} is not in valid AIRR format.")
+#	elif not airr.validate_rearrangement(arguments['--input']):
+#		sys.exit(f"File {arguments['--input']} is not in valid AIRR format.")
 
 	#log command line
 	logCmdLine(sys.argv)
