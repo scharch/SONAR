@@ -368,13 +368,14 @@ def main():
 
 	for fileNum, inFile in enumerate(arguments['--input']):
 
+		#gzip?
+		if re.search("gz$", inFile):
+			_open = partial(gzip.open,mode='rt')
+		else:
+				_open = partial(open, mode='r')
+
 		fileformat = "fastq"
 		try:
-			#gzip?
-			if re.search("gz$", inFile):
-				_open = partial(gzip.open,mode='rt')
-			else:
-				_open = partial(open, mode='r')
 			with _open(inFile) as checkInput:
 				parser = SeqIO.parse(checkInput, "fastq")
 				testSeq = next(parser)
@@ -400,7 +401,7 @@ def main():
 					 '--fastqout', "%s/r1_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)] +
 					filter_options, stderr = logFile)
 
-			qc_input = "%s/r1_filtered.fq"%prj_tree.preprocess
+			qc_input = "%s/r1_f%d_filtered.fq"%(prj_tree.preprocess,fileNum)
 
 			#check for R2
 			if len(arguments['--reverse']) > 0:
@@ -449,7 +450,22 @@ def main():
 		#split input into managable chunks
 		multiInd = 0
 		for myFile in processedFiles:
-			with open(myFile, 'r') as toSplit:
+			#gzip?
+			if re.search("gz$", myFile):
+				_open = partial(gzip.open,mode='rt')
+			else:
+				_open = partial(open, mode='r')
+
+			fileformat = "fastq"
+			try:
+				with _open(myFile) as checkInput:
+					parser = SeqIO.parse(checkInput, "fastq")
+					testSeq = next(parser)
+			except StopIteration:
+				#fasta input
+				fileformat		     = "fasta"
+
+			with _open(myFile) as toSplit:
 				splitForID = SeqIO.parse( toSplit, format=fileformat )
 				for chunk in iterator_slice(splitForID, 50000):
 					multiInd += 1
@@ -736,7 +752,12 @@ if __name__ == '__main__':
 	umiWhiteList  = []
 	umi2WhiteList = []
 	if arguments['--cellWhiteList'] is not None:
-		with open(arguments['--cellWhiteList'], "r") as codes:
+		if re.search("gz$", arguments['--cellWhiteList']):
+			_open = partial(gzip.open,mode='rt')
+		else:
+			_open = partial(open, mode='r')
+		with _open(arguments['--cellWhiteList']) as codes:
+#		with open(arguments['--cellWhiteList'], "r") as codes:
 			for bc in codes.readlines():
 				cellWhiteList.append(bc.strip())
 	elif arguments['--cellPattern'] is not None:

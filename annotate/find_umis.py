@@ -37,6 +37,8 @@ from docopt import docopt
 import datetime
 from collections import defaultdict
 from Bio import SeqIO
+import gzip
+from functools import partial
 
 try:
     from SONAR.annotate import *
@@ -177,7 +179,12 @@ if __name__ == '__main__':
 	umiWhiteList  = []
 	umi2WhiteList = []
 	if arguments['--cellWhiteList'] is not None:
-		with open(arguments['--cellWhiteList'], "r") as codes:
+		if re.search("gz$", arguments['--cellWhiteList']):
+			_open = partial(gzip.open,mode='rt')
+		else:
+			_open = partial(open, mode='r')
+		with _open(arguments['--cellWhiteList']) as codes:
+#		with open(arguments['--cellWhiteList'], "r") as codes:
 			for bc in codes.readlines():
 				cellWhiteList.append(bc.strip())
 	elif arguments['--cellPattern'] is not None:
