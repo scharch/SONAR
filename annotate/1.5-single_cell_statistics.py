@@ -15,7 +15,7 @@ Basic statistics are logged in output/logs/cell_processing.log; detailed per-cel
     rearrangements file with redundancy and irrelevant cells (see the --save option)
     removed is created as <input_rearrangements>_single-cell.tsv.
 
-Usage: 1.5-single_cell_statistics.py [ --rearrangements rearrangments.tsv --save all ]
+Usage: 1.5-single_cell_statistics.py [ --rearrangements rearrangments.tsv --save all --cluster --threads 1 ]
 
 Options:
     --rearrangements rearrangements.tsv   AIRR-formatted rearrangments file to be processed.
@@ -26,6 +26,10 @@ Options:
                                               'paired' (includes only cells with exactly 1 productive
                                               heavy chain and 1 productive light chain).
                                               [default: all]
+    --cluster                             Flag to submit chunk jobs to cluster instead of running them
+                                              locally. [default: False]
+    --threads 1                           Number of threads to use if not running on a cluster.
+                                              [default: 1]
 
 Created by Chaim A Schramm on 2019-03-7.
 Added output filtering by CA Schramm 2019-04-09.
@@ -47,6 +51,10 @@ from collections import defaultdict, Counter
 from io import StringIO
 from Bio.Align.Applications import MuscleCommandline
 from Bio import SeqIO
+from multiprocessing import Pool
+from functools import partial
+import itertools
+import pickle
 
 try:
 	from SONAR.annotate import *
@@ -55,6 +63,22 @@ except ImportError:
 	sys.path.append(find_SONAR[0])
 	from SONAR.annotate import *
 
+
+# a utility function to get us a slice of an iterator, as an iterator
+# when working with iterators maximum lazyness is preferred
+# from https://stackoverflow.com/a/44502827
+def iterator_slice(iterator, length):
+	iterator = iter(iterator)
+	while True:
+		res = tuple(itertools.islice(iterator, length))
+		if not res:
+			break
+		yield res
+
+
+def processCells(num):
+	cmd = f"{SCRIPT_FOLDER}/annotate/process_cells.py {prj_tree.internal}/cells_raw_{num:04}.pickle"
+	os.system( cmd )
 
 
 def main():
@@ -122,77 +146,79 @@ def main():
 		status_count[sample] = dict( zip( status_list, [0,0,0,0,0,0,0,0] )  )
 	status_dict  = dict( )
 
-	for c in cells_raw:
-		cell_processed	= defaultdict( list )
-		cell_productive = defaultdict( list )
-		for locus in cells_raw[c]:
-			#Start with the one with the most UMIs
-			for rep in sorted( [ r for r in cells_raw[c][locus] ], key=lambda k: k['duplicate_count'] or 0, reverse=True ):
-				#check if this is a duplicate of a previously kept read
-				keep = True
-				for previous in cell_processed[locus]:
-					#shortcut: assume identical junctions means duplicates
-					if previous['junction_aa'] == rep['junction_aa']:
-						keep = False
-						if previous['duplicate_count'] is not None and rep['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
-						if previous['consensus_count'] is not None and rep['duplicate_count'] is not None: previous['consensus_count'] += rep['consensus_count']
-						break
-					#heuristic (for 10x data as of March 2019):  omit gaps and cut off possible noise at 5' end
-					else:
-						score, cov = scoreAlign( quickAlign(previous['sequence_alignment'],rep['sequence_alignment']), countInternalGaps=False, skip=50 )
-						if score >= 0.95:
-							keep = False
-							if previous['duplicate_count'] is not None and rep['duplicate_count'] is not None: previous['duplicate_count'] += rep['duplicate_count']
-							if previous['consensus_count'] is not None and rep['duplicate_count'] is not None: previous['consensus_count'] += rep['consensus_count']
-							break
+	#generate pickles to pass to consensus algorithm
+	dInd = 0
+	for chunk in iterator_slice(cells_raw.items(), 10000):
+		dInd += 1
+		with open( f"{prj_tree.internal}/cells_raw_{dInd:04}.pickle", 'wb') as pickle_out:
+			pickle.dump( chunk, pickle_out )
 
-				if keep:
-					cell_processed[locus].append( rep )
-					if rep['status'] == "good": cell_productive[locus].append( rep )
+	#spawn subprocesses
+	if arguments['--cluster']:
+		with open("%s/processCells.sh"%prj_tree.internal, 'w') as jobHandle:
+			jobHandle.write(f"#!/bin/bash\n#$ -N processCells\n#$-cwd\nNUM=`printf \"%04d\" $SGE_TASK_ID`\n\nmodule load Biopython/1.73-foss-2016b-Python-3.6.7\n\n{SCRIPT_FOLDER}/annotate/process_cells.py {prj_tree.internal}/cells_raw_$NUM.pickle\n\n")
+		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%dInd, "%s/processCells.sh"%prj_tree.internal])
+	else:
+		partial_cons = partial( processCells )
 
-		status = ""
-		h_type = ""
-		if len(cell_processed['IGH']) > 2 or len(cell_processed['IGK']) > 2 or len(cell_processed['IGL']) > 2:
-			status = "probable_multiplet"
-		elif len(cell_productive['IGH']) == 0:
-			if len(cell_productive['IGK']) + len(cell_productive['IGL']) == 0:
-				status = "none_productive"
-			elif len(cell_productive['IGK']) + len(cell_productive['IGL']) == 1:
-				status = "light_only"
-			elif len(cell_productive['IGK']) + len(cell_productive['IGL']) > 1:
-				status = "multi_light"
-		elif len(cell_productive['IGH']) == 1:
-			h_type = re.sub("\*.+", "", cell_productive['IGH'][0]['c_call'])
-			if len(cell_productive['IGK']) + len(cell_productive['IGL']) == 0:
-				status = "heavy_only"
-			elif len(cell_productive['IGK']) + len(cell_productive['IGL']) == 1:
-				status = "canonical_pair"
-			elif len(cell_productive['IGK']) + len(cell_productive['IGL']) == 2:
-				status = "possible_inclusion"
-			elif len(cell_productive['IGK']) + len(cell_productive['IGL']) > 2:
-				status = "probable_multiplet"
-		elif len(cell_productive['IGH']) > 1:
-				status = "multi_heavy"
+		pool = Pool(arguments['--threads'])
+		blob = pool.map( partial_cons, range(1,dInd+1) )
+		pool.close()
+		pool.join()
 
-		status_count[ hashDict.get(c,["unknown"])[0] ][ status ] += 1
-		status_dict[c] = status
+	#collect output
+	for p in glob.glob(f"{prj_tree.internal}/cells_processed_*.pickle"):
+		with open(p, 'rb') as pickle_in:
+			chunk_dict = pickle.load(pickle_in)
 
-		#print to filtered rearrangements file
-		#leave out cells with ambiguous hashing assignments if we are doing any filtering
-		if status in arguments['--save']:
-			if hashDict.get(c,["unknown"])[0] != "ambiguous" or "probable_multiplet" in arguments['--save']:
-				for loc in cell_processed:
-					for chain in cell_processed[loc]:
-						chain['cell_status'] = status
-						if len(hashDict)>0:
-							chain['hash_sample']=hashDict.get(chain['cell_id'],['unknown'])[0]
-						cells_only.write( chain )
+			cell_processed  = chunk_dict[ 'processed' ]
+			cell_productive = chunk_dict[ 'productive' ]
 
-		#now log the cell
-		outwriter.writerow( [c, status, h_type] + hashDict.get(c,['unknown']*(len(hashDict)>0)) + featureDict.get(c, ['0']*len(featureDict.get("keys",[]))) +
-				   [ len(cell_productive['IGH']), len(cell_processed['IGH']), ";".join([chain['junction_aa'] for chain in cell_processed['IGH']]),
-				   len(cell_productive['IGK']), len(cell_processed['IGK']), ";".join([chain['junction_aa'] for chain in cell_processed['IGK']]),
-				   len(cell_productive['IGL']), len(cell_processed['IGL']), ";".join([chain['junction_aa'] for chain in cell_processed['IGL']]) ] )
+			for c in cell_processed:
+				status = ""
+				h_type = ""
+				if len(cell_processed[c]['IGH']) > 2 or len(cell_processed[c]['IGK']) > 2 or len(cell_processed[c]['IGL']) > 2:
+					status = "probable_multiplet"
+				elif len(cell_productive[c]['IGH']) == 0:
+					if len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) == 0:
+						status = "none_productive"
+					elif len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) == 1:
+						status = "light_only"
+					elif len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) > 1:
+						status = "multi_light"
+				elif len(cell_productive[c]['IGH']) == 1:
+					h_type = re.sub("\*.+", "", cell_productive[c]['IGH'][0]['c_call'])
+					if len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) == 0:
+						status = "heavy_only"
+					elif len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) == 1:
+						status = "canonical_pair"
+					elif len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) == 2:
+						status = "possible_inclusion"
+					elif len(cell_productive[c]['IGK']) + len(cell_productive[c]['IGL']) > 2:
+						status = "probable_multiplet"
+				elif len(cell_productive[c]['IGH']) > 1:
+						status = "multi_heavy"
+
+				status_count[ hashDict.get(c,["unknown"])[0] ][ status ] += 1
+				status_dict[c] = status
+
+
+				#print to filtered rearrangements file
+				#leave out cells with ambiguous hashing assignments if we are doing any filtering
+				if status in arguments['--save']:
+					if hashDict.get(c,["unknown"])[0] != "ambiguous" or "probable_multiplet" in arguments['--save']:
+						for loc in cell_processed[c]:
+							for chain in cell_processed[c][loc]:
+								chain['cell_status'] = status
+								if len(hashDict)>0:
+									chain['hash_sample']=hashDict.get(chain['cell_id'],['unknown'])[0]
+								cells_only.write( chain )
+
+				#now log the cell
+				outwriter.writerow( [c, status, h_type] + hashDict.get(c,['unknown']*(len(hashDict)>0)) + featureDict.get(c, ['0']*len(featureDict.get("keys",[]))) +
+						   [ len(cell_productive[c]['IGH']), len(cell_processed[c]['IGH']), ";".join([chain['junction_aa'] for chain in cell_processed[c]['IGH']]),
+						   len(cell_productive[c]['IGK']), len(cell_processed[c]['IGK']), ";".join([chain['junction_aa'] for chain in cell_processed[c]['IGK']]),
+						   len(cell_productive[c]['IGL']), len(cell_processed[c]['IGL']), ";".join([chain['junction_aa'] for chain in cell_processed[c]['IGL']]) ] )
 
 	output.close()
 
@@ -214,6 +240,10 @@ def main():
 #		byCategory = Counter([status_dict[c] for c in most_used[big]])
 #		print( "%s\t%d\t%s" % (big, len(most_used[big]), "\t".join( [str(byCategory[s]) for s in status_list] )) )
 
+	#clean up!!
+	oldFiles = glob.glob(f"{prj_tree.internal}/cells_*.pickle")
+	if len(oldFiles) > 0:
+		[os.remove(f) for f in oldFiles]
 
 
 if __name__ == '__main__':
@@ -225,6 +255,11 @@ if __name__ == '__main__':
 	prj_name	= fullpath2last_folder(prj_tree.home)
 
 	arguments['--rearrangements'] = re.sub("<project>", prj_name, arguments["--rearrangements"])
+	arguments['--threads'] = int(arguments["--threads"])
+
+	if arguments['--cluster']:
+		if not clusterExists:
+			sys.exit("Cannot submit jobs to non-existent cluster! Please re-run setup.sh to add support for a cluster\n")
 
 	if not os.path.isfile(arguments['--rearrangements']):
 		sys.exit("Cannot find rearrangments file %s" % arguments['--rearrangements'])
