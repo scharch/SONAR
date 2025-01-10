@@ -124,9 +124,11 @@ Added clean up to end of run by CA Schramm 2022-07-14.
 Lineage table will print actual V genes instead of OTU centroid when in
                          geneClusters mode by CA Schramm 2022-07-14.
 Added option to pull old sequences directly from master db to minimize
-                         errors by CA Scrhamm 2024-01-11.
+                         errors by CA Schramm 2025-01-09.
+Switched to handling of cell_stats files via pandas to keep columns from
+                         getting messed up by CA Schramm 2025-01-10.
 
-Copyright (c) 2011-2024 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2025 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -139,6 +141,7 @@ from Bio import Seq
 from Bio.SeqRecord import SeqRecord
 import itertools
 import airr
+import pandas as pd
 
 try:
 	from SONAR.lineage import *
@@ -559,64 +562,50 @@ def main():
 				writer.writerow( dataToWrite )
 
 		#update the cell_stats table
-		with open("updateCellStats.tsv", 'w', newline="\n", encoding='utf-8') as outfh:
-			writer = csv.writer(outfh, delimiter="\t", dialect='unix', quoting=csv.QUOTE_NONE)
-			columns = ["cell","status","clone","isotype","productive_IGH",
-					"total_IGH","IGH_junctions","productive_IGK","total_IGK","IGK_junctions",
-					"productive_IGL","total_IGL","IGL_junctions"]
-			if len(arguments['--rearrangements']) > 1:
-				columns.insert(3, "source")
-			writer.writerow(columns)
+		#for each input try to guess the matching cell_stats file
+		allDFs = []
+		for ind in range(len(arguments['--rearrangements'])):
+			cell_stats = re.sub("_rearrangements.*\.tsv", "_cell_stats.tsv", arguments['--rearrangements'][ind])
 
-			#for each input try to guess the matching cell_stats file
-			for ind in range(len(arguments['--rearrangements'])):
-				cell_stats = re.sub("_rearrangements.*\.tsv", "_cell_stats.tsv", arguments['--rearrangements'][ind])
+			airrFile = arguments['--rearrangements'][ind]
+			if len(arguments['--names']) > 0:
+				airrFile = arguments['--names'][ind]
 
-				airrFile = arguments['--rearrangements'][ind]
+			#check if it exists
+			if not os.path.isfile(cell_stats):
+				print( f"Warning: Cannot find cell stats file for {arguments['--rearrangements'][ind]} (tried {cell_stats}).\nCells from this repertoire will not be included in output to {cellStatFile}\n", file=sys.stderr)
+				continue
+
+			df = pd.read_csv(cell_stats, sep="\t", dtype={'clone':'str'})
+			if 'clone' not in df.columns:
+				df.insert(2,"clone","")
+			if 'source' not in df.columns:
+				df.insert(3,"source","")
+
+			for index,row in df.iterrows():
+				clone_id = ""
+				suffix = ind
 				if len(arguments['--names']) > 0:
-					airrFile = arguments['--names'][ind]
+					if arguments['--names'][ind] == "preserve":
+						suffix = row['clone']
+					else:
+						suffix = arguments['--names'][ind]
+				try:
+					unique_cell = row['cell']+f"==={suffix}"
+				except TypeError:
+					sys.exit( f"Please check alignment of columns and make sure there are sufficient column titles in the header for {cell_stats}")
+				if unique_cell in clusterLookup:
+					clone_id = centroidData[ clusterLookup[ unique_cell ] ]['rank']
+				df.at[index, 'clone'] = clone_id
 
-				#check if it exists
-				if not os.path.isfile(cell_stats):
-					print( f"Warning: Cannot find cell stats file for {arguments['--rearrangements'][ind]} (tried {cell_stats}).\nCells from this repertoire will not be included in output to {cellStatFile}\n", file=sys.stderr)
-					continue
+				if len(arguments['--rearrangements']) > 1 or len(arguments['--names']) > 0:
+					if airrFile != "preserve":
+							df.at[index, 'source'] = airrFile
 
-				with open( cell_stats, 'r') as infh:
+			allDFs.append(df)
 
-					reader = csv.reader(infh, delimiter="\t")
-					header = next(reader)
-					hasClone = True
-					if 'clone' not in header:
-						hasClone = False
-					hasSource = True
-					if 'source' not in header and len(arguments['--rearrangements']) > 1:
-						hasSource = False
-
-					for row in reader:
-						clone_id = ""
-						suffix = ind
-						if len(arguments['--names']) > 0:
-							if arguments['--names'][ind] == "preserve":
-								suffix = row[2+int(hasClone)]
-							else:
-								suffix = arguments['--names'][ind]
-						unique_cell = row[0]+f"==={suffix}"
-						if unique_cell in clusterLookup:
-							clone_id = centroidData[ clusterLookup[ unique_cell ] ]['rank']
-						if hasClone:
-							row[2] = clone_id
-						else:
-							row.insert( 2, clone_id )
-						if len(arguments['--rearrangements']) > 1 or len(arguments['--names']) > 0:
-							if hasSource:
-								if airrFile != "preserve":
-									row[3] = airrFile
-							else:
-								row.insert( 3, airrFile )
-						writer.writerow( row )
-
-		os.rename( "updateCellStats.tsv", cellStatFile )
-
+		bigdf = pd.concat( allDFs, ignore_index=True )
+		bigdf.to_csv(cellStatFile, index=False, sep="\t")
 
 	else:
 
@@ -647,28 +636,6 @@ def main():
 					breakdown = [ countsByInput[centroid][suffix] for suffix in sourceList ]
 					dataToWrite += [ ":".join([ str(b) for b in breakdown]), sum([1 if b>0 else 0 for b in breakdown]) ]
 				writer.writerow(dataToWrite)
-
-		#do sequence output
-		#notationFile = re.sub( "\.f.+", "_lineageNotations.fa", arguments['--full'] )
-		#repFile	     = re.sub( "\.f.+", "_lineageRepresentatives.fa", arguments['--full'] )
-
-		#rep_seqs = []
-		#with open( notationFile, "w" ) as handle:
-		#	for read in generate_read_fasta(arguments['--full']):
-		#		if ";" in read.id:
-		#			read.id = read.id[0:8] #this is for raw VSearch output with size annotations
-		#					       #shouldn't be relevant in pipeline context
-		#		if read.id not in clusterLookup: continue
-		#		read.description += " clone_id=%s clone_rep=%s clone_count=%d" % ( centroidData[clusterLookup[read.id]]['rank'],
-		#												   clusterLookup[read.id], clusterSizes[clusterLookup[read.id]] )
-		#		SeqIO.write([read],handle,"fasta")
-		#		if read.id in centroidData:
-		#			rep_seqs.append(read)
-
-		#with open( repFile, "w" ) as handle:
-		#	#use a sort to put them out in order of lineage rank (ie size)
-		#	SeqIO.write( sorted(rep_seqs, key=lambda cent: centroidData[cent.id]['rank']), handle, "fasta" )
-
 
 	#do AIRR output (both bulk and single cell)
 	#use a temp file to avoid problems trying to overwrite an input file
