@@ -24,7 +24,7 @@ This script uses CDR3 identity to group unique sequences from a given data set
       with no in-dels is probably useful for most cases, but more stringent or 
       lenient criteria may sometimes be more appropriate. 
 
-Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --names SAMPLE... --filter all --id <90> --gaps <0> --output TSV --geneClusters --customClusters <clusters.txt> --species <human> --singlecell --preserve -t 1 ]
+Usage: 2.4-cluster_into_groups.py [ --rearrangements TSV... --names SAMPLE... --filter all --id <90> --gaps <0> --output TSV --geneClusters --customClusters <clusters.txt> --species <human> --singlecell --preserve --master <db.xlsx> --subject A123 -t 1 ]
 
 Options:
     --rearrangements TSV               One or more AIRR-formatted rearrangements files with the 
@@ -84,6 +84,13 @@ Options:
                                           as it will silently join and/or split clones even if the 
                                           actual underlying clustering came out differently. Only 
                                           operates on the first TSV if multiple are provided.
+    --master <db.xlsx>                 An Excel file with a database of previously seen single cell 
+                                          sequences. Extracts those corresponding to the current
+                                          subject (`--subject` is required) and adds them to the
+                                          lineage clustering to maintain clone IDs. Only data from
+                                          the `--rearrangements` file will be included in the output.
+    --subject A123                     Subject ID to extract from master database> Required if
+                                          `--master` is used, ignored otherwise.
     -t 1                               Number of threads used [default: 1]
 
 
@@ -116,8 +123,10 @@ Changed default id threshold for single cells to 80% by CAS 2022-07-14.
 Added clean up to end of run by CA Schramm 2022-07-14.
 Lineage table will print actual V genes instead of OTU centroid when in
                          geneClusters mode by CA Schramm 2022-07-14.
+Added option to pull old sequences directly from master db to minimize
+                         errors by CA Scrhamm 2024-01-11.
 
-Copyright (c) 2011-2022 Columbia University and Vaccine Research Center, National
+Copyright (c) 2011-2024 Columbia University and Vaccine Research Center, National
                          Institutes of Health, USA. All rights reserved.
 
 """
@@ -316,15 +325,80 @@ def main():
 	elif arguments['--filter'] == "unique":
 		filter_rules.append( "r['centroid'] == r['sequence_id']" )
 
-
-	#first, open the input file and parse into groups with same V/J
 	vj_partition = dict()
 	cdr3_info = dict()
 	seqSize = Counter()
 	oldClones = dict()
 	sourceList = list()
-
 	cell_dict = defaultdict(list)
+
+	#extract sequences from master database
+	if arguments['--master'] is not None:
+		wb = openpyxl.load_workbook( arguments['--master'], read_only=True )
+		ws = wb.active
+		ws.reset_dimensions()
+		data = ws.values
+		header = next(data)
+		suCol = header.index("SubjectID")
+		lnCol = header.index("LineageNum")
+		abCol = header.index("AntibodyNum")
+		vhCol = header.index("VH_call")
+		jhCol = header.index("JH_call")
+		vlCol = header.index("VKL_call")
+		jlCol = header.index("JKL_call")
+		h3Col = header.index("CDRH3_nt")
+		aaCol = header.index("VJ_aa")
+		ntCol = header.index("VJ_nt")
+		l3Col = header.index("CDRL3_AA")
+		dbSeqs = 0
+		for row in ws.values:
+			if row[suCol] == arguments['--subject']:
+				dbSeqs += 1
+				cell = f"{row[suCol]}-{row[lnCol]}.{row[abCol]}===masterDB"
+				hSeq = f"H-{cell}"
+				lSeq = f"L-{cell}"
+				cdrl3_seq = row[ntCol][ row[aaCol].index(row[l3Col])*3 : (row[aaCol].index(row[l3Col])+len(row[l3Col]))*3 ]
+
+				cell_dict[ cell ] += [hSeq, lSeq]
+				oldClones[ cell ] = row[ lnCol ]
+
+				keyH = row[vhCol].split("*")[0] + "_" + row[jhCol].split("*")[0]
+				cdr3_info[ hSeq ] = { 'genes' : keyH, 'cdr3_seq' : Seq.Seq(row[h3Col]) }
+				keyL = row[vlCol].split("*")[0] + "_" + row[jlCol].split("*")[0]
+				cdr3_info[ lSeq ] = { 'genes' : keyL, 'cdr3_seq' : Seq.Seq(cdrl3_seq) }
+
+				if arguments['--geneClusters']:
+					keyH = geneClusters.get( row[vhCol].split(",")[0], row[vhCol].split("*")[0] )
+					cdr3_info[ hSeq ] = { 'genes' : row[vhCol].split("*")[0], 'cdr3_seq' : Seq.Seq(row[h3Col]) }
+					keyL = geneClusters.get( row[vlCol].split(",")[0], row[vlCol].split("*")[0] )
+					cdr3_info[ lSeq ] = { 'genes' : row[vlCol].split("*")[0], 'cdr3_seq' : Seq.Seq(cdrl3_seq) }
+
+				if keyH not in vj_partition:
+					temp = "%s/%s.fa"%(prj_tree.lineage, keyH)
+					vj_partition[keyH] = { 'group':keyH, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+				if keyL not in vj_partition:
+					temp = "%s/%s.fa"%(prj_tree.lineage, keyL)
+					vj_partition[keyL] = { 'group':keyL, 'handle':open(temp, "w"), 'file':temp, 'count':0, 'ids':[] }
+
+				vj_partition[keyH]['count'] += 1
+				vj_partition[keyH]['ids'].append(hSeq)
+				vj_partition[keyL]['count'] += 1
+				vj_partition[keyL]['ids'].append(lSeq)
+
+				#create a sequence object and write
+				tempSeqH = SeqRecord( id=hSeq, seq=Seq.Seq(re.sub("[-.+]","",row[h3Col])) )
+				tempSeqH.id += ";size=1"
+				SeqIO.write([tempSeqH], vj_partition[keyH]['handle'], 'fasta')
+
+				tempSeqL = SeqRecord( id=lSeq, seq=Seq.Seq(re.sub("[-.+]","",cdrl3_seq)) )
+				tempSeqL.id += ";size=1"
+				SeqIO.write([tempSeqL], vj_partition[keyL]['handle'], 'fasta')
+
+		wb.close()
+		if dbSeqs == 0:
+			sys.exit( f"No rows for subject {arguments['--subject']} found in master database {arguments['--master']}" )
+
+	#open the rearrangement file(s) and parse into groups with same V/J
 	for index, inFile in enumerate(arguments['--rearrangements']):
 
 		#open the file and check that we have all the required fields
@@ -333,7 +407,7 @@ def main():
 			sys.exit( f"`cell_id` column not found in {inFile}, cannot do single-cell lineage analysis" )
 		if arguments['--filter'] == "unique" and not "centroid" in reader.external_fields:
 			sys.exit( f"`centroid` column not found in {inFile}, cannot filter for unique sequences" )
-		if arguments['--preserve'] and index==0 and not "clone_id" in reader.fields:
+		if arguments['--preserve'] and arguments['--master'] is None and index==0 and not "clone_id" in reader.fields:
 			print("Can't find existing clone_ids, `--preserve` will be ignored...", file=sys.stderr)
 		if len(arguments['--names']) > 0 and arguments['--names'][index] == "preserve" and not "source_repertoire" in reader.fields:
 			sys.exit("Can't find existing source_repertoire, please use a `--name` other than 'preserve'." )
@@ -365,7 +439,7 @@ def main():
 				r[ 'cell_id' ] += f"==={suffix}"
 				cell_dict[ r['cell_id'] ].append(r['sequence_id'])
 
-			if arguments['--preserve'] and index==0 and 'clone_id' in r and r['clone_id']!="":
+			if arguments['--preserve'] and arguments['--master'] is None and index==0 and 'clone_id' in r and r['clone_id']!="":
 				if arguments['--singlecell']:
 					oldClones[ r['cell_id'] ] = r['clone_id']
 				else:
@@ -533,7 +607,7 @@ def main():
 							row[2] = clone_id
 						else:
 							row.insert( 2, clone_id )
-						if len(arguments['--rearrangements']) > 1:
+						if len(arguments['--rearrangements']) > 1 or len(arguments['--names']) > 0:
 							if hasSource:
 								if airrFile != "preserve":
 									row[3] = airrFile
@@ -599,7 +673,7 @@ def main():
 	#do AIRR output (both bulk and single cell)
 	#use a temp file to avoid problems trying to overwrite an input file
 	extra_fields = ["clone_id", "clone_count"]
-	if len(arguments['--rearrangements']) > 1:
+	if len(arguments['--rearrangements']) > 1 or len(arguments['--names']) > 0:
 		extra_fields += ['source_repertoire']
 
 	withLin = airr.derive_rearrangement( "temp.tsv", arguments['--rearrangements'][0], fields=extra_fields)
@@ -629,7 +703,7 @@ def main():
 				r['clone_count'] = ""
 
 			#add source repertoire if relevant
-			if len(arguments['--rearrangements']) > 1:
+			if len(arguments['--rearrangements']) > 1 or len(arguments['--names']) > 0:
 				if len(arguments['--names']) > 0:
 					if arguments['--names'][ index ] != "preserve":
 						r['source_repertoire'] = arguments['--names'][ index ]
@@ -728,6 +802,23 @@ if __name__ == '__main__':
 		except ModuleNotFoundError:
 			sys.exit("The networkx package is required for single cell clonal clustering.\nPlease run `pip3 install networkx --user` and then try again.")
 
+	if arguments['--master'] is not None:
+		if not os.path.isfile(arguments['--master']):
+			sys.exit(f"Cannot find database file {arguments['--master']}")
+		if not arguments['--singlecell']:
+			sys.exit( "Master database input is only compatible with single cell mode" )
+		if arguments['--subject'] is None:
+			sys.exit( "Error: must specify subject ID to be extracted from master database")
+		if arguments['--preserve']:
+			print( "Warning: only cloneIDs in the master database will be preserved", file=sys.stderr)
+		else:
+			arguments['--preserve'] = True
+
+		#check for the openpyxl package
+		try:
+			import openpyxl
+		except ModuleNotFoundError:
+			sys.exit("The openpyxl package is required to read a Master Database.\nPlease run `pip3 install openpyxl --user` and then try again.")
 
 	#log command line
 	logCmdLine(sys.argv)
