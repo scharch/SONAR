@@ -399,7 +399,7 @@ def main():
 
 		wb.close()
 		if dbSeqs == 0:
-			sys.exit( f"No rows for subject {arguments['--subject']} found in master database {arguments['--master']}" )
+			print( f"Warning: No rows for subject {arguments['--subject']} found in master database {arguments['--master']}" )
 
 	#open the rearrangement file(s) and parse into groups with same V/J
 	for index, inFile in enumerate(arguments['--rearrangements']):
