@@ -101,6 +101,13 @@ RUN pip3 install airr
 #install networkx for single cell clonality
 RUN pip3 install networkx
 
+#install openpyxl and pandas for IO
+RUN pip3 install openpyxl
+RUN pip3 install pandas
+
+#install pyfastx
+RUN pip3 install pyfastx
+
 #install Levensthein
 RUN pip3 install python-Levenshtein
 
