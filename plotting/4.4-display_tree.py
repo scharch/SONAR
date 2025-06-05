@@ -64,7 +64,7 @@ Options:
                                      as necessary. This will at at least keep the labels legible even as the branches start 
                                      to run togethere
     -f 1                         Magnification factor for text labels. Default size is approximately 0.1 inches high at the 
-                                     specified resolution. (Font face is hard-coded as Arial.) [default: 1]
+                                     specified resolution. [default: 1]
     -r 300                       Resolution (in dpi) of the output image. Please see note for --sc. [default: 300]
     --left                       Flag indicating that tree should be displayed facing left. [default: False]
     --showAll                    Flag indicating that labels should be displayed for all leaves. [default: False]
@@ -105,7 +105,8 @@ Copyright (c) 2013-2018 Columbia University and Vaccine Research Center, Nationa
 import sys, os, re, colorsys
 from docopt import docopt
 from ete3 import *
-from PyQt4.QtGui import QGraphicsSimpleTextItem, QGraphicsEllipseItem, QColor, QFont, QBrush, QPen
+from PyQt5.QtGui import QColor, QFont, QBrush, QPen
+from PyQt5.QtWidgets import QGraphicsSimpleTextItem, QGraphicsEllipseItem
 import string, random
 
 try:
@@ -212,7 +213,7 @@ def layout(node):
 		label = collapseList[node.name]
 		if label == node.name:
 			label = "Collapsed %d leaves in %d levels" % (len(node.get_leaves()), node.get_farthest_leaf(topology_only=True)[1]+1)
-		tf = TextFace(" %s"%label,fgcolor="#B0B0B0",ftype='Arial',fsize=fontSize*.75, fstyle='italic')
+		tf = TextFace(" %s"%label,fgcolor="#B0B0B0",fsize=int(fontSize*.75), fstyle='italic')
 		faces.add_face_to_node(tf, node, 0, position='branch-right')
 		if not arguments['--noDots']: ns['size'] = 2 * ns['hz_line_width']
 		ns['fgcolor'] = '#B0B0B0'
@@ -222,30 +223,30 @@ def layout(node):
 		ns['fgcolor'] = myRGB
 		ns['vt_line_color'] = myRGB
 		ns['hz_line_color'] = myRGB
-		ns['hz_line_width'] = arguments['-r']/72
-		ns['vt_line_width'] = arguments['-r']/72
+		ns['hz_line_width'] = int(arguments['-r']/72)
+		ns['vt_line_width'] = int(arguments['-r']/72)
 		
 		#highlight pathways to natives, if desired
 		if arguments['--path'] and node.onPathway:
-			ns['hz_line_width'] = arguments['-r']/24
-			ns['vt_line_width'] = arguments['-r']/24
+			ns['hz_line_width'] = int(arguments['-r']/24)
+			ns['vt_line_width'] = int(arguments['-r']/24)
 			
 		#label natives
 		if node.isNat:
-			tf = TextFace(" %s"%node.name,fgcolor=myRGB,ftype='Arial',fsize=fontSize)
+			tf = TextFace(" %s"%node.name,fgcolor=myRGB,fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-right')
 			if not arguments['--noDots']: ns['size'] = 2 * ns['hz_line_width']
 			ns['fgcolor'] = '#000000'
 
 		#label germline outgroup, if desired
 		elif re.search("(IG|VH|VK|VL|HX)", node.name) and not arguments['--noV']:
-			tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
+			tf = TextFace(" %s"%node.name,fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-right')
 			ns['fgcolor'] = '#000000'
 
 		#label all leaves, if desired
 		elif arguments['--showAll'] and node.is_leaf():
-			tf = TextFace(" %s"%node.name,ftype='Arial',fsize=fontSize)
+			tf = TextFace(" %s"%node.name,fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-right')
 
 		#add annotation, if provided
@@ -270,7 +271,7 @@ def layout(node):
 						rf = RectFace(fontSize-1, fontSize-1, 'black', thisFill)
 						faces.add_face_to_node(rf, node, whichCol)
 			else:
-				tf = TextFace(" %s"%node.annotation,ftype='Arial',fsize=fontSize*.66)
+				tf = TextFace(" %s"%node.annotation,fsize=fontSize*.66)
 				if node.is_leaf():
 					faces.add_face_to_node(tf, node, 0, position='aligned')
 				else:
@@ -283,7 +284,7 @@ def layout(node):
 
 		#label UCA/root, if desired
 		if not arguments['--noUCA'] and not node.up: 
-			tf = TextFace(' UCA ',ftype='Arial',fsize=fontSize)
+			tf = TextFace(' UCA ',fsize=fontSize)
 			faces.add_face_to_node(tf, node, 0, position='branch-top')
 			# change horizontal line color??
 
@@ -312,7 +313,7 @@ def iLabel(node, *args, **kargs):
 	text = QGraphicsSimpleTextItem(my_label)
 	text.setParentItem(ellipse)
 	text.setBrush(QBrush(QColor("black")))
-	font = QFont("Arial",fontSize*.9,weight=80)
+	font = QFont("Verdana",int(fontSize*.9),weight=80)
 	font.setLetterSpacing(1, 2) #add 2 pixels between letters for legibility
 	text.setFont(font)
 
@@ -447,7 +448,7 @@ def main():
 			bar.margin_right  = arguments['-r']/24
 			bar.margin_left	  = arguments['-r']/24
 			ts.legend.add_face(bar, column=0)
-			text = TextFace(datesInLegend[timepoints[time]],ftype="Arial",fsize=fontSize*0.75,fgcolor="#000000")
+			text = TextFace(datesInLegend[timepoints[time]],fsize=int(fontSize*0.75),fgcolor="#000000")
 			text.hz_align	  = 0
 			text.vt_align	  = 1
 			text.margin_left  = arguments['-r']/24
@@ -463,7 +464,7 @@ def main():
 #Custom modifications of functions from within ete package
 def _custom_add_scale(img, mainRect, parent):
 			       
-	from PyQt4 import QtGui
+	from PyQt5 import QtGui, QtWidgets
 	from ete3.treeview.qt4_render import _EmptyItem
 
 	length	    = arguments['-f'] * arguments['-r'] / 4
@@ -474,9 +475,9 @@ def _custom_add_scale(img, mainRect, parent):
 	scaleItem   = _EmptyItem()
 	customPen   = QtGui.QPen(QtGui.QColor("black"), arguments['-r']/72)
     
-	line = QtGui.QGraphicsLineItem(scaleItem)
-	line2 = QtGui.QGraphicsLineItem(scaleItem)
-	line3 = QtGui.QGraphicsLineItem(scaleItem)
+	line = QtWidgets.QGraphicsLineItem(scaleItem)
+	line2 = QtWidgets.QGraphicsLineItem(scaleItem)
+	line3 = QtWidgets.QGraphicsLineItem(scaleItem)
 	line.setPen(customPen)
 	line2.setPen(customPen)
 	line3.setPen(customPen)
@@ -488,8 +489,8 @@ def _custom_add_scale(img, mainRect, parent):
 	line2.setLine(0, 0, 0, height)
 	line3.setLine(length, 0, length, height)
 	scale_text = "%0.2f" % (length_text)
-	scale = QtGui.QGraphicsSimpleTextItem(scale_text)
-	scale.setFont(QtGui.QFont("Arial", fontSize*0.75))
+	scale = QtWidgets.QGraphicsSimpleTextItem(scale_text)
+	scale.setFont(QtGui.QFont("Verdana", int(fontSize*0.75)))
 	scale.setParentItem(scaleItem)
 	scale.setPos(length/3, -height)
 	if arguments['--left']:
@@ -547,7 +548,7 @@ if __name__ == '__main__':
 	
 
 	#convert font magnification to actual size
-	fontSize = arguments['-f'] * 20 * arguments['-r']/300
+	fontSize = int(arguments['-f'] * 20 * arguments['-r']/300)
 
 
 	#colors generated stochastically via http://tools.medialab.sciences-po.fr/iwanthue/ and sorted for increasing hue
