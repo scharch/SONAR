@@ -6,8 +6,8 @@
 #  information.                                        #
 ########################################################
 
-FROM ubuntu:bionic
-MAINTAINER Chaim Schramm chaim.schramm@nih.gov
+FROM ubuntu:noble
+LABEL org.opencontainers.image.authors="Chaim Schramm chaim.schramm@nih.gov"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -28,14 +28,12 @@ RUN apt-get install -y \
   python3 \
   python3-pip
 
-#get biopython
-RUN pip3 install "biopython==1.73"
-
-#add docopt
-RUN pip3 install docopt
-
-#add fuzzywuzzy for master script
-RUN pip3 install fuzzywuzzy
+#install biopython and key packages like PyQT
+RUN apt-get install -y \
+    python3-biopython python3-docopt python3-fuzzywuzzy \
+    python3-pyqt5 python3-lxml python3-six \
+    python3-openpyxl python3-networkx python3-pandas \
+    python3-pyfastx python3-ete3 python3-airr
 
 #install libraries for bioperl
 RUN apt-get install -y \
@@ -89,32 +87,10 @@ RUN cpanm \
 RUN cpanm -v \
     https://github.com/bioperl/bioperl-live/archive/release-1-7-2.tar.gz
 
-#install PyQt and ete3
-RUN apt-get install -y \
-    python3-pyqt4 python3-pyqt4.qtopengl python-lxml python-six
-
-RUN pip3 install --upgrade ete3
-
-#install AIRR reference library
-RUN pip3 install airr
-
-#install networkx for single cell clonality
-RUN pip3 install networkx
-
-#install openpyxl and pandas for IO
-RUN pip3 install openpyxl
-RUN pip3 install pandas
-
-#install pyfastx
-RUN pip3 install pyfastx
-
-#install Levensthein
-RUN pip3 install python-Levenshtein
-
 #install R
-RUN echo "deb http://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/" >> /etc/apt/sources.list
-RUN gpg --keyserver keyserver.ubuntu.com --recv-key 51716619E084DAB9
-RUN gpg -a --export 51716619E084DAB9 | apt-key add -
+RUN echo "deb http://cloud.r-project.org/bin/linux/ubuntu noble-cran40/" >> /etc/apt/sources.list
+RUN gpg --keyserver keyserver.ubuntu.com --recv-key E298A3A825C0D65DFD57CBB651716619E084DAB9
+RUN gpg -a --export E298A3A825C0D65DFD57CBB651716619E084DAB9| apt-key add -
 RUN apt-get update && apt-get install -y r-base r-base-dev
 
 #install R packages
@@ -130,7 +106,7 @@ RUN tar -xzf sratoolkit.2.9.6-1-ubuntu64.tar.gz
 RUN ln -s /sratoolkit.2.9.6-1-ubuntu64/bin/fastq-dump /usr/bin/fastq-dump
 
 #pull latest SONAR source code and set it up
-RUN apt-get install -y git libidn11
+RUN apt-get install -y git libidn12
 RUN git clone https://github.com/scharch/SONAR.git
 WORKDIR SONAR
 RUN echo | ./setup.py
