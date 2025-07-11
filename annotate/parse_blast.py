@@ -297,7 +297,7 @@ def main():
 			# entry.seq = entry.seq [ : -1 * (len(entry.seq) % 3) ]
 
 			#check for stop codons
-			if '*' in entry.seq.translate():
+			if '*' in entry.seq.translate(table=GAPPED_CODON_TABLE):
 				stop = "T"
 
 			#check for in-frame junction
