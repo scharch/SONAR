@@ -127,29 +127,60 @@ print_cluster = "clusterExists = False"
 if cluster_exists.upper() == "Y":
     print_cluster = "clusterExists = True\nqsub = '%s'" % qsub
 
-blast    = "blastn_linux64"
-clustalo = "clustalo"
-clustalw = "clustalw2"
-muscle   = "muscle"
-vsearch  = "vsearch"
+blast    = f"{SONAR_HOME}/third_party/blastn_linux64"
+clustalo = f"{SONAR_HOME}/third_party/clustalo"
+clustalw = f"{SONAR_HOME}/third_party/clustalw2"
+muscle   = f"{SONAR_HOME}/third_party/muscle"
+vsearch  = f"{SONAR_HOME}/third_party/vsearch"
 
 if sys.platform.startswith("darwin"):
-    blast    = "blastn_macos"
-    clustalo = "clustalo_macos"
-    clustalw = "clustalw2_macos"
-    muscle   = "muscle_macos"
-    vsearch  = "vsearch_macos"
+    blast    = f"{SONAR_HOME}/third_party/blastn_macos"
+    clustalo = f"{SONAR_HOME}/third_party/clustalo_macos"
+    clustalw = f"{SONAR_HOME}/third_party/clustalw2_macos"
+    muscle   = f"{SONAR_HOME}/third_party/muscle_macos"
+    vsearch  = f"{SONAR_HOME}/third_party/vsearch_macos"
+
+sysblast = "ASF"
+while not (sysblast == "" or os.path.exists(sysblast)):
+    sysblast = input( f"Please enter the path for blastn [{blast}]: ")
+if sysblast != "":
+    blast = sysblast
+
+sysclusto = "ASF"
+while not (sysclusto == "" or os.path.exists(sysclusto)):
+    sysclusto = input( f"Please enter the path for clustalo [{clustalo}]: ")
+if sysclusto != "":
+    clustalo = sysclusto
+    
+sysclustw = "ASF"
+while not (sysclustw == "" or os.path.exists(sysclustw)):
+    sysclustw = input( f"Please enter the path for clustalw [{clustalw}]: ")
+if sysclustw != "":
+    clustalw = sysclustw
+    
+sysmusc = "ASF"
+while not (sysmusc == "" or os.path.exists(sysmusc)):
+    sysmusc = input( f"Please enter the path for muscle [{muscle}]: ")
+if sysmusc != "":
+    muscle = sysmusc
+    
+sysvser = "ASF"
+while not (sysvser == "" or os.path.exists(sysvser)):
+    sysvser = input( f"Please enter the path for vsearch [{vsearch}]: ")
+if sysvser != "":
+    vsearch = sysvser
+    
 ##################################################################
 with open("%s/paths.py"%SONAR_HOME, "w") as paths:
     paths.write("""
 SCRIPT_FOLDER  = '%s'
-blast_cmd = '%s/third-party/%s'
-clustalo  = '%s/third-party/%s'
-clustalw  = '%s/third-party/%s'
-muscle    = '%s/third-party/%s'
-vsearch   = '%s/third-party/%s'
+blast_cmd = '%s'
+clustalo  = '%s'
+clustalw  = '%s'
+muscle    = '%s'
+vsearch   = '%s'
 %s
-""" % (SONAR_HOME, SONAR_HOME, blast, SONAR_HOME, clustalo, SONAR_HOME, clustalw, SONAR_HOME, muscle, SONAR_HOME, vsearch, print_cluster))
+""" % (SONAR_HOME, blast, clustalo, clustalw, muscle, vsearch, print_cluster))
 ##################################################################
 with open("%s/sonar"%SONAR_HOME, "w") as sonar:
     sonar.write("""#!/usr/bin/env python3
