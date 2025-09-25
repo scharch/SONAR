@@ -109,7 +109,7 @@ RUN ln -s /sratoolkit.2.9.6-1-ubuntu64/bin/fastq-dump /usr/bin/fastq-dump
 RUN apt-get install -y git libidn12
 RUN git clone https://github.com/scharch/SONAR.git
 WORKDIR SONAR
-RUN echo | ./setup.py
+RUN echo -e "\n\n\n\n\n" | ./setup.py
 RUN cp sonar /usr/bin
 
 WORKDIR /
