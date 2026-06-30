@@ -604,8 +604,9 @@ def main():
 
 			allDFs.append(df)
 
-		bigdf = pd.concat( allDFs, ignore_index=True )
-		bigdf.to_csv(cellStatFile, index=False, sep="\t")
+		if len(allDFs) > 0:
+			bigdf = pd.concat( allDFs, ignore_index=True )
+			bigdf.to_csv(cellStatFile, index=False, sep="\t")
 
 	else:
 

@@ -127,18 +127,18 @@ print_cluster = "clusterExists = False"
 if cluster_exists.upper() == "Y":
     print_cluster = "clusterExists = True\nqsub = '%s'" % qsub
 
-blast    = f"{SONAR_HOME}/third_party/blastn_linux64"
-clustalo = f"{SONAR_HOME}/third_party/clustalo"
-clustalw = f"{SONAR_HOME}/third_party/clustalw2"
-muscle   = f"{SONAR_HOME}/third_party/muscle"
-vsearch  = f"{SONAR_HOME}/third_party/vsearch"
+blast    = f"{SONAR_HOME}/third-party/blastn_linux64"
+clustalo = f"{SONAR_HOME}/third-party/clustalo"
+clustalw = f"{SONAR_HOME}/third-party/clustalw2"
+muscle   = f"{SONAR_HOME}/third-party/muscle"
+vsearch  = f"{SONAR_HOME}/third-party/vsearch"
 
 if sys.platform.startswith("darwin"):
-    blast    = f"{SONAR_HOME}/third_party/blastn_macos"
-    clustalo = f"{SONAR_HOME}/third_party/clustalo_macos"
-    clustalw = f"{SONAR_HOME}/third_party/clustalw2_macos"
-    muscle   = f"{SONAR_HOME}/third_party/muscle_macos"
-    vsearch  = f"{SONAR_HOME}/third_party/vsearch_macos"
+    blast    = f"{SONAR_HOME}/third-party/blastn_macos"
+    clustalo = f"{SONAR_HOME}/third-party/clustalo_macos"
+    clustalw = f"{SONAR_HOME}/third-party/clustalw2_macos"
+    muscle   = f"{SONAR_HOME}/third-party/muscle_macos"
+    vsearch  = f"{SONAR_HOME}/third-party/vsearch_macos"
 
 sysblast = "ASF"
 while not (sysblast == "" or os.path.exists(sysblast)):
