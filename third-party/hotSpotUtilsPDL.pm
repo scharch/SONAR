@@ -41,10 +41,12 @@ sub Fill_upp{
       }
       for(my $i=0; $i < $length;$i++){
           for(my $j=0;$j<61;$j++){
-              my $sumxz = log($Pxz[$partition->[$i]]->at(0,$j))+$node->{"up"}->{$other}->{"mat"}->[$i][0];
+              my $sumxz = -Inf;
+              eval{ $sumxz = log($Pxz[$partition->[$i]]->at(0,$j))+$node->{"up"}->{$other}->{"mat"}->[$i][0] };
               for(my $k=1;$k<61;$k++){
                   if($Pxz[$partition->[$i]]->at($k,$j)==0){print $node->{"dist"}." $k $j\n"}
-                  my $pxz = log($Pxz[$partition->[$i]]->at($k,$j)) + $node->{"up"}->{$other}->{"mat"}->[$i][$k];
+                  my $pxz = -Inf;
+                  eval{ $pxz = log($Pxz[$partition->[$i]]->at($k,$j)) + $node->{"up"}->{$other}->{"mat"}->[$i][$k] };
                   $sumxz = $sumxz + log(1+exp($pxz-$sumxz));
               }
               $node->{"uppmat"}->[$i][$j] = $sumxz;
@@ -64,10 +66,12 @@ sub Fill_upp{
     #pxy
     for(my $i=0; $i < $length;$i++){
         for(my $j=0;$j<61;$j++){
-            my $sumxy = log($Pxy[$partition->[$i]]->at($j,0))+$node->{"up"}->{"uppmat"}->[$i][0];
+            my $sumxy = -Inf;
+            eval{ $sumxy = log($Pxy[$partition->[$i]]->at($j,0))+$node->{"up"}->{"uppmat"}->[$i][0] };
             for(my $k=1;$k<61;$k++){
                 if($Pxy[$partition->[$i]]->at($k,$j)==0){print $node->{"up"}->{"dist"}." $k $j\n"}
-                my $pxy = log($Pxy[$partition->[$i]]->at($j,$k)) + $node->{"up"}->{"uppmat"}->[$i][$k];
+                my $pxy = -Inf;
+                eval{ $pxy = log($Pxy[$partition->[$i]]->at($j,$k)) + $node->{"up"}->{"uppmat"}->[$i][$k] };
                 $sumxy = $sumxy + log(1+exp($pxy-$sumxy));
             }
             $node->{"uppmat"}->[$i][$j] = $sumxy;
@@ -76,10 +80,12 @@ sub Fill_upp{
     #pyv
     for(my $i=0; $i < $length;$i++){
         for(my $j=0;$j<61;$j++){
-            my $sumyv = log($Pyv[$partition->[$i]]->at(0,$j))+$node->{"up"}->{$other}->{"mat"}->[$i][0];
+            my $sumyv = -Inf;
+            eval{ $sumyv = log($Pyv[$partition->[$i]]->at(0,$j))+$node->{"up"}->{$other}->{"mat"}->[$i][0] };
             for(my $k=1;$k<61;$k++){
                 if($Pyv[$partition->[$i]]->at($k,$j)==0){print $node->{"up"}->{$other}->{"dist"}." $k $j ".$Pyv[$partition->[$i]]->at($k,$j)."\n"}
-                my $pyv = log($Pyv[$partition->[$i]]->at($k,$j)) + $node->{"up"}->{$other}->{"mat"}->[$i][$k];
+                my $pyv = -Inf;
+                eval{ $pyv = log($Pyv[$partition->[$i]]->at($k,$j)) + $node->{"up"}->{$other}->{"mat"}->[$i][$k] };
                 $sumyv = $sumyv + log(1+exp($pyv-$sumyv));
             }
             $node->{"uppmat"}->[$i][$j] += $sumyv;
@@ -120,9 +126,11 @@ sub Lk_at_each{
     for(my $i=0; $i < scalar(@{$node->{"mat"}});$i++){
       my $sitelhood;
       for(my $j=0;$j<61;$j++){
-            my $sumyv = $node->{"uppmat"}->[$i][$j]+log($Pyv[$partition->[$i]]->at(0,$j))+$node->{"mat"}->[$i][0];
+            my $sumyv = -Inf;
+            eval{ $sumyv = $node->{"uppmat"}->[$i][$j]+log($Pyv[$partition->[$i]]->at(0,$j))+$node->{"mat"}->[$i][0] };
             for(my $k=1;$k<61;$k++){
-              my $pyv = $node->{"uppmat"}->[$i][$j]+log($Pyv[$partition->[$i]]->at($k,$j))+$node->{"mat"}->[$i][$k];
+              my $pyv = -Inf;
+              eval{ $pyv = $node->{"uppmat"}->[$i][$j]+log($Pyv[$partition->[$i]]->at($k,$j))+$node->{"mat"}->[$i][$k] };
               $sumyv = $sumyv + log(1+exp($pyv-$sumyv));
             }
             if($j==0){$sitelhood = $sumyv;}
@@ -165,7 +173,8 @@ sub Marginal_ASR{
     for(my $v=0;$v<61;$v++){
         my $lhoodv;
         for(my $y=0;$y<61;$y++){
-          my $val = $node->{"uppmat"}->[$i][$y]+log($Pyv[$partition->[$i]]->at($v,$y))+$node->{"mat"}->[$i][$v];
+          my $val = -Inf;
+          eval{ $val = $node->{"uppmat"}->[$i][$y]+log($Pyv[$partition->[$i]]->at($v,$y))+$node->{"mat"}->[$i][$v] };
           if($y==0){$lhoodv=$val;}
           else{$lhoodv = $lhoodv + log(1+exp($val-$lhoodv));}
        }
@@ -223,12 +232,16 @@ sub Pruning_Lhood{
         }
         for(my $i=0; $i < $length;$i++){
             for(my $j=0;$j<61;$j++){
-                my $sumr = log($Prs[$partition->[$i]+$nrparts*$node->{"right"}->{"olab"}]->at(0,$j))+$node->{"right"}->{"mat"}->[$i][0];
-                my $suml = log($Pls[$partition->[$i]+$nrparts*$node->{"left"}->{"olab"}]->at(0,$j))+$node->{"left"}->{"mat"}->[$i][0];
+                my $sumr = -Inf;
+                eval{ $sumr = log($Prs[$partition->[$i]+$nrparts*$node->{"right"}->{"olab"}]->at(0,$j))+$node->{"right"}->{"mat"}->[$i][0] };
+                my $suml = -Inf;
+                eval{ $suml = log($Pls[$partition->[$i]+$nrparts*$node->{"left"}->{"olab"}]->at(0,$j))+$node->{"left"}->{"mat"}->[$i][0] };
                 for(my $k=1;$k<61;$k++){
                     if($Prs[$partition->[$i]]->at($k,$j)==0){print $node->{"dist"}." $k $j\n"}
-                    my $pr = log($Prs[$partition->[$i]+$nrparts*$node->{"right"}->{"olab"}]->at($k,$j)) + $node->{"right"}->{"mat"}->[$i][$k];
-                    my $pl = log($Pls[$partition->[$i]+$nrparts*$node->{"left"}->{"olab"}]->at($k,$j)) + $node->{"left"}->{"mat"}->[$i][$k];
+                    my $pr = -Inf;
+                    eval{ $pr = log($Prs[$partition->[$i]+$nrparts*$node->{"right"}->{"olab"}]->at($k,$j)) + $node->{"right"}->{"mat"}->[$i][$k] };
+                    my $pl = -Inf;
+                    eval{ $pl = log($Pls[$partition->[$i]+$nrparts*$node->{"left"}->{"olab"}]->at($k,$j)) + $node->{"left"}->{"mat"}->[$i][$k] };
                     $sumr = $sumr + log(1+exp($pr-$sumr));
                     $suml = $suml + log(1+exp($pl-$suml));
                 }
@@ -318,12 +331,16 @@ sub Pruning_Lhood_g{
         
         for(my $i=0; $i < $length;$i++){
             for(my $j=0;$j<$nstates;$j++){
-                my $sumr = log($Prs->at(0,$j))+$node->{"right"}->{"mat"}->[$i][0];
-                my $suml = log($Pls->at(0,$j))+$node->{"left"}->{"mat"}->[$i][0];
+                my $sumr = -Inf;
+                eval{ $sumr = log($Prs->at(0,$j))+$node->{"right"}->{"mat"}->[$i][0] };
+                my $suml = -Inf;
+                eval{ $suml = log($Pls->at(0,$j))+$node->{"left"}->{"mat"}->[$i][0] };
                 for(my $k=1;$k<$nstates;$k++){
                     if($Prs->at($k,$j)==0){print $node->{"dist"}." $k $j\n"}
-                    my $pr = log($Prs->at($k,$j)) + $node->{"right"}->{"mat"}->[$i][$k];
-                    my $pl = log($Pls->at($k,$j)) + $node->{"left"}->{"mat"}->[$i][$k];
+                    my $pr = -Inf;
+                    eval{ $pr = log($Prs->at($k,$j)) + $node->{"right"}->{"mat"}->[$i][$k] };
+                    my $pl = -Inf;
+                    eval{ $pl = log($Pls->at($k,$j)) + $node->{"left"}->{"mat"}->[$i][$k] };
                     $sumr = $sumr + log(1+exp($pr-$sumr));
                     $suml = $suml + log(1+exp($pl-$suml));
                 }
