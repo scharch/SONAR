@@ -731,7 +731,7 @@ if __name__ == '__main__':
 	prj_tree = ProjectFolders( os.getcwd() )
 	prj_name = fullpath2last_folder(prj_tree.home)
 
-	old_files = glob.glob("%s/*"%prj_tree.preprocess) + glob.glob("byUMI.fa") + glob.glob("byCell.fa")
+	old_files = glob.glob("%s/*"%prj_tree.preprocess) + glob.glob("%s/*"%prj_tree.internal) + glob.glob("byUMI.fa") + glob.glob("byCell.fa")
 	if len(old_files) > 0:
 		if arguments['-f']:
 			print("Cleaning up old files...",file=sys.stderr)
