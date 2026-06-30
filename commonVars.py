@@ -100,11 +100,11 @@ BLAST_OTHER_OPTIONS = "-evalue 1e-3"
 
 PBS_STRING = "\
 #!/bin/bash\n\
-#$ -N %s		# job name\n\
-#$ -l mem=%s,time=%s   # resource requests\n\
-#$ -cwd				# use current directory as job status output\n\
-#$ -o /dev/null			# use sane outputs for array jobs\n\
-#$ -e /dev/null\n\
+#SBATCH --job-name=%s\n\
+#SBATCH --mem-per-cpu=%s\n\
+#SBATCH --time=%s\n\
+#SBATCH --mail-typ FAIL\n\
+#SBATCH --mail-user=chaim.schramm@nih.gov\n\
 \n\
 %s\n"
 

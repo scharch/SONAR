@@ -110,13 +110,13 @@ def main():
 	print( "curating junction and 3' end..." )
 
 	if arguments['--cluster']:
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk $NUM\n" % \
+		command = "NUM=`printf \"%s\" $SLURM_ARRAY_TASK_ID`\n%s/annotate/parse_blast.py --jmotif '%s' --nterm %s --chunk $NUM\n" % \
 					( "%03d", SCRIPT_FOLDER, arguments['--jmotif'], arguments['--nterm'] )
 		if arguments['--noFallBack']: command += " --noFallBack"
 		pbs = open("%s/parse.sh"%prj_tree.jgene, 'w')
-		pbs.write( "#!/bin/bash\n#$ -N parse-%s\n#$ -l h_vmem=2G\n#$ -cwd\n#$ -o %s/parse.o$JOB_ID.$SGE_TASK_ID\n#$ -o %s/parse.e$JOB_ID.$SGE_TASK_ID\n\n%s\n" % (prj_name, prj_tree.annotate, prj_tree.annotate, command) )
+		pbs.write( "#!/bin/bash\n#SBATCH --job-name=parse-%s\n#SBATCH --mem=2G\n#SBATCH --time=12:00:00\n#SBATCH -o %s/parse.o$SLURM_JOB_ID.$SLURM_ARRAY_TASK_ID\n#SBATCH -e %s/parse.e$SLURM_JOB_ID.$SLURM_ARRAY_TASK_ID\n\n%s\n" % (prj_name, prj_tree.annotate, prj_tree.annotate, command) )
 		pbs.close()
-		subprocess.call([qsub, '-sync', 'y', '-t', "1-%d"%maxFiles, "%s/parse.sh"%prj_tree.jgene])
+		subprocess.call([qsub, '--wait', "--array=[1-%d]"%maxFiles, "%s/parse.sh"%prj_tree.jgene])
 
 	else: #do it locally
 		parse_pool = Pool(arguments['--threads'])

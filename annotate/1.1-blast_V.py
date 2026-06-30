@@ -240,13 +240,13 @@ def main():
 		mode = "-db"
 		if not os.path.isfile(arguments['--lib'] + ".nhr"):
 			mode = "-subject"
-		command = "NUM=`printf \"%s\" $SGE_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--lib'], 
+		command = "NUM=`printf \"%s\" $SLURM_ARRAY_TASK_ID`\n%s" % ( "%03d", CMD_BLAST % (blast_cmd, mode, arguments['--lib'], 
 									      "%s/%s_$NUM.fasta" % (folder_tree.vgene, prj_name),
 									      "%s/%s_$NUM.txt"	 % (folder_tree.vgene, prj_name), V_BLAST_WORD_SIZE) )
 		pbs = open("%s/vblast.sh"%folder_tree.vgene, 'w')
 		pbs.write( PBS_STRING%("vBlast-%s"%prj_name, "2G", "2:00:00", "%s 2> %s/%s_$NUM.err"%(command, folder_tree.vgene, prj_name)) )
 		pbs.close()
-		os.system( "%s -t 1-%d %s/vblast.sh"%(qsub,f_ind,folder_tree.vgene) )
+		jobID = subprocess.check_output( [qsub, "--parsable", "--array=[1-%d]"%f_ind, "%s/vblast.sh"%folder_tree.vgene] )
 		
 		check = "%s/utilities/checkClusterBlast.py --gene v --big %d --check %s/vmonitor.sh" % (SCRIPT_FOLDER, f_ind, folder_tree.vgene)
 		if arguments['--runJBlast']:
@@ -263,7 +263,7 @@ def main():
 			check += "'"
 			
 		monitor = open("%s/vmonitor.sh"%folder_tree.vgene, 'w')
-		monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#$ -hold_jid vBlast-%s\n%s >> %s/qmonitor.log 2>&1"%(prj_name, check, folder_tree.logs)) )
+		monitor.write( PBS_STRING%("vMonitor-%s"%prj_name, "2G", "1:00:00", "#SBATCH --dependency=afterany:%s\n%s >> %s/qmonitor.log 2>&1"%(jobID.decode(), check, folder_tree.logs)) )
 		monitor.close()
 		os.system( "%s %s/vmonitor.sh"%(qsub,folder_tree.vgene) )
 
